@@ -19,7 +19,7 @@ export function BottomNav() {
     : baseItems;
 
   return (
-    <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-md -translate-x-1/2 bg-brand text-primary-foreground shadow-elevated md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 w-full bg-brand text-primary-foreground shadow-elevated lg:hidden">
       <ul className={cn("grid", isPrivileged ? "grid-cols-5" : "grid-cols-4")}>
         {items.map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);

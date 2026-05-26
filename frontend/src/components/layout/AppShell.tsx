@@ -14,7 +14,7 @@ export function AppShell({ children, showBack, showSearch = true, hideBottomNav 
     <div className="min-h-screen bg-muted/40">
       <div className="relative flex min-h-screen w-full flex-col bg-background">
         <MobileHeader showBack={showBack} showSearch={showSearch} />
-        <main className={`flex-1 ${hideBottomNav ? "pb-6" : "pb-24 md:pb-10"} animate-fade-in`}>
+        <main className={`flex-1 ${hideBottomNav ? "pb-6" : "pb-24 lg:pb-10"} animate-fade-in`}>
           {children}
         </main>
         {!hideBottomNav && <BottomNav />}

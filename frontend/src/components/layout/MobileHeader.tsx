@@ -43,7 +43,7 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
           {showBack && (
             <button
               onClick={() => navigate(-1)}
-              className="-ml-1 flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10 md:hidden"
+              className="-ml-1 flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10 lg:hidden"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -62,12 +62,12 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
         {/* LOGO ACERVO CENTRALIZADA MOBILE */}
         <Link
           to="/"
-          className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0"
+          className="absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0"
         >
           <div className="flex items-center gap-5">
             
             {/* DIVISOR DESKTOP */}
-            <div className="hidden h-8 w-px bg-white/20 md:block" />
+            <div className="hidden h-8 w-px bg-white/20 lg:block" />
 
             <img
               src="/logo_acervo.png"
