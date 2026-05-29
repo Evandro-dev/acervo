@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -118,6 +118,12 @@ function inferModalidadeFromPageCount(pageCount: number): Modalidade {
   return modalidades[2];
 }
 
+function formatPageRangeFromPageCount(pageCount: number) {
+  if (!Number.isFinite(pageCount) || pageCount <= 0) return "";
+  if (pageCount === 1) return "1";
+  return `1-${pageCount}`;
+}
+
 function createPdfQueueItem(file: File): PdfQueueItem {
   return {
     id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
@@ -136,6 +142,7 @@ function applyMetadataToPdfDraft(draft: PdfDraft, metadata: ExtractedArticlePdfM
     authors: draft.authors || (metadata.authors.length ? metadata.authors.join(", ") : draft.authors),
     abstract: draft.abstract || metadata.abstract || draft.abstract,
     area: draft.area || metadata.suggestedArea || draft.area,
+    pages: draft.pages || formatPageRangeFromPageCount(metadata.pageCount),
     modalidade: inferModalidadeFromPageCount(metadata.pageCount),
   };
 }
@@ -198,6 +205,8 @@ export default function AdminImportar() {
   const [activePdfIndex, setActivePdfIndex] = useState(0);
   const [isBatchReading, setIsBatchReading] = useState(false);
   const [isBatchSaving, setIsBatchSaving] = useState(false);
+  const reviewCardRef = useRef<HTMLDivElement | null>(null);
+  const reviewWasVisibleRef = useRef(false);
 
   useEffect(() => {
     if (!eventId && events[0]?.id) {
@@ -231,6 +240,18 @@ export default function AdminImportar() {
     [drafts],
   );
   const isImporting = importMutation.isPending || uploadPdfMutation.isPending || isBatchSaving;
+
+  useEffect(() => {
+    const reviewJustBecameVisible = showActivePdfReview && !reviewWasVisibleRef.current;
+    reviewWasVisibleRef.current = showActivePdfReview;
+
+    if (!reviewJustBecameVisible) return;
+
+    reviewCardRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [showActivePdfReview]);
 
   const updateDraft = (index: number, patch: Partial<Draft>) =>
     setDrafts((currentDrafts) =>
@@ -915,7 +936,7 @@ export default function AdminImportar() {
               ) : null}
 
               {showActivePdfReview ? (
-                <Card className="border-border/60 p-3 shadow-card">
+                <Card ref={reviewCardRef} className="border-border/60 p-3 shadow-card">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold">Revisão do arquivo atual</div>

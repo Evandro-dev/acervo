@@ -110,7 +110,7 @@ export default function Eventos() {
                 </div>
 
                 <div className="mb-8">
-                  <Label className="mb-4 block text-sm font-semibold text-black">Ãrea</Label>
+                  <Label className="mb-4 block text-sm font-semibold text-black">Área</Label>
                   <div className="grid gap-3">
                     {allAreas.map((area) => (
                       <label key={area} className="flex items-center gap-2 text-sm">
@@ -154,7 +154,7 @@ export default function Eventos() {
             isError={isError}
             isEmpty={filtered.length === 0}
             loadingMessage="Carregando eventos..."
-            errorMessage="NÃ£o foi possÃ­vel carregar os eventos."
+            errorMessage="Não foi possível carregar os eventos."
             emptyMessage="Nenhum evento encontrado."
           >
             <div className="grid auto-rows-fr gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">

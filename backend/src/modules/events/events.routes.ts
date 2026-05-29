@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { isPdfFileUpload, removeArticlePdf } from "../../lib/article-pdf.js";
+import { removeArticlePdf } from "../../lib/article-pdf.js";
 import {
   buildEventCoverImageUrl,
   createEventCoverImageReadStream,
@@ -32,6 +32,7 @@ import {
   removeEventRuleFile,
   saveEventRuleFile,
 } from "../../lib/event-rule-files.js";
+import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
 import { requirePrivilegedUser } from "../../lib/permissions.js";
 import { prisma } from "../../lib/prisma.js";
 import { serializeEvent } from "../../lib/serializers.js";
@@ -301,7 +302,6 @@ export async function eventRoutes(app: FastifyInstance) {
     if (!file) return reply.status(400).send({ error: "Envie uma imagem no campo 'file'" });
 
     if (!isEventCoverImageUpload(file)) {
-      file.file.resume();
       return reply.status(400).send({ error: "Apenas imagens JPG, PNG, WEBP ou GIF são permitidas" });
     }
 
@@ -335,12 +335,7 @@ export async function eventRoutes(app: FastifyInstance) {
     const file = await req.file();
     if (!file) return reply.status(400).send({ error: "Envie um arquivo PDF no campo 'file'" });
 
-    if (!isPdfFileUpload(file)) {
-      file.file.resume();
-      return reply.status(400).send({ error: "Apenas arquivos PDF são permitidos" });
-    }
-
-    const fileName = await saveEventRuleFile(id, file);
+    const fileName = await saveEventRuleFile(id, file.filename, await readValidatedPdfUpload(file));
     return reply.status(201).send({
       fileUrl: buildEventRuleFileUrl(req, id, fileName),
     });

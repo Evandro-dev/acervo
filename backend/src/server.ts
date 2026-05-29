@@ -3,7 +3,7 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import { ZodError } from "zod";
-import { PDF_UPLOAD_LIMIT_BYTES } from "./lib/article-pdf.js";
+import { PDF_UPLOAD_LIMIT_BYTES } from "./lib/pdf-upload.js";
 import { env } from "./env.js";
 import { authPlugin } from "./plugins/auth.js";
 import { prisma } from "./lib/prisma.js";
@@ -16,8 +16,25 @@ import { articleRoutes } from "./modules/articles/articles.routes.js";
 
 const app = Fastify({ logger: true });
 
+function normalizeOrigin(origin: string) {
+  return origin.trim().replace(/\/+$/, "");
+}
+
+const allowedOrigins = new Set(
+  env.CORS_ORIGIN.split(",")
+    .map((origin) => normalizeOrigin(origin))
+    .filter(Boolean),
+);
+
 await app.register(cors, {
-  origin: env.CORS_ORIGIN.split(",").map((origin) => origin.trim()).filter(Boolean),
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    callback(null, allowedOrigins.has(normalizeOrigin(origin)));
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 });

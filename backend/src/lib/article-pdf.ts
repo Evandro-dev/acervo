@@ -1,13 +1,9 @@
-import { createReadStream, createWriteStream } from "node:fs";
-import { access, mkdir, unlink } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { access, mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pipeline } from "node:stream/promises";
-import type { MultipartFile } from "@fastify/multipart";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
 import { slugify } from "./slug.js";
-
-export const PDF_UPLOAD_LIMIT_BYTES = 25 * 1024 * 1024;
 
 const articlePdfDirectory = path.resolve(process.cwd(), "uploads", "articles");
 
@@ -43,9 +39,9 @@ export function getArticlePdfPath(articleId: string) {
   return path.join(articlePdfDirectory, `${articleId}.pdf`);
 }
 
-export async function saveArticlePdf(articleId: string, file: MultipartFile) {
+export async function saveArticlePdf(articleId: string, data: Uint8Array) {
   await mkdir(articlePdfDirectory, { recursive: true });
-  await pipeline(file.file, createWriteStream(getArticlePdfPath(articleId)));
+  await writeFile(getArticlePdfPath(articleId), data);
 }
 
 export async function articlePdfExists(articleId: string) {
@@ -72,8 +68,4 @@ export function createArticlePdfReadStream(articleId: string) {
 
 export function buildArticlePdfFileName(title: string) {
   return `${slugify(title) || "artigo"}.pdf`;
-}
-
-export function isPdfFileUpload(file: MultipartFile) {
-  return file.mimetype === "application/pdf" || file.filename.toLowerCase().endsWith(".pdf");
 }

@@ -6,13 +6,13 @@ import {
   buildArticlePdfFileName,
   buildArticlePdfUrl,
   createArticlePdfReadStream,
-  isPdfFileUpload,
   removeArticlePdf,
   saveArticlePdf,
 } from "../../lib/article-pdf.js";
 import { extractArticlePdfMetadata } from "../../lib/article-pdf-metadata.js";
 import { authorPayloadSchema, normalizeAuthorPayload } from "../../lib/contracts.js";
 import { canManageArticle, getOptionalUser, isPrivilegedRole, requirePrivilegedUser } from "../../lib/permissions.js";
+import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
 import { prisma } from "../../lib/prisma.js";
 import { serializeArticle } from "../../lib/serializers.js";
 import { suggestAreaFromArticleText } from "../areas/area-suggestion.service.js";
@@ -148,12 +148,7 @@ export async function articleRoutes(app: FastifyInstance) {
       const file = await req.file();
       if (!file) return reply.status(400).send({ error: "Envie um arquivo PDF no campo 'file'" });
 
-      if (!isPdfFileUpload(file)) {
-        file.file.resume();
-        return reply.status(400).send({ error: "Apenas arquivos PDF são permitidos" });
-      }
-
-      const metadata = await extractArticlePdfMetadata(new Uint8Array(await file.toBuffer()));
+      const metadata = await extractArticlePdfMetadata(await readValidatedPdfUpload(file));
       const areaSuggestion = await suggestAreaFromArticleText({
         title: metadata.title,
         abstract: metadata.abstract,
@@ -280,12 +275,7 @@ export async function articleRoutes(app: FastifyInstance) {
     const file = await req.file();
     if (!file) return reply.status(400).send({ error: "Envie um arquivo PDF no campo 'file'" });
 
-    if (!isPdfFileUpload(file)) {
-      file.file.resume();
-      return reply.status(400).send({ error: "Apenas arquivos PDF são permitidos" });
-    }
-
-    await saveArticlePdf(id, file);
+    await saveArticlePdf(id, await readValidatedPdfUpload(file));
 
     const updated = await prisma.article.update({
       where: { id },

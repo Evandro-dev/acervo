@@ -1,9 +1,7 @@
-import { createReadStream, createWriteStream } from "node:fs";
-import { access, mkdir, readdir, rm, unlink } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { access, mkdir, readdir, rm, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pipeline } from "node:stream/promises";
 import { randomUUID } from "node:crypto";
-import type { MultipartFile } from "@fastify/multipart";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
 import { slugify } from "./slug.js";
@@ -68,12 +66,12 @@ export function buildEventRuleFileUrl(request: FastifyRequest, eventId: string, 
   return `${getRequestProtocol(request)}://${getRequestHost(request)}/events/${eventId}/files/${encodedFileName}`;
 }
 
-export async function saveEventRuleFile(eventId: string, file: MultipartFile) {
-  const fileName = buildEventRuleFileName(file.filename);
+export async function saveEventRuleFile(eventId: string, originalFileName: string, data: Uint8Array) {
+  const fileName = buildEventRuleFileName(originalFileName);
   const targetDirectory = getEventRuleEventDirectory(eventId);
 
   await mkdir(targetDirectory, { recursive: true });
-  await pipeline(file.file, createWriteStream(getEventRuleFilePath(eventId, fileName)));
+  await writeFile(getEventRuleFilePath(eventId, fileName), data);
 
   return fileName;
 }

@@ -141,14 +141,14 @@ export default function Publicacoes() {
     <AppShell>
       <section className="bg-brand text-primary-foreground">
         <SiteContainer className="pb-5 pt-3">
-          <h1 className="text-lg font-bold">PublicaÃ§Ãµes</h1>
-          <p className="text-xs opacity-90">{isLoading ? "Carregando..." : `${filtered.length} artigos disponÃ­veis`}</p>
+          <h1 className="text-lg font-bold">Publicações</h1>
+          <p className="text-xs opacity-90">{isLoading ? "Carregando..." : `${filtered.length} artigos disponíveis`}</p>
           {areaFilter && (
             <button
               onClick={clearArea}
               className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold backdrop-blur hover:bg-white/25"
             >
-              Ãrea: {areaFilter}
+              Área: {areaFilter}
               <X className="h-3 w-3" />
             </button>
           )}
@@ -157,7 +157,7 @@ export default function Publicacoes() {
               containerClassName="flex-1"
               value={q}
               onChange={(event) => setQ(event.target.value)}
-              placeholder="Buscar tÃ­tulo, autor, Ã¡rea..."
+              placeholder="Buscar título, autor, área..."
               className="border-0 bg-background text-foreground shadow-card"
             />
 
@@ -167,7 +167,7 @@ export default function Publicacoes() {
                   variant="secondary"
                   size="icon"
                   className="relative shrink-0 bg-white text-primary-dark hover:bg-white/90"
-                  aria-label="Abrir filtros de publicaÃ§Ãµes"
+                  aria-label="Abrir filtros de publicações"
                 >
                   <Filter className="h-4 w-4" />
                   {activeFilterCount > 0 && (
@@ -185,12 +185,12 @@ export default function Publicacoes() {
                 <SheetHeader className="mb-6 flex flex-row items-center justify-between space-y-0 text-left">
                   <SheetTitle className="text-2xl font-bold text-[#E30613]">Filtros</SheetTitle>
                   <SheetDescription className="sr-only">
-                    Filtre a lista de publicaÃ§Ãµes por Ã¡rea, evento, modalidade, ano e disponibilidade de PDF.
+                    Filtre a lista de publicações por área, evento, modalidade, ano e disponibilidade de PDF.
                   </SheetDescription>
                 </SheetHeader>
 
                 <div className="space-y-7">
-                  <FilterGroup title="Ãrea">
+                  <FilterGroup title="Área">
                     {areaOptions.length > 0 ? (
                       <div className="grid gap-3 md:grid-cols-2">
                         {areaOptions.map((area) => (
@@ -201,7 +201,7 @@ export default function Publicacoes() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Nenhuma Ã¡rea disponÃ­vel.</p>
+                      <p className="text-sm text-muted-foreground">Nenhuma Área disponí­vel.</p>
                     )}
                   </FilterGroup>
 
@@ -219,7 +219,7 @@ export default function Publicacoes() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Nenhum evento disponÃ­vel.</p>
+                      <p className="text-sm text-muted-foreground">Nenhum evento disponí­vel.</p>
                     )}
                   </FilterGroup>
 
@@ -237,7 +237,7 @@ export default function Publicacoes() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Nenhuma modalidade disponÃ­vel.</p>
+                      <p className="text-sm text-muted-foreground">Nenhuma modalidade disponí­vel.</p>
                     )}
                   </FilterGroup>
 
@@ -255,14 +255,14 @@ export default function Publicacoes() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Nenhum ano disponÃ­vel.</p>
+                      <p className="text-sm text-muted-foreground">Nenhum ano disponí­vel.</p>
                     )}
                   </FilterGroup>
 
                   <FilterGroup title="Arquivo">
                     <label className="flex items-center gap-2 text-sm">
                       <Checkbox checked={onlyWithPdf} onCheckedChange={(checked) => setOnlyWithPdf(checked === true)} />
-                      <span>Somente publicaÃ§Ãµes com PDF</span>
+                      <span>Somente publicações com PDF</span>
                     </label>
                   </FilterGroup>
                 </div>
@@ -295,12 +295,12 @@ export default function Publicacoes() {
             isLoading={isLoading}
             isError={isError}
             isEmpty={filtered.length === 0}
-            loadingMessage="Carregando publicaÃ§Ãµes..."
-            errorMessage="NÃ£o foi possÃ­vel carregar as publicaÃ§Ãµes."
+            loadingMessage="Carregando publicações..."
+            errorMessage="Não foi possível carregar as publicações."
             emptyMessage={
               activeFilterCount > 0 || q.trim()
-                ? "Nenhuma publicaÃ§Ã£o corresponde aos filtros atuais."
-                : "Nenhuma publicaÃ§Ã£o encontrada."
+                ? "Nenhuma publicação corresponde aos filtros atuais."
+                : "Nenhuma publicação encontrada."
             }
           >
             <div className="grid auto-rows-fr gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">

@@ -238,6 +238,7 @@ describe("Admin pages", () => {
   });
 
   it("extracts PDF metadata in batch, navigates the queue, and uploads each imported PDF", async () => {
+    const scrollIntoViewSpy = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
     const extractMutateAsync = vi.fn().mockImplementation(({ file }: { file: File }) => {
       if (file.name === "leucemia.pdf") {
         return Promise.resolve({
@@ -321,12 +322,15 @@ describe("Admin pages", () => {
     );
 
     await waitFor(() => expect(screen.getByDisplayValue("Leucemia Infantil")).toBeInTheDocument());
+    expect(scrollIntoViewSpy).toHaveBeenCalled();
     expect(screen.getByDisplayValue("Alice Cunha, Barbara Oliveira")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Oncologia")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1-5")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByLabelText("Próximo arquivo na revisão")[0]);
     await waitFor(() => expect(screen.getByDisplayValue("Nanotecnologia Aplicada")).toBeInTheDocument());
     expect(screen.getByDisplayValue("Pedro Souza")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1-7")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Salvar 2 trabalhos e anexar PDFs/i }));
 
@@ -339,6 +343,7 @@ describe("Admin pages", () => {
             title: "Leucemia Infantil",
             authors: ["Alice Cunha", "Barbara Oliveira"],
             area: "Oncologia",
+            pages: "1-5",
             modality: "Resumo Expandido",
             importedFrom: expect.stringMatching(/^Leitura/i),
           }),
@@ -346,6 +351,7 @@ describe("Admin pages", () => {
             title: "Nanotecnologia Aplicada",
             authors: ["Pedro Souza"],
             area: "Nanotecnologia",
+            pages: "1-7",
             modality: "Artigo Científico",
             importedFrom: expect.stringMatching(/^Leitura/i),
           }),

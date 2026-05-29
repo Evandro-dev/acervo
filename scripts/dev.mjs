@@ -31,7 +31,7 @@ async function readBackendPort() {
   return match ? Number(match[1]) : 3333;
 }
 
-function isPortOpen(port, host = "127.0.0.1") {
+function isPortOpen(port, host = "0.0.0.0") {
   return new Promise((resolve) => {
     const socket = new net.Socket();
 
@@ -54,7 +54,7 @@ async function detectBackendState(port) {
   if (!portOpen) return "stopped";
 
   try {
-    const response = await fetch(`http://127.0.0.1:${port}/health`);
+    const response = await fetch(`http://0.0.0.0:${port}/health`);
     const data = await response.json();
     if (response.ok && data?.ok === true && data?.service === "acervo-api") {
       return "acervo";
