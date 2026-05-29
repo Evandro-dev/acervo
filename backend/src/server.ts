@@ -33,6 +33,12 @@ await app.register(cors, {
       return;
     }
 
+    // Allow all origins when the environment contains a wildcard '*'
+    if (allowedOrigins.has("*")) {
+      callback(null, true);
+      return;
+    }
+
     callback(null, allowedOrigins.has(normalizeOrigin(origin)));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
