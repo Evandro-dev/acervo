@@ -27,8 +27,8 @@ export default function Sobre() {
             Universidade Una - Pouso Alegre, Minas Gerais
           </Item>
           <Item icon={Mail} title="Contato">
-            <a className="text-primary underline" href="mailto:contato@acervo.edu">
-              contato@acervo.edu
+            <a className="text-primary underline" href="mailto:unapousoalegre.oficial@gmail.com">
+              unapousoalegre.oficial@gmail.com
             </a>
           </Item>
         </SiteContainer>
