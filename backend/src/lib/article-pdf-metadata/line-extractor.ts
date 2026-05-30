@@ -107,7 +107,7 @@ export async function extractPdfLines(data: Uint8Array, options: ExtractPdfLines
 
       return { lines, pageCount };
     } finally {
-      await document.destroy();
+      await task.destroy();
     }
   } catch (error) {
     throw mapPdfParserError(error);
