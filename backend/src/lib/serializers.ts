@@ -1,6 +1,8 @@
-import type { ArticleStatus, Role } from "@prisma/client";
 import { z } from "zod";
 import { eventCommitteeSchema, eventPreviousEditionsSchema, eventRulesSchema } from "./contracts.js";
+
+type ArticleStatus = string;
+type Role = string;
 
 type AuthorShape = {
   id: string;
