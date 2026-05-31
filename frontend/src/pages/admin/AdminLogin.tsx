@@ -11,6 +11,7 @@ import { StatePanel } from "@/components/ui/state-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { registerAccessAccount } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/auth-context";
+import { readAndClearAuthNotice } from "@/features/auth/storage";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage, getApiRetryAfterSeconds } from "@/lib/api";
 
@@ -41,10 +42,11 @@ export default function AdminLogin() {
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState(() => (searchParams.get("tab") === "register" ? "register" : "login"));
 
-  const [email, setEmail] = useState("admin@acervo.edu");
-  const [password, setPassword] = useState("acervo123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
   const [loginFeedback, setLoginFeedback] = useState<LoginFeedback | null>(null);
+  const [sessionNotice] = useState(() => readAndClearAuthNotice());
   const [blockedUntilMs, setBlockedUntilMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
@@ -62,25 +64,18 @@ export default function AdminLogin() {
   useEffect(() => {
     if (!blockedUntilMs) return;
 
-    if (blockedUntilMs <= Date.now()) {
-      setBlockedUntilMs(null);
-      setLoginFeedback(null);
-      return;
-    }
-
     const interval = window.setInterval(() => {
-      setNowMs(Date.now());
+      const nextNowMs = Date.now();
+      setNowMs(nextNowMs);
+
+      if (blockedUntilMs <= nextNowMs) {
+        setBlockedUntilMs(null);
+        setLoginFeedback(null);
+      }
     }, 1000);
 
     return () => window.clearInterval(interval);
   }, [blockedUntilMs]);
-
-  useEffect(() => {
-    if (blockedUntilMs && blockedSeconds === 0) {
-      setBlockedUntilMs(null);
-      setLoginFeedback(null);
-    }
-  }, [blockedSeconds, blockedUntilMs]);
 
   if (isAuthenticated) return <Navigate to="/admin" replace />;
 
@@ -201,6 +196,14 @@ export default function AdminLogin() {
 
                   <TabsContent value="login" className="mt-0">
                     <form onSubmit={submitLogin} className="space-y-4">
+                      {sessionNotice && (
+                        <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Sessão encerrada</AlertTitle>
+                          <AlertDescription>{sessionNotice}</AlertDescription>
+                        </Alert>
+                      )}
+
                       {loginFeedback?.kind === "blocked" && (
                         <Alert variant="destructive" className="border-destructive/40 bg-destructive/5">
                           <Clock3 className="h-4 w-4" />
@@ -260,9 +263,6 @@ export default function AdminLogin() {
                         {loginButtonLabel}
                       </Button>
 
-                      <p className="text-xs text-muted-foreground">
-                        Demo: <code>admin@acervo.edu</code> / <code>acervo123</code>
-                      </p>
                     </form>
                   </TabsContent>
 

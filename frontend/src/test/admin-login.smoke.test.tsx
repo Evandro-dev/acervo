@@ -98,6 +98,12 @@ describe("AdminLogin", () => {
     });
 
     renderScreen();
+    fireEvent.change(screen.getByLabelText("E-mail institucional"), {
+      target: { value: "admin@acervo.edu" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "senha-incorreta" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
     await screen.findByText("Login temporariamente bloqueado");

@@ -1,4 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { AuthSessionError } from "../modules/auth/auth-session.service.js";
+import { verifyActiveRequestSession } from "../modules/auth/auth-request.js";
 
 const privilegedRoles = new Set(["ADMIN", "COORDENADOR"]);
 
@@ -8,10 +10,10 @@ export function isPrivilegedRole(role?: string): role is "ADMIN" | "COORDENADOR"
 
 export async function getOptionalUser(req: FastifyRequest) {
   try {
-    await req.jwtVerify();
-    return req.user;
-  } catch {
-    return null;
+    return await verifyActiveRequestSession(req);
+  } catch (error) {
+    if (error instanceof AuthSessionError) return null;
+    throw error;
   }
 }
 

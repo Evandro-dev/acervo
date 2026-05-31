@@ -4,6 +4,7 @@ import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import { ZodError } from "zod";
 import { PDF_UPLOAD_LIMIT_BYTES } from "./lib/pdf-upload.js";
+import { getPublicErrorMessage } from "./lib/public-error-message.js";
 import { env } from "./env.js";
 import { authPlugin } from "./plugins/auth.js";
 import { prisma } from "./lib/prisma.js";
@@ -14,7 +15,7 @@ import { areaRoutes } from "./modules/areas/areas.routes.js";
 import { eventRoutes } from "./modules/events/events.routes.js";
 import { articleRoutes } from "./modules/articles/articles.routes.js";
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: true, trustProxy: env.TRUST_PROXY_HOPS });
 
 function normalizeOrigin(origin: string) {
   return origin.trim().replace(/\/+$/, "");
@@ -74,7 +75,7 @@ app.setErrorHandler((error, _req, reply) => {
   }
 
   const status = (error as { statusCode?: number }).statusCode ?? 500;
-  const message = error instanceof Error ? error.message : "Erro interno do servidor";
+  const message = getPublicErrorMessage(error, status);
   return reply.status(status).send({ error: message });
 });
 

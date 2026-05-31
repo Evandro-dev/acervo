@@ -17,6 +17,16 @@ export async function fetchCurrentUser() {
   return response.data;
 }
 
+export async function logoutCurrentSession(token: string) {
+  await api.post(
+    "/auth/logout",
+    undefined,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+}
+
 export async function registerAccessAccount(payload: RegisterAccessAccountPayload) {
   const response = await api.post<RegisterAccessAccountResponse>("/auth/register", payload);
   return response.data;

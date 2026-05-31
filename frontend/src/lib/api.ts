@@ -1,5 +1,10 @@
 import axios from "axios";
-import { AUTH_CLEARED_EVENT, AUTH_TOKEN_STORAGE_KEY, AUTH_USER_STORAGE_KEY } from "@/features/auth/storage";
+import {
+  getBearerTokenFromHeaders,
+  hasAuthorizationHeader,
+  shouldClearStoredSessionAfterUnauthorized,
+} from "@/features/auth/auth-http";
+import { AUTH_TOKEN_STORAGE_KEY, clearStoredSession } from "@/features/auth/storage";
 import { getApiValidationMessage, type ApiValidationErrorData } from "@/lib/api-error-messages";
 
 const baseURL = import.meta.env.VITE_API_URL ?? "http://localhost:10000";
@@ -8,17 +13,28 @@ export const api = axios.create({ baseURL });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token && !hasAuthorizationHeader(config.headers)) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
-      localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-      localStorage.removeItem(AUTH_USER_STORAGE_KEY);
-      window.dispatchEvent(new CustomEvent(AUTH_CLEARED_EVENT));
+    const isLoginRequest = error?.config?.url === "/auth/login";
+    const requestToken = getBearerTokenFromHeaders(error?.config?.headers);
+    const storedToken = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    const shouldClearSession = shouldClearStoredSessionAfterUnauthorized({ requestToken, storedToken });
+
+    if (error?.response?.status === 401 && !isLoginRequest && shouldClearSession) {
+      const code = error?.response?.data?.code;
+      const notice =
+        code === "SESSION_REVOKED" || code === "SESSION_EXPIRED"
+          ? error.response.data.error
+          : undefined;
+
+      clearStoredSession({ notice });
     }
 
     return Promise.reject(error);
@@ -38,7 +54,6 @@ type ApiErrorData = ApiValidationErrorData & {
   error?: string;
   code?: string;
   retryAfterSeconds?: number;
-  remainingAttempts?: number;
   blockedUntil?: string;
 };
 
@@ -81,9 +96,4 @@ export function getApiRetryAfterSeconds(error: unknown) {
   }
 
   return undefined;
-}
-
-export function getApiRemainingAttempts(error: unknown) {
-  const data = getApiErrorData(error);
-  return typeof data?.remainingAttempts === "number" ? data.remainingAttempts : undefined;
 }

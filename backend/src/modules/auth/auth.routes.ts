@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { env } from "../../env.js";
@@ -9,7 +9,12 @@ import {
 } from "../../lib/institutional-email.js";
 import { prisma } from "../../lib/prisma.js";
 import { serializeUserAccount } from "../../lib/serializers.js";
-import { clearLoginFailures, getLoginBlock, recordLoginFailure } from "./login-guard.js";
+import { createExclusiveAuthSession, revokeAuthSession } from "./auth-session.service.js";
+import {
+  clearAccountLoginFailures,
+  getLoginAuditContext,
+  reserveLoginAttempt,
+} from "./login-throttle.service.js";
 
 const accountSelect = {
   id: true,
@@ -41,32 +46,45 @@ const registerSchema = z.object({
   password: passwordSchema,
 });
 
-function buildRateLimitPayload(retryAfterSeconds: number, scope?: string) {
+// Comparing against a real bcrypt hash for unknown accounts reduces timing-based user enumeration.
+const unknownAccountPasswordHash = "$2b$10$wnVhQ4C0JcBFaHtkmVXQt.ET6kn72YvJd.D1oFOzK4K5YPvm6rWyC";
+
+function buildRateLimitPayload(retryAfterSeconds: number) {
   return {
     code: "LOGIN_RATE_LIMITED",
     error: `Muitas tentativas de login. Tente novamente em ${retryAfterSeconds} segundos.`,
     retryAfterSeconds,
     blockedUntil: new Date(Date.now() + retryAfterSeconds * 1000).toISOString(),
-    scope,
   };
 }
 
-function signToken(app: FastifyInstance, user: { id: string; role: string; name: string }) {
+function preventAuthResponseCaching(reply: FastifyReply) {
+  reply.header("Cache-Control", "no-store");
+}
+
+function signToken(
+  app: FastifyInstance,
+  user: { id: string; role: string; name: string },
+  sessionId: string,
+) {
   return app.jwt.sign(
-    { sub: user.id, role: user.role, name: user.name },
+    { sub: user.id, sid: sessionId, role: user.role, name: user.name },
     { expiresIn: env.JWT_EXPIRES_IN },
   );
 }
 
 export async function authRoutes(app: FastifyInstance) {
   app.post("/login", async (req, reply) => {
+    preventAuthResponseCaching(reply);
     const parsed = loginSchema.parse(req.body);
     const email = normalizeEmailAddress(parsed.email);
-    const block = getLoginBlock(email, req.ip);
+    const auditContext = getLoginAuditContext(email, req.ip);
+    const attempt = await reserveLoginAttempt(email, req.ip);
 
-    if (block.blocked) {
-      reply.header("Retry-After", String(block.retryAfterSeconds));
-      return reply.status(429).send(buildRateLimitPayload(block.retryAfterSeconds, block.scope));
+    if (!attempt.accepted) {
+      req.log.warn({ event: "auth.login.blocked", ...auditContext, scope: attempt.scope });
+      reply.header("Retry-After", String(attempt.retryAfterSeconds));
+      return reply.status(429).send(buildRateLimitPayload(attempt.retryAfterSeconds));
     }
 
     const user = email
@@ -79,32 +97,59 @@ export async function authRoutes(app: FastifyInstance) {
         })
       : null;
 
-    const ok = user && parsed.password ? await bcrypt.compare(parsed.password, user.passwordHash) : false;
+    const ok = await bcrypt.compare(parsed.password || "__empty__", user?.passwordHash ?? unknownAccountPasswordHash);
 
     if (!user || !ok) {
-      const nextBlock = recordLoginFailure(email, req.ip);
-      if (nextBlock.blocked) {
-        reply.header("Retry-After", String(nextBlock.retryAfterSeconds));
+      req.log.warn({
+        event: "auth.login.failed",
+        ...auditContext,
+        blocked: attempt.blocked,
+        scope: attempt.scope,
+        remainingAttempts: attempt.remainingAttempts,
+      });
+
+      if (attempt.blocked) {
+        reply.header("Retry-After", String(attempt.retryAfterSeconds));
       }
 
-      return reply.status(nextBlock.blocked ? 429 : 401).send({
-        ...(nextBlock.blocked
-          ? buildRateLimitPayload(nextBlock.retryAfterSeconds, nextBlock.scope)
+      return reply.status(attempt.blocked ? 429 : 401).send({
+        ...(attempt.blocked
+          ? buildRateLimitPayload(attempt.retryAfterSeconds)
           : {
               code: "INVALID_CREDENTIALS",
               error: "Credenciais inválidas",
-              remainingAttempts: nextBlock.remainingAttempts,
             }),
       });
     }
 
-    clearLoginFailures(email, req.ip);
+    await clearAccountLoginFailures(email);
 
-    const token = signToken(app, user);
+    const session = await createExclusiveAuthSession({
+      userId: user.id,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    const token = signToken(app, user, session.id);
+
+    req.log.info({
+      event: "auth.login.succeeded",
+      ...auditContext,
+      userId: user.id,
+      revokedSessionCount: session.revokedSessionCount,
+    });
+
     return { user: serializeUserAccount(user), token };
   });
 
+  app.post("/logout", { preHandler: [app.authenticate] }, async (req, reply) => {
+    preventAuthResponseCaching(reply);
+    await revokeAuthSession(req.user.sid);
+    req.log.info({ event: "auth.logout.succeeded", userId: req.user.sub });
+    return reply.status(204).send();
+  });
+
   app.post("/register", async (req, reply) => {
+    preventAuthResponseCaching(reply);
     const payload = registerSchema.parse(req.body);
     const email = normalizeEmailAddress(payload.email);
 
@@ -141,7 +186,8 @@ export async function authRoutes(app: FastifyInstance) {
     });
   });
 
-  app.get("/me", { preHandler: [app.authenticate] }, async (req) => {
+  app.get("/me", { preHandler: [app.authenticate] }, async (req, reply) => {
+    preventAuthResponseCaching(reply);
     const user = await prisma.user.findUniqueOrThrow({
       where: { id: req.user.sub },
       select: accountSelect,

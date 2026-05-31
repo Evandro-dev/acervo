@@ -18,9 +18,12 @@ Arquivo de exemplo:
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/acervo?schema=public"
 JWT_SECRET="troque-esta-chave-em-producao"
 JWT_EXPIRES_IN="12h"
+AUTH_SESSION_IDLE_TIMEOUT_MINUTES=30
+TRUST_PROXY_HOPS=1
 PORT=10000
 CORS_ORIGIN="http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173"
 INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br"
+SEED_ACCESS_PASSWORD=""
 ```
 
 ## Fluxo recomendado
@@ -50,10 +53,12 @@ npm run bootstrap:dev
 npm run dev
 ```
 
-## Credenciais seed
+## Contas seed
 
-- Admin: `admin@acervo.edu` / `acervo123`
-- Coordenador: `coord@acervo.edu` / `acervo123`
+- Admin: `admin@acervo.edu`
+- Coordenador: `coord@acervo.edu`
+- a senha inicial deve ser definida em `SEED_ACCESS_PASSWORD` somente no ambiente local antes de executar o seed
+- não execute o seed em produção nem reutilize essa senha em um ambiente publicado
 
 ## Cadastro de acesso
 
@@ -67,13 +72,17 @@ npm run dev
 ## Segurança atual
 
 - senhas com hash `bcrypt`
-- JWT com expiração configurável
-- bloqueio temporário após muitas tentativas seguidas de login no mesmo IP/e-mail
+- JWT com expiração configurável e sessão validada no servidor
+- apenas uma sessão ativa por conta; um novo login revoga o acesso anterior
+- encerramento por inatividade configurável com `AUTH_SESSION_IDLE_TIMEOUT_MINUTES`
+- bloqueio persistente por conta, independente do IP utilizado
 - bloqueio adicional por IP, mesmo variando o e-mail tentado
+- espera progressiva em novos ciclos de tentativas inválidas
+- identificadores de conta e IP armazenados como HMAC nos contadores de segurança
+- leitura do IP real atrás do proxy da hospedagem configurada por `TRUST_PROXY_HOPS`
 - resposta estruturada com `Retry-After` e `retryAfterSeconds` para o frontend exibir o temporizador
 
 ## Limites atuais
 
-- o bloqueio de tentativas fica em memória, então reiniciar a API limpa esse contador
-- a sessão do frontend continua baseada em token no `localStorage`, o que é aceitável para ambiente escolar/dev, mas não é o formato ideal para produção
+- a sessão do frontend continua baseada em token no `localStorage`; uma evolução futura pode migrar o transporte para cookies `HttpOnly` com proteção contra CSRF
 - o cadastro público de coordenadores ainda não verifica posse real do e-mail; para produção, o ideal e migrar para convite ou verificação por e-mail

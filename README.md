@@ -125,13 +125,16 @@ Configuração recomendada no Render:
 - diretório raiz: `backend`
 - instalar: `npm install`
 - build: `npm run build`
-- start: `npm run start`
+- start: `npm run start` (aplica migrations pendentes antes de iniciar a API)
 
 Variáveis obrigatórias:
 
 ```env
 DATABASE_URL="postgresql://USUARIO:SENHA@HOST/DATABASE?sslmode=verify-full&channel_binding=require"
 JWT_SECRET="sua_chave_secreta"
+JWT_EXPIRES_IN="12h"
+AUTH_SESSION_IDLE_TIMEOUT_MINUTES=30
+TRUST_PROXY_HOPS=1
 CORS_ORIGIN="https://acervouna.vercel.app"
 INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br"
 ```
@@ -158,12 +161,14 @@ acervodb
 
 O projeto usa Prisma para migrations e acesso ao banco.
 
-## Login administrativo de desenvolvimento
+## Contas seed de desenvolvimento
 
-Usuários seed reais:
+O seed local cria as contas:
 
-- `admin@acervo.edu` / `acervo123`
-- `coord@acervo.edu` / `acervo123`
+- `admin@acervo.edu`
+- `coord@acervo.edu`
+
+Defina uma senha local com pelo menos 12 caracteres em `SEED_ACCESS_PASSWORD` antes de executar o seed. Não execute o seed em produção nem reutilize essa senha em um ambiente publicado.
 
 ## Cadastro de contas
 
@@ -175,10 +180,14 @@ Usuários seed reais:
 ## Segurança atual
 
 - senhas com hash `bcrypt`
-- JWT com expiração configurável
-- bloqueio temporário por IP + e-mail
+- JWT com expiração configurável e sessão revogável no servidor
+- somente uma sessão ativa por conta entre navegadores e dispositivos
+- logout real no backend e encerramento configurável por inatividade
+- bloqueio persistente e progressivo por conta, independente do IP
 - bloqueio adicional por IP mesmo variando o e-mail
 - temporizador de bloqueio visível no frontend
+- sincronização da sessão entre abas do mesmo navegador
+- leitura do IP real atrás do proxy da Render com `TRUST_PROXY_HOPS=1`
 - CORS configurado para permitir o frontend publicado na Vercel
 
 ## Observações
@@ -189,6 +198,7 @@ Usuários seed reais:
 - para resetar tudo manualmente, use os comandos do Prisma dentro de `backend/`
 - não versionar arquivos `.env`
 - não colocar credenciais reais da NeonDB no README
+- o token do frontend ainda usa `localStorage`; uma evolução futura pode adotar cookies `HttpOnly` com proteção contra CSRF
 
 ## Stack e versões principais
 
