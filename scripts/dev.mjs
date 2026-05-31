@@ -23,12 +23,12 @@ async function pathExists(target) {
 
 async function readBackendPort() {
   if (!(await pathExists(backendEnvPath))) {
-    return 3333;
+    return 10000;
   }
 
   const content = await readFile(backendEnvPath, "utf8");
   const match = content.match(/^\s*PORT\s*=\s*"?(\d+)"?\s*$/m);
-  return match ? Number(match[1]) : 3333;
+  return match ? Number(match[1]) : 10000;
 }
 
 function isPortOpen(port, host = "0.0.0.0") {
@@ -96,7 +96,7 @@ function run(command, args, cwd = rootDir) {
   });
 }
 
-function spawnLongRunning(command, args, cwd = rootDir) {
+function spawnLongRunning(command, args, cwd = rootDir, env = process.env) {
   const childProcess =
     process.platform === "win32"
       ? {
@@ -110,6 +110,7 @@ function spawnLongRunning(command, args, cwd = rootDir) {
 
   return spawn(childProcess.command, childProcess.args, {
     cwd,
+    env,
     stdio: "inherit",
     shell: false,
   });
@@ -160,7 +161,10 @@ async function main() {
   }
 
   await ensureFrontendDependencies();
-  const frontendProcess = spawnLongRunning(npmCommand, ["run", "dev", "--prefix", "frontend"]);
+  const frontendProcess = spawnLongRunning(npmCommand, ["run", "dev", "--prefix", "frontend"], rootDir, {
+    ...process.env,
+    VITE_API_URL: `http://localhost:${backendPort}`,
+  });
 
   let shuttingDown = false;
 

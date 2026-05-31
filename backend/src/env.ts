@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import { z } from "zod";
+import { resolveInstitutionalEmailDomains } from "./lib/institutional-email.js";
 
 dotenv.config({ path: new URL("../.env", import.meta.url) });
 
@@ -11,7 +12,17 @@ const schema = z.object({
   CORS_ORIGIN: z.string().default(
     "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081,http://localhost:5173,http://127.0.0.1:5173,https://acervo-0fud.onrender.com,https://acervouna.vercel.app/,https://acervouna.com.br",
   ),
-  INSTITUTIONAL_EMAIL_DOMAIN: z.string().default("acervo.edu"),
+  INSTITUTIONAL_EMAIL_DOMAIN: z.string().optional(),
+  INSTITUTIONAL_EMAIL_DOMAINS: z.string().optional(),
 });
 
-export const env = schema.parse(process.env);
+const parsedEnv = schema.parse(process.env);
+const { INSTITUTIONAL_EMAIL_DOMAIN, ...envWithoutLegacyEmailDomain } = parsedEnv;
+
+export const env = {
+  ...envWithoutLegacyEmailDomain,
+  INSTITUTIONAL_EMAIL_DOMAINS: resolveInstitutionalEmailDomains({
+    domains: parsedEnv.INSTITUTIONAL_EMAIL_DOMAINS,
+    legacyDomain: INSTITUTIONAL_EMAIL_DOMAIN,
+  }),
+};

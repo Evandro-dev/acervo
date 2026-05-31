@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { normalizeEmailAddress } from "../../lib/institutional-email.js";
 import { prisma } from "../../lib/prisma.js";
 import { serializeUserAccount } from "../../lib/serializers.js";
 
@@ -26,7 +27,7 @@ const privilegedRoleSchema = z.enum(["ADMIN", "COORDENADOR"]);
 
 const createSchema = z.object({
   name: z.string().min(2).max(120),
-  email: z.string().email().max(180),
+  email: z.string().trim().email().max(180),
   password: passwordSchema,
   role: privilegedRoleSchema,
   jobTitle: z.string().min(2).max(120).optional(),
@@ -43,10 +44,6 @@ const updateSchema = z.object({
   avatarUrl: z.string().url().optional(),
 });
 
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
-
 export async function userRoutes(app: FastifyInstance) {
   app.get("/", { preHandler: [app.requireRole("ADMIN")] }, async () => {
     const users = await prisma.user.findMany({
@@ -59,7 +56,7 @@ export async function userRoutes(app: FastifyInstance) {
 
   app.post("/", { preHandler: [app.requireRole("ADMIN")] }, async (req, reply) => {
     const payload = createSchema.parse(req.body);
-    const email = normalizeEmail(payload.email);
+    const email = normalizeEmailAddress(payload.email);
     const exists = await prisma.user.findUnique({ where: { email } });
 
     if (exists) {

@@ -87,10 +87,10 @@ describe("AdminEventoForm", () => {
       title: "Congresso Completo",
     });
     const uploadMutateAsync = vi.fn().mockResolvedValue({
-      fileUrl: "http://localhost:3333/events/event-1/files/norma-submissao.pdf",
+      fileUrl: "http://localhost:10000/events/event-1/files/norma-submissao.pdf",
     });
     const uploadCoverMutateAsync = vi.fn().mockResolvedValue({
-      coverUrl: "http://localhost:3333/events/event-1/cover/capa-evento.jpg",
+      coverUrl: "http://localhost:10000/events/event-1/cover/capa-evento.jpg",
     });
 
     mockedUseCreateEventMutation.mockReturnValue({
@@ -184,11 +184,11 @@ describe("AdminEventoForm", () => {
       expect(updateMutateAsync).toHaveBeenCalledWith({
         id: "event-1",
         payload: expect.objectContaining({
-          coverUrl: "http://localhost:3333/events/event-1/cover/capa-evento.jpg",
+          coverUrl: "http://localhost:10000/events/event-1/cover/capa-evento.jpg",
           rules: [
             {
               title: "Normas de submissão",
-              file: "http://localhost:3333/events/event-1/files/norma-submissao.pdf",
+              file: "http://localhost:10000/events/event-1/files/norma-submissao.pdf",
             },
           ],
         }),

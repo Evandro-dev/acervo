@@ -1,3 +1,5 @@
+import { normalizeEmailAddress } from "../../lib/institutional-email.js";
+
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_EMAIL_LOGIN_ATTEMPTS = 5;
 const MAX_IP_LOGIN_ATTEMPTS = 10;
@@ -13,7 +15,7 @@ type BlockScope = "email" | "ip";
 const attempts = new Map<string, AttemptState>();
 
 function normalizeEmail(email: string) {
-  const normalized = email.trim().toLowerCase();
+  const normalized = normalizeEmailAddress(email);
   return normalized || "__empty__";
 }
 

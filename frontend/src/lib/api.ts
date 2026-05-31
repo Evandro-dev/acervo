@@ -1,7 +1,7 @@
 import axios from "axios";
 import { AUTH_CLEARED_EVENT, AUTH_TOKEN_STORAGE_KEY, AUTH_USER_STORAGE_KEY } from "@/features/auth/storage";
 
-const baseURL = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
+const baseURL = import.meta.env.VITE_API_URL ?? "http://localhost:10000";
 
 export const api = axios.create({ baseURL });
 

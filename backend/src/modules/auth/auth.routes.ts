@@ -2,6 +2,11 @@ import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { env } from "../../env.js";
+import {
+  formatInstitutionalEmailDomains,
+  isInstitutionalEmail,
+  normalizeEmailAddress,
+} from "../../lib/institutional-email.js";
 import { prisma } from "../../lib/prisma.js";
 import { serializeUserAccount } from "../../lib/serializers.js";
 import { clearLoginFailures, getLoginBlock, recordLoginFailure } from "./login-guard.js";
@@ -31,18 +36,10 @@ const passwordSchema = z
 
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(120),
-  email: z.string().email().max(180),
+  email: z.string().trim().email().max(180),
   jobTitle: z.string().trim().min(2).max(120),
   password: passwordSchema,
 });
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
-}
-
-function isInstitutionalEmail(email: string) {
-  return email.endsWith(`@${env.INSTITUTIONAL_EMAIL_DOMAIN}`);
-}
 
 function buildRateLimitPayload(retryAfterSeconds: number, scope?: string) {
   return {
@@ -64,7 +61,7 @@ function signToken(app: FastifyInstance, user: { id: string; role: string; name:
 export async function authRoutes(app: FastifyInstance) {
   app.post("/login", async (req, reply) => {
     const parsed = loginSchema.parse(req.body);
-    const email = normalizeEmail(parsed.email);
+    const email = normalizeEmailAddress(parsed.email);
     const block = getLoginBlock(email, req.ip);
 
     if (block.blocked) {
@@ -109,12 +106,12 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post("/register", async (req, reply) => {
     const payload = registerSchema.parse(req.body);
-    const email = normalizeEmail(payload.email);
+    const email = normalizeEmailAddress(payload.email);
 
-    if (!isInstitutionalEmail(email)) {
+    if (!isInstitutionalEmail(email, env.INSTITUTIONAL_EMAIL_DOMAINS)) {
       return reply.status(400).send({
         code: "INVALID_INSTITUTIONAL_EMAIL",
-        error: `Use um e-mail institucional @${env.INSTITUTIONAL_EMAIL_DOMAIN}.`,
+        error: `Use um e-mail institucional ${formatInstitutionalEmailDomains(env.INSTITUTIONAL_EMAIL_DOMAINS)}.`,
       });
     }
 

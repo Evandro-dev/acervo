@@ -18,9 +18,9 @@ Arquivo de exemplo:
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/acervo?schema=public"
 JWT_SECRET="troque-esta-chave-em-producao"
 JWT_EXPIRES_IN="12h"
-PORT=3333
+PORT=10000
 CORS_ORIGIN="http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173"
-INSTITUTIONAL_EMAIL_DOMAIN="acervo.edu"
+INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br"
 ```
 
 ## Fluxo recomendado
@@ -61,7 +61,8 @@ npm run dev
 - o cadastro público em `/auth/register` cria apenas contas `COORDENADOR`
 - contas `ADMIN` continuam sendo criadas internamente
 - o campo `Cargo na instituição` agora é salvo em `users.job_title`
-- o cadastro público exige e-mail institucional no domínio configurado em `INSTITUTIONAL_EMAIL_DOMAIN`
+- o cadastro público exige e-mail institucional em um dos domínios configurados em `INSTITUTIONAL_EMAIL_DOMAINS`
+- a variável antiga `INSTITUTIONAL_EMAIL_DOMAIN` continua compatível e recebe `ulife.com.br` como domínio adicional
 
 ## Segurança atual
 
