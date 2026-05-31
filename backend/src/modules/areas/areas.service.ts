@@ -1,4 +1,4 @@
-import type { Prisma, Area } from "../../generated/prisma/client";
+import type { Prisma, Area } from "../../generated/prisma/client.js";
 
 function normalizeAreaName(value: string) {
   return value.replace(/\s+/g, " ").trim();

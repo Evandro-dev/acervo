@@ -235,18 +235,18 @@ Usuários seed reais:
 
 ## Observação sobre Prisma
 
-Este projeto usa Prisma 7 com client gerado em caminho customizado:
+Este projeto usa Prisma 7 com client gerado em caminho customizado durante o build:
 
 ```txt
 backend/src/generated/prisma
 ```
 
-Por isso, no backend, o Prisma Client deve ser importado a partir do client gerado, e não diretamente de `@prisma/client`.
+Por isso, no backend, o Prisma Client deve ser importado a partir do client gerado, e não diretamente de `@prisma/client`. A pasta gerada fica fora do Git e `npm run build` executa `prisma generate` antes da compilação TypeScript.
 
 Exemplo:
 
 ```ts
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient } from "../generated/prisma/client.js";
 ```
 
 O backend também usa o adapter PostgreSQL do Prisma:
