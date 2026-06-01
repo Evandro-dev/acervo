@@ -114,7 +114,7 @@ export default function AdminRelatorios() {
               </select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2 xl:col-span-1">
               <Label htmlFor="report-course">Curso</Label>
               <select
                 id="report-course"
@@ -146,7 +146,7 @@ export default function AdminRelatorios() {
               </select>
             </div>
 
-            <div className="md:col-span-2 xl:col-span-3">
+            <div>
               <DateRangePicker
                 id="report-submission-period"
                 label="Período de submissão"
@@ -158,10 +158,12 @@ export default function AdminRelatorios() {
             </div>
           </div>
 
-          <Button type="button" onClick={download} disabled={isDownloading} className="w-full gap-2 bg-brand sm:w-auto">
-            <FileSpreadsheet className="h-4 w-4" />
-            {isDownloading ? "Gerando relatório..." : "Baixar relatório Excel"}
-          </Button>
+          <div className="flex justify-center">
+            <Button type="button" onClick={download} disabled={isDownloading} className="w-full gap-2 bg-brand sm:w-auto">
+              <FileSpreadsheet className="h-4 w-4" />
+              {isDownloading ? "Gerando relatório..." : "Baixar relatório Excel"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </AdminShell>

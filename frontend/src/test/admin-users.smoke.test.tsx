@@ -89,6 +89,9 @@ describe("AdminUsuarios", () => {
     renderUsersPage();
 
     expect(screen.getByText("unapousoalegre.oficial@gmail.com")).toBeInTheDocument();
+    expect(screen.getByTestId("create-access-user-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("access-users-list-icon")).toBeInTheDocument();
+    expect(screen.getByTestId("create-access-user-icon").closest(".grid")).toHaveClass("items-start");
 
     fireEvent.change(screen.getByLabelText("Nome completo"), {
       target: { value: "Maria Clara" },

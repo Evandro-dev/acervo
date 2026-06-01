@@ -117,11 +117,17 @@ export default function AdminUsuarios() {
 
   return (
     <AdminShell title="Usuários de acesso">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
-              <UserPlus className="h-5 w-5 text-brand" />
+              <span
+                aria-hidden="true"
+                data-testid="create-access-user-icon"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand"
+              >
+                <UserPlus className="h-5 w-5" />
+              </span>
               Criar usuário
             </CardTitle>
             <CardDescription>
@@ -215,7 +221,13 @@ export default function AdminUsuarios() {
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
-              <UsersRound className="h-5 w-5 text-brand" />
+              <span
+                aria-hidden="true"
+                data-testid="access-users-list-icon"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand"
+              >
+                <UsersRound className="h-5 w-5" />
+              </span>
               Contas liberadas
             </CardTitle>
             <CardDescription>Usuários que podem entrar na área administrativa.</CardDescription>

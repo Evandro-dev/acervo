@@ -82,6 +82,8 @@ describe("AdminRelatorios", () => {
     );
 
     expect(screen.getByTestId("excel-report-icon")).toHaveAttribute("viewBox", "0 0 32 32");
+    expect(screen.getByLabelText("Curso").parentElement).toHaveClass("md:col-span-2", "xl:col-span-1");
+    expect(screen.getByRole("button", { name: "Baixar relatório Excel" }).parentElement).toHaveClass("justify-center");
     fireEvent.change(screen.getByLabelText("Evento"), { target: { value: "event-1" } });
     fireEvent.change(screen.getByLabelText("Área"), { target: { value: "Saúde" } });
     fireEvent.change(screen.getByLabelText("Curso"), { target: { value: "Enfermagem" } });
