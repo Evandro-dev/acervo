@@ -64,13 +64,13 @@ describe("EventoDetalhe", () => {
 
     const activeTab = screen.getByRole("tab", { name: "Apresentação" });
     expect(activeTab).toHaveAttribute("data-state", "active");
-    expect(activeTab).toHaveClass("bg-brand", "text-primary-foreground", "shadow-sm");
+    expect(activeTab).toHaveClass("bg-brand", "!text-primary-foreground", "shadow-sm");
 
     const publicationsTab = screen.getByRole("tab", { name: "Publicações" });
     fireEvent.mouseDown(publicationsTab);
     fireEvent.click(publicationsTab);
     expect(publicationsTab).toHaveAttribute("data-state", "active");
-    expect(publicationsTab).toHaveClass("bg-brand", "text-primary-foreground", "shadow-sm");
+    expect(publicationsTab).toHaveClass("bg-brand", "!text-primary-foreground", "shadow-sm");
     expect(activeTab).toHaveClass("text-foreground/70", "hover:bg-muted");
   });
 });
