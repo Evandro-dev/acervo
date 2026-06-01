@@ -37,6 +37,7 @@ export function AreaCombobox({
   const [filter, setFilter] = useState("");
   const [contentWidth, setContentWidth] = useState<number>();
   const anchorRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const normalizedOptions = useMemo(
     () =>
@@ -88,6 +89,7 @@ export function AreaCombobox({
       <PopoverAnchor asChild>
         <div ref={anchorRef} className="relative">
           <Input
+            ref={inputRef}
             value={value}
             onChange={(event) => {
               onValueChange(event.target.value);
@@ -139,7 +141,20 @@ export function AreaCombobox({
         </div>
       </PopoverAnchor>
 
-      <PopoverContent align="start" className="p-0" style={contentWidth ? { width: contentWidth } : undefined}>
+      <PopoverContent
+        align="start"
+        className="p-0"
+        style={contentWidth ? { width: contentWidth } : undefined}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          inputRef.current?.focus();
+        }}
+        onFocusOutside={(event) => {
+          if (event.target instanceof Node && anchorRef.current?.contains(event.target)) {
+            event.preventDefault();
+          }
+        }}
+      >
         <Command shouldFilter={false}>
           <CommandList>
             {canUseCustomValue || filteredOptions.length > 0 ? (
