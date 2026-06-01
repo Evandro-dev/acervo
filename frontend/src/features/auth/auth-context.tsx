@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -33,11 +34,28 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function areUserAccountsEqual(current: UserAccount | null, next: UserAccount | null) {
+  if (current === next) return true;
+  if (!current || !next) return false;
+
+  return (
+    current.id === next.id &&
+    current.name === next.name &&
+    current.email === next.email &&
+    current.role === next.role &&
+    current.jobTitle === next.jobTitle &&
+    current.bio === next.bio &&
+    current.area === next.area &&
+    current.avatarUrl === next.avatarUrl
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [token, setToken] = useState<string | null>(() => readStoredToken());
   const [user, setUser] = useState<UserAccount | null>(() => readStoredUser());
   const [isLoading, setIsLoading] = useState(Boolean(readStoredToken()));
+  const refreshPromiseRef = useRef<Promise<UserAccount | null> | null>(null);
 
   const applyStoredSession = useCallback(() => {
     const storedToken = readStoredToken();
@@ -45,7 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     startTransition(() => {
       setToken(storedToken);
-      setUser(storedToken ? storedUser : null);
+      setUser((current) => {
+        const next = storedToken ? storedUser : null;
+        return areUserAccountsEqual(current, next) ? current : next;
+      });
       if (!storedToken) setIsLoading(false);
     });
   }, []);
@@ -65,41 +86,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [queryClient]);
 
-  const refresh = useCallback(async () => {
-    const storedToken = readStoredToken();
-    if (!storedToken) {
-      startTransition(() => {
-        setToken(null);
-        setUser(null);
-        setIsLoading(false);
-      });
-      return null;
-    }
+  const refresh = useCallback(() => {
+    if (refreshPromiseRef.current) return refreshPromiseRef.current;
 
-    setIsLoading(true);
+    const pendingRefresh = (async () => {
+      const storedToken = readStoredToken();
+      if (!storedToken) {
+        startTransition(() => {
+          setToken(null);
+          setUser(null);
+          setIsLoading(false);
+        });
+        return null;
+      }
 
-    try {
-      const response = await fetchCurrentUser();
-      if (readStoredToken() !== storedToken) return readStoredUser();
+      try {
+        const response = await fetchCurrentUser();
+        if (readStoredToken() !== storedToken) return readStoredUser();
 
-      writeStoredSession(storedToken, response.user);
-      startTransition(() => {
-        setToken(storedToken);
-        setUser(response.user);
-        setIsLoading(false);
-      });
-      return response.user;
-    } catch {
-      if (readStoredToken() !== storedToken) return readStoredUser();
+        writeStoredSession(storedToken, response.user);
+        startTransition(() => {
+          setToken(storedToken);
+          setUser((current) => (areUserAccountsEqual(current, response.user) ? current : response.user));
+          setIsLoading(false);
+        });
+        return response.user;
+      } catch {
+        if (readStoredToken() !== storedToken) return readStoredUser();
 
-      const storedUser = readStoredUser();
-      startTransition(() => {
-        setToken(storedToken);
-        setUser(storedUser);
-        setIsLoading(false);
-      });
-      return storedUser;
-    }
+        const storedUser = readStoredUser();
+        startTransition(() => {
+          setToken(storedToken);
+          setUser((current) => (areUserAccountsEqual(current, storedUser) ? current : storedUser));
+          setIsLoading(false);
+        });
+        return storedUser;
+      }
+    })();
+
+    refreshPromiseRef.current = pendingRefresh;
+    const clearPendingRefresh = () => {
+      if (refreshPromiseRef.current === pendingRefresh) refreshPromiseRef.current = null;
+    };
+    void pendingRefresh.then(clearPendingRefresh, clearPendingRefresh);
+    return pendingRefresh;
   }, []);
 
   const login = useCallback(async (payload: LoginPayload) => {
@@ -145,12 +175,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") void refresh();
     };
-    const interval = window.setInterval(refreshWhenVisible, 60_000);
 
     window.addEventListener("focus", refreshWhenVisible);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
-      window.clearInterval(interval);
       window.removeEventListener("focus", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };

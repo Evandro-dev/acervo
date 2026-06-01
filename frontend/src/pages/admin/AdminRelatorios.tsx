@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { ExcelFileIcon } from "@/components/ui/excel-file-icon";
 import { Label } from "@/components/ui/label";
 import { useAdminEventsQuery, useAreasQuery, useCoursesQuery } from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
@@ -62,7 +63,7 @@ export default function AdminRelatorios() {
       <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
-            <FileSpreadsheet className="h-5 w-5 text-brand" />
+            <ExcelFileIcon aria-hidden="true" className="h-7 w-7 shrink-0" data-testid="excel-report-icon" />
             Relatório Excel
           </CardTitle>
           <CardDescription>

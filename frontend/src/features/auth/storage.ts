@@ -23,9 +23,13 @@ export function readStoredUser() {
 }
 
 export function writeStoredSession(token: string, user: UserAccount) {
-  localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
-  localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
-  window.dispatchEvent(new CustomEvent(AUTH_CHANGED_EVENT));
+  const serializedUser = JSON.stringify(user);
+  const tokenChanged = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) !== token;
+  const userChanged = localStorage.getItem(AUTH_USER_STORAGE_KEY) !== serializedUser;
+
+  if (tokenChanged) localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+  if (userChanged) localStorage.setItem(AUTH_USER_STORAGE_KEY, serializedUser);
+  if (tokenChanged || userChanged) window.dispatchEvent(new CustomEvent(AUTH_CHANGED_EVENT));
 }
 
 export function clearStoredSession(options?: { notice?: string }) {

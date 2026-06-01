@@ -25,8 +25,14 @@ const user = {
 };
 
 function AuthProbe() {
-  const { logout, user: authenticatedUser } = useAuth();
-  return <button onClick={logout}>{authenticatedUser?.email ?? "anonymous"}</button>;
+  const { isLoading, logout, refresh, user: authenticatedUser } = useAuth();
+  return (
+    <>
+      <button onClick={logout}>{authenticatedUser?.email ?? "anonymous"}</button>
+      <button onClick={() => void refresh()}>refresh</button>
+      <span>{isLoading ? "loading" : "ready"}</span>
+    </>
+  );
 }
 
 function renderProvider() {
@@ -80,7 +86,7 @@ describe("AuthProvider", () => {
     expect(readAndClearAuthNotice()).toBeNull();
   });
 
-  it("keeps the local session when a periodic refresh fails temporarily", async () => {
+  it("keeps the local session when a background refresh fails temporarily", async () => {
     localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, "active-token");
     localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
     mockedFetchCurrentUser.mockRejectedValueOnce(new Error("temporary network failure"));
@@ -90,5 +96,42 @@ describe("AuthProvider", () => {
     await waitFor(() => expect(mockedFetchCurrentUser).toHaveBeenCalled());
     expect(await screen.findByRole("button", { name: "admin@acervo.edu" })).toBeInTheDocument();
     expect(localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toBe("active-token");
+  });
+
+  it("does not keep an authenticated session alive with a polling interval", () => {
+    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, "active-token");
+    localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+    const setIntervalSpy = vi.spyOn(window, "setInterval");
+
+    renderProvider();
+
+    expect(setIntervalSpy).not.toHaveBeenCalled();
+    setIntervalSpy.mockRestore();
+  });
+
+  it("keeps the authenticated screen visible and coalesces concurrent background refreshes", async () => {
+    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, "active-token");
+    localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+    renderProvider();
+
+    await waitFor(() => expect(mockedFetchCurrentUser).toHaveBeenCalledTimes(1));
+    await screen.findByText("ready");
+
+    let resolveRefresh: (value: { user: typeof user }) => void;
+    mockedFetchCurrentUser.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRefresh = resolve;
+        }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "refresh" }));
+    fireEvent.click(screen.getByRole("button", { name: "refresh" }));
+
+    await waitFor(() => expect(mockedFetchCurrentUser).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("ready")).toBeInTheDocument();
+
+    resolveRefresh!({ user });
+    await waitFor(() => expect(screen.getByText("ready")).toBeInTheDocument());
   });
 });
