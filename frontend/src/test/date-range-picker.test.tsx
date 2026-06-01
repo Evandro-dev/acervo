@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 
 describe("DateRangePicker", () => {
@@ -15,7 +15,13 @@ describe("DateRangePicker", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Período de submissão: 1 a 5 de janeiro de 2026" }));
-    expect(screen.getByRole("application", { name: "Calendário para período de submissão" })).toBeInTheDocument();
+    const calendar = screen.getByRole("application", { name: "Calendário para período de submissão" });
+    const grid = within(calendar).getByRole("grid");
+    const rows = within(grid).getAllByRole("row");
+
+    expect(grid).toHaveClass("w-full", "border-collapse");
+    expect(rows.length).toBeGreaterThan(1);
+    expect(rows.every((row) => row.classList.contains("flex"))).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Limpar período" }));
     expect(onChange).toHaveBeenCalledWith(undefined);
   });
