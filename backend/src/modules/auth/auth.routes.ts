@@ -12,6 +12,7 @@ import { prisma } from "../../lib/prisma.js";
 import { isPrismaUniqueConstraintError } from "../../lib/prisma-errors.js";
 import { serializeUserAccount } from "../../lib/serializers.js";
 import { createExclusiveAuthSession, revokeAuthSession } from "./auth-session.service.js";
+import { canAuthenticateAccessAccount } from "./access-account-login.policy.js";
 import {
   clearAccountLoginFailures,
   getLoginAuditContext,
@@ -28,6 +29,8 @@ const accountSelect = {
   bio: true,
   area: true,
   avatarUrl: true,
+  isActive: true,
+  deactivatedAt: true,
 } as const;
 
 const loginSchema = z.object({
@@ -95,7 +98,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     const ok = await bcrypt.compare(parsed.password || "__empty__", user?.passwordHash ?? unknownAccountPasswordHash);
 
-    if (!user || !ok) {
+    if (!canAuthenticateAccessAccount(user, ok)) {
       req.log.warn({
         event: "auth.login.failed",
         ...auditContext,

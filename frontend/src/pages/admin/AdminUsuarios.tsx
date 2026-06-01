@@ -2,18 +2,25 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { ShieldCheck, UserPlus, UsersRound } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { AccessUserCard } from "@/components/admin/access-users/AccessUserCard";
+import { AccessUserEditDialog } from "@/components/admin/access-users/AccessUserEditDialog";
+import { AccessUserStatusDialog } from "@/components/admin/access-users/AccessUserStatusDialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatePanel } from "@/components/ui/state-panel";
 import { useAuth } from "@/features/auth/auth-context";
-import { useAccessUsersQuery, useCreateAccessUserMutation } from "@/features/users/hooks";
+import {
+  useAccessUsersQuery,
+  useCreateAccessUserMutation,
+  useSetAccessUserActiveMutation,
+  useUpdateAccessUserMutation,
+} from "@/features/users/hooks";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
-import type { UserRole } from "@/types/acervo";
+import type { UpdateAccessAccountPayload, UserAccount, UserRole } from "@/types/acervo";
 
 const initialRole: UserRole = "COORDENADOR";
 
@@ -22,11 +29,15 @@ export default function AdminUsuarios() {
   const isAdmin = user?.role === "ADMIN";
   const usersQuery = useAccessUsersQuery(isAdmin);
   const createUserMutation = useCreateAccessUserMutation();
+  const updateUserMutation = useUpdateAccessUserMutation();
+  const setUserActiveMutation = useSetAccessUserActiveMutation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>(initialRole);
+  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [changingStatusUser, setChangingStatusUser] = useState<UserAccount | null>(null);
 
   if (!isLoadingAuth && user && !isAdmin) return <Navigate to="/admin" replace />;
 
@@ -54,6 +65,50 @@ export default function AdminUsuarios() {
     } catch (error) {
       toast({
         title: "Não foi possível criar o usuário",
+        description: getApiErrorMessage(error),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateUser = async (payload: UpdateAccessAccountPayload) => {
+    if (!editingUser) return;
+
+    try {
+      const updatedUser = await updateUserMutation.mutateAsync({ userId: editingUser.id, payload });
+      setEditingUser(null);
+      toast({
+        title: "Conta atualizada",
+        description: `${updatedUser.name} teve os dados de acesso atualizados.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Não foi possível atualizar a conta",
+        description: getApiErrorMessage(error),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleUserActive = async () => {
+    if (!changingStatusUser) return;
+    const shouldActivate = changingStatusUser.isActive === false;
+
+    try {
+      const updatedUser = await setUserActiveMutation.mutateAsync({
+        userId: changingStatusUser.id,
+        isActive: shouldActivate,
+      });
+      setChangingStatusUser(null);
+      toast({
+        title: shouldActivate ? "Conta reativada" : "Conta desativada",
+        description: shouldActivate
+          ? `${updatedUser.name} já pode acessar o painel novamente.`
+          : `${updatedUser.name} não pode mais acessar o painel.`,
+      });
+    } catch (error) {
+      toast({
+        title: shouldActivate ? "Não foi possível reativar a conta" : "Não foi possível desativar a conta",
         description: getApiErrorMessage(error),
         variant: "destructive",
       });
@@ -173,22 +228,13 @@ export default function AdminUsuarios() {
             ) : usersQuery.data?.length ? (
               <ul className="space-y-3">
                 {usersQuery.data.map((accessUser) => (
-                  <li key={accessUser.id} className="rounded-xl border border-border/70 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="font-semibold">{accessUser.name}</p>
-                        <p className="mt-1 break-all text-sm text-muted-foreground">{accessUser.email}</p>
-                      </div>
-                      <Badge variant={accessUser.role === "ADMIN" ? "default" : "secondary"}>
-                        {accessUser.role === "ADMIN" ? "Administrador" : "Coordenador"}
-                      </Badge>
-                    </div>
-                    {accessUser.jobTitle && (
-                      <p className="mt-3 text-xs font-medium uppercase tracking-wide text-foreground/60">
-                        {accessUser.jobTitle}
-                      </p>
-                    )}
-                  </li>
+                  <AccessUserCard
+                    key={accessUser.id}
+                    accessUser={accessUser}
+                    isCurrentUser={accessUser.id === user?.id}
+                    onEdit={setEditingUser}
+                    onToggleActive={setChangingStatusUser}
+                  />
                 ))}
               </ul>
             ) : (
@@ -197,6 +243,18 @@ export default function AdminUsuarios() {
           </CardContent>
         </Card>
       </div>
+      <AccessUserEditDialog
+        accessUser={editingUser}
+        isPending={updateUserMutation.isPending}
+        onOpenChange={(open) => !open && setEditingUser(null)}
+        onSubmit={updateUser}
+      />
+      <AccessUserStatusDialog
+        accessUser={changingStatusUser}
+        isPending={setUserActiveMutation.isPending}
+        onOpenChange={(open) => !open && setChangingStatusUser(null)}
+        onConfirm={toggleUserActive}
+      />
     </AdminShell>
   );
 }

@@ -88,6 +88,8 @@ type UserShape = {
   bio: string | null;
   area: string | null;
   avatarUrl: string | null;
+  isActive: boolean;
+  deactivatedAt: Date | null;
 };
 
 const articleStatusLabel = (status: ArticleStatus) => status.toLowerCase();
@@ -211,5 +213,7 @@ export function serializeUserAccount(user: UserShape) {
     bio: user.bio ?? undefined,
     area: user.area ?? undefined,
     avatarUrl: user.avatarUrl ?? undefined,
+    isActive: user.isActive,
+    deactivatedAt: formatDate(user.deactivatedAt),
   };
 }

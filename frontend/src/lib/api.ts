@@ -31,7 +31,7 @@ api.interceptors.response.use(
     if (error?.response?.status === 401 && !isLoginRequest && shouldClearSession) {
       const code = error?.response?.data?.code;
       const notice =
-        code === "SESSION_REVOKED" || code === "SESSION_EXPIRED"
+        code === "SESSION_REVOKED" || code === "SESSION_EXPIRED" || code === "ACCOUNT_DISABLED"
           ? error.response.data.error
           : undefined;
 

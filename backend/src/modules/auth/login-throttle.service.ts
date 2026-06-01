@@ -125,10 +125,24 @@ export async function reserveLoginAttempt(email: string, ip: string) {
 }
 
 export async function clearAccountLoginFailures(email: string) {
-  const [accountTarget] = getThrottleTargets(email, "__unused__");
-
   await prisma.$transaction(async (transaction: typeof prisma) => {
-    await lockThrottleTarget(transaction, accountTarget.key);
-    await transaction.loginThrottle.deleteMany({ where: { key: accountTarget.key } });
+    await clearAccountLoginFailuresForEmails(transaction, [email]);
   });
+}
+
+export async function clearAccountLoginFailuresForEmails(transaction: typeof prisma, emails: string[]) {
+  const targets = [
+    ...new Map(
+      emails.map((email) => {
+        const [accountTarget] = getThrottleTargets(email, "__unused__");
+        return [accountTarget.key, accountTarget];
+      }),
+    ).values(),
+  ].sort((left, right) => left.key.localeCompare(right.key));
+
+  for (const accountTarget of targets) {
+    await lockThrottleTarget(transaction, accountTarget.key);
+  }
+
+  await transaction.loginThrottle.deleteMany({ where: { key: { in: targets.map((target) => target.key) } } });
 }

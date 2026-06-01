@@ -129,6 +129,8 @@ export type UserAccount = {
   bio?: string;
   area?: string;
   avatarUrl?: string;
+  isActive: boolean;
+  deactivatedAt?: string;
 };
 
 export type LoginPayload = {
@@ -149,6 +151,14 @@ export type CreateAccessAccountPayload = {
   password: string;
   role: UserRole;
   jobTitle?: string;
+};
+
+export type UpdateAccessAccountPayload = {
+  name: string;
+  email: string;
+  password?: string;
+  role: UserRole;
+  jobTitle: string | null;
 };
 
 export type LoginResponse = {

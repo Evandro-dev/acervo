@@ -7,7 +7,12 @@ import { isAuthSessionExpired, shouldRefreshAuthSessionActivity } from "./auth-s
 const SESSION_ACTIVITY_REFRESH_MS = 60_000;
 const SESSION_HISTORY_RETENTION_MS = 30 * 24 * 60 * 60_000;
 
-type SessionRevocationReason = "LOGOUT" | "SIGNED_IN_ELSEWHERE" | "EXPIRED";
+export type SessionRevocationReason =
+  | "LOGOUT"
+  | "SIGNED_IN_ELSEWHERE"
+  | "EXPIRED"
+  | "ADMIN_ACCOUNT_UPDATED"
+  | "ACCOUNT_DEACTIVATED";
 
 export type ActiveSessionUser = {
   sub: string;
@@ -18,7 +23,7 @@ export type ActiveSessionUser = {
 
 export class AuthSessionError extends Error {
   constructor(
-    public readonly code: "UNAUTHENTICATED" | "SESSION_REVOKED" | "SESSION_EXPIRED",
+    public readonly code: "UNAUTHENTICATED" | "SESSION_REVOKED" | "SESSION_EXPIRED" | "ACCOUNT_DISABLED",
     message: string,
   ) {
     super(message);
@@ -39,6 +44,20 @@ async function lockUserSessions(transaction: typeof prisma, userId: string) {
   await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`auth-session:${userId}`}))::text`;
 }
 
+export async function revokeActiveAuthSessionsForUser(
+  transaction: typeof prisma,
+  userId: string,
+  reason: SessionRevocationReason,
+  revokedAt = new Date(),
+) {
+  await lockUserSessions(transaction, userId);
+
+  return transaction.authSession.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt, revocationReason: reason },
+  });
+}
+
 async function revokeSessionIfActive(sessionId: string, reason: SessionRevocationReason, revokedAt: Date) {
   await prisma.authSession.updateMany({
     where: { id: sessionId, revokedAt: null },
@@ -55,12 +74,12 @@ export async function createExclusiveAuthSession(input: {
   const expiredHistoryCutoff = new Date(now.getTime() - SESSION_HISTORY_RETENTION_MS);
 
   return prisma.$transaction(async (transaction: typeof prisma) => {
-    await lockUserSessions(transaction, input.userId);
-
-    const revokedSessions = await transaction.authSession.updateMany({
-      where: { userId: input.userId, revokedAt: null },
-      data: { revokedAt: now, revocationReason: "SIGNED_IN_ELSEWHERE" },
-    });
+    const revokedSessions = await revokeActiveAuthSessionsForUser(
+      transaction,
+      input.userId,
+      "SIGNED_IN_ELSEWHERE",
+      now,
+    );
 
     await transaction.authSession.deleteMany({
       where: {
@@ -108,6 +127,7 @@ export async function validateAuthSession(sessionId: string, userId: string): Pr
           id: true,
           role: true,
           name: true,
+          isActive: true,
         },
       },
     },
@@ -118,13 +138,24 @@ export async function validateAuthSession(sessionId: string, userId: string): Pr
   }
 
   if (session.revokedAt) {
+    if (session.revocationReason === "ACCOUNT_DEACTIVATED") {
+      throw new AuthSessionError("ACCOUNT_DISABLED", "Sua conta foi desativada. Procure um administrador.");
+    }
+
     const signedInElsewhere = session.revocationReason === "SIGNED_IN_ELSEWHERE";
+    const accountUpdated = session.revocationReason === "ADMIN_ACCOUNT_UPDATED";
     throw new AuthSessionError(
-      signedInElsewhere ? "SESSION_REVOKED" : "UNAUTHENTICATED",
+      signedInElsewhere || accountUpdated ? "SESSION_REVOKED" : "UNAUTHENTICATED",
       signedInElsewhere
         ? "Sua sessão foi encerrada porque a conta foi acessada em outro dispositivo ou navegador."
-        : "Não autenticado",
+        : accountUpdated
+          ? "Sua sessão foi encerrada porque seus dados de acesso foram atualizados."
+          : "Não autenticado",
     );
+  }
+
+  if (!session.user.isActive) {
+    throw new AuthSessionError("ACCOUNT_DISABLED", "Sua conta foi desativada. Procure um administrador.");
   }
 
   const now = new Date();

@@ -25,20 +25,31 @@ enum LoginThrottleScope {
   IP
 }
 
+enum AccessAccountAuditAction {
+  CREATED
+  UPDATED
+  DEACTIVATED
+  REACTIVATED
+}
+
 model User {
-  id              String    @id @default(cuid())
-  name            String
-  email           String    @unique
-  passwordHash    String    @map("password_hash")
-  role            Role
-  jobTitle        String?   @map("job_title")
-  bio             String?
-  area            String?
-  avatarUrl       String?   @map("avatar_url")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  createdArticles Article[] @relation("article_created_by")
-  authSessions    AuthSession[]
+  id                          String               @id @default(cuid())
+  name                        String
+  email                       String               @unique
+  passwordHash                String               @map("password_hash")
+  role                        Role
+  jobTitle                    String?              @map("job_title")
+  bio                         String?
+  area                        String?
+  avatarUrl                   String?              @map("avatar_url")
+  isActive                    Boolean              @default(true) @map("is_active")
+  deactivatedAt               DateTime?            @map("deactivated_at")
+  createdAt                   DateTime             @default(now()) @map("created_at")
+  updatedAt                   DateTime             @updatedAt @map("updated_at")
+  createdArticles             Article[]            @relation("article_created_by")
+  authSessions                AuthSession[]
+  accessAccountAuditsAsActor  AccessAccountAudit[] @relation("access_account_audit_actor")
+  accessAccountAuditsAsTarget AccessAccountAudit[] @relation("access_account_audit_target")
 
   @@map("users")
 }
@@ -73,6 +84,21 @@ model LoginThrottle {
   @@index([scope, expiresAt])
   @@index([expiresAt])
   @@map("login_throttles")
+}
+
+model AccessAccountAudit {
+  id            String                   @id @default(cuid())
+  actorUserId   String                   @map("actor_user_id")
+  targetUserId  String                   @map("target_user_id")
+  action        AccessAccountAuditAction
+  changedFields String[]                 @default([]) @map("changed_fields")
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  actor         User                     @relation("access_account_audit_actor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  target        User                     @relation("access_account_audit_target", fields: [targetUserId], references: [id], onDelete: Restrict)
+
+  @@index([targetUserId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("access_account_audits")
 }
 
 model Author {
