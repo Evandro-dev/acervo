@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import EventoDetalhe from "@/pages/EventoDetalhe";
 import { useEventQuery, useTrackEventViewMutation } from "@/features/acervo/hooks";
@@ -18,7 +18,7 @@ const mockedUseTrackEventViewMutation = vi.mocked(useTrackEventViewMutation);
 const mockedUseAuth = vi.mocked(useAuth);
 
 describe("EventoDetalhe", () => {
-  it("uses a solid branded background with readable text for the active tab", () => {
+  it("uses the branded administrative navigation style for the active tab", () => {
     mockedUseAuth.mockReturnValue({
       user: null,
       token: null,
@@ -64,7 +64,13 @@ describe("EventoDetalhe", () => {
 
     const activeTab = screen.getByRole("tab", { name: "Apresentação" });
     expect(activeTab).toHaveAttribute("data-state", "active");
-    expect(activeTab).toHaveClass("data-[state=active]:bg-primary", "data-[state=active]:text-primary-foreground");
-    expect(activeTab).not.toHaveClass("data-[state=active]:bg-brand");
+    expect(activeTab).toHaveClass("bg-brand", "text-primary-foreground", "shadow-sm");
+
+    const publicationsTab = screen.getByRole("tab", { name: "Publicações" });
+    fireEvent.mouseDown(publicationsTab);
+    fireEvent.click(publicationsTab);
+    expect(publicationsTab).toHaveAttribute("data-state", "active");
+    expect(publicationsTab).toHaveClass("bg-brand", "text-primary-foreground", "shadow-sm");
+    expect(activeTab).toHaveClass("text-foreground/70", "hover:bg-muted");
   });
 });

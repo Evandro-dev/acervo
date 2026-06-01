@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Calendar, Mail, Phone, FileDown, ChevronRight, BookMarked, ExternalLink } from "lucide-react";
 import { PublicationEngagementIndicators } from "@/components/publications/PublicationMetaRow";
@@ -15,7 +15,9 @@ import { useEventQuery, useTrackEventViewMutation } from "@/features/acervo/hook
 import { toast } from "@/hooks/use-toast";
 import { getApiResourceUrl } from "@/lib/api";
 import { reserveViewTracking, rollbackViewTracking } from "@/lib/engagement";
+import { getBrandedNavigationItemStateClassName } from "@/lib/branded-navigation";
 import { isUsableResourceUrl } from "@/lib/file-links";
+import { cn } from "@/lib/utils";
 import type { EventCommitteeMember, EventPreviousEdition } from "@/types/acervo";
 
 const committeeGroups = [
@@ -80,6 +82,7 @@ export default function EventoDetalhe() {
     refetchOnWindowFocus: true,
   });
   const trackEventViewMutation = useTrackEventViewMutation();
+  const [activeTab, setActiveTab] = useState("apresentacao");
 
   useEffect(() => {
     if (!event?.id) return;
@@ -145,7 +148,7 @@ export default function EventoDetalhe() {
         </SiteContainer>
       </section>
 
-      <Tabs defaultValue="apresentacao" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="sticky top-[57px] z-20 border-b bg-background">
           <SiteContainer>
             <TabsList className="h-auto w-full justify-start gap-1 rounded-none bg-transparent px-0 py-1.5">
@@ -157,7 +160,10 @@ export default function EventoDetalhe() {
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                  className={cn(
+                    "shrink-0 rounded-md px-3 py-1.5 text-xs font-medium",
+                    getBrandedNavigationItemStateClassName(activeTab === value),
+                  )}
                 >
                   {label}
                 </TabsTrigger>

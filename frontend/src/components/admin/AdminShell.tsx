@@ -6,6 +6,7 @@ import { HeroBackButton } from "@/components/layout/HeroBackButton";
 import { SiteContainer } from "@/components/layout/SiteContainer";
 import { StatePanel } from "@/components/ui/state-panel";
 import { useAuth } from "@/features/auth/auth-context";
+import { getBrandedNavigationItemStateClassName } from "@/lib/branded-navigation";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -68,7 +69,7 @@ export function AdminShell({ children, title }: { children: ReactNode; title: st
                   className={({ isActive }) =>
                     cn(
                       "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium md:text-sm",
-                      isActive ? "bg-brand text-primary-foreground" : "text-foreground/70 hover:bg-muted",
+                      getBrandedNavigationItemStateClassName(isActive),
                     )
                   }
                 >
