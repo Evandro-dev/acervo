@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
+import { queryBooleanSchema } from "../../lib/query-boolean.js";
 
 type AreaShape = {
   id: string;
@@ -8,8 +9,8 @@ type AreaShape = {
 };
 
 const areaQuerySchema = z.object({
-  q: z.string().trim().optional(),
-  includeEmpty: z.coerce.boolean().default(false),
+  q: z.string().trim().max(120).optional(),
+  includeEmpty: queryBooleanSchema,
 });
 
 export async function areaRoutes(app: FastifyInstance) {

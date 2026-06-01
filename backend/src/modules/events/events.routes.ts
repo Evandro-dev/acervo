@@ -35,6 +35,7 @@ import {
 import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
 import { requirePrivilegedUser } from "../../lib/permissions.js";
 import { prisma } from "../../lib/prisma.js";
+import { queryBooleanSchema } from "../../lib/query-boolean.js";
 import { serializeEvent } from "../../lib/serializers.js";
 import { slugify } from "../../lib/slug.js";
 
@@ -65,7 +66,7 @@ const eventQuerySchema = z.object({
 });
 
 const eventRuleFileQuerySchema = z.object({
-  download: z.coerce.boolean().default(false),
+  download: queryBooleanSchema,
 });
 
 async function resolveUniqueEventSlug(seed: string, currentId?: string) {
@@ -125,6 +126,11 @@ function getEventInclude(includeArticles: "published" | "all" | "none") {
         authors: {
           include: {
             author: true,
+          },
+        },
+        courses: {
+          include: {
+            course: true,
           },
         },
       },

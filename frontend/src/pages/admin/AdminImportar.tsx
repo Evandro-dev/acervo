@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   useAdminEventsQuery,
   useAreasQuery,
+  useCoursesQuery,
   useExtractArticlePdfMetadataMutation,
   useImportArticlesMutation,
   useUploadArticlePdfMutation,
@@ -45,6 +46,7 @@ type Draft = {
   title: string;
   authors: string;
   area: string;
+  courses: string;
   abstract: string;
   modalidade: Modalidade;
 };
@@ -66,6 +68,7 @@ const emptyDraft = (): Draft => ({
   title: "",
   authors: "",
   area: "",
+  courses: "",
   abstract: "",
   modalidade: "Resumo Simples",
 });
@@ -82,6 +85,7 @@ const toImportItem = (draft: Draft): ImportArticleInput => ({
     .map((author) => author.trim())
     .filter(Boolean),
   area: draft.area || "Geral",
+  courses: splitCommaSeparated(draft.courses),
   abstract: draft.abstract,
   modality: draft.modalidade,
   importedFrom: "Importação manual",
@@ -95,6 +99,7 @@ const toPdfImportItem = (draft: PdfDraft): ImportArticleInput => ({
     .map((author) => author.trim())
     .filter(Boolean),
   area: draft.area || "Geral",
+  courses: splitCommaSeparated(draft.courses),
   abstract: draft.abstract,
   pages: draft.pages || undefined,
   modality: draft.modalidade,
@@ -106,6 +111,13 @@ function formatFileSize(size: number) {
   if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   if (size >= 1024) return `${Math.round(size / 1024)} KB`;
   return `${size} B`;
+}
+
+function splitCommaSeparated(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function isPdfFile(file: File) {
@@ -193,6 +205,7 @@ export default function AdminImportar() {
   const { isAuthenticated } = useAuth();
   const { data: events = [], isLoading, isError } = useAdminEventsQuery(isAuthenticated);
   const { data: areas = [] } = useAreasQuery({ includeEmpty: true });
+  const { data: courses = [] } = useCoursesQuery({ includeEmpty: true });
   const importMutation = useImportArticlesMutation();
   const uploadPdfMutation = useUploadArticlePdfMutation();
   const extractPdfMutation = useExtractArticlePdfMetadataMutation();
@@ -208,13 +221,8 @@ export default function AdminImportar() {
   const reviewCardRef = useRef<HTMLDivElement | null>(null);
   const reviewWasVisibleRef = useRef(false);
 
-  useEffect(() => {
-    if (!eventId && events[0]?.id) {
-      setEventId(events[0].id);
-    }
-  }, [eventId, events]);
-
-  const event = events.find((currentEvent) => currentEvent.id === eventId);
+  const selectedEventId = eventId || events[0]?.id || "";
+  const event = events.find((currentEvent) => currentEvent.id === selectedEventId);
   const areaSuggestions = useMemo(
     () =>
       Array.from(new Set([...areas.map((area) => area.name), ...(event?.themes ?? [])])).sort((left, right) =>
@@ -283,14 +291,14 @@ export default function AdminImportar() {
     setActivePdfIndex((currentIndex) => Math.min(Math.max(pdfItems.length - 1, 0), currentIndex + 1));
 
   const importManual = async () => {
-    if (!eventId || validManual === 0) return;
+    if (!selectedEventId || validManual === 0) return;
     const items = drafts
       .filter((draft) => draft.title.trim() && draft.authors.trim())
       .map((draft) => toImportItem(draft));
 
     try {
       const result = await importMutation.mutateAsync({
-        eventId,
+        eventId: selectedEventId,
         publishImmediately: publishNow,
         items,
       });
@@ -331,6 +339,9 @@ export default function AdminImportar() {
           title: String(row.title),
           authors,
           area: String(row.area ?? "Geral"),
+          courses: Array.isArray(row.courses)
+            ? row.courses.map(String)
+            : splitCommaSeparated(String(row.courses ?? "")),
           abstract: String(row.abstract ?? ""),
           pages: row.pages ? String(row.pages) : undefined,
           modality: modalidade,
@@ -348,11 +359,11 @@ export default function AdminImportar() {
 
   const importFile = async () => {
     const items = parseJson();
-    if (!items || !eventId) return;
+    if (!items || !selectedEventId) return;
 
     try {
       const result = await importMutation.mutateAsync({
-        eventId,
+        eventId: selectedEventId,
         publishImmediately: publishNow,
         items,
       });
@@ -447,7 +458,7 @@ export default function AdminImportar() {
         );
 
         try {
-          const metadata = await extractPdfMutation.mutateAsync({ file: item.file, eventId });
+          const metadata = await extractPdfMutation.mutateAsync({ file: item.file, eventId: selectedEventId });
           successCount += 1;
 
           setPdfItems((currentItems) =>
@@ -492,7 +503,7 @@ export default function AdminImportar() {
   };
 
   const importPdfBatch = async () => {
-    if (!eventId || importablePdfItems.length === 0) return;
+    if (!selectedEventId || importablePdfItems.length === 0) return;
 
     const previousStatuses = new Map(importablePdfItems.map((item) => [item.id, item.status]));
     const importableIds = new Set(importablePdfItems.map((item) => item.id));
@@ -512,7 +523,7 @@ export default function AdminImportar() {
 
     try {
       const result = await importMutation.mutateAsync({
-        eventId,
+        eventId: selectedEventId,
         publishImmediately: publishNow,
         items: importablePdfItems.map((item) => toPdfImportItem(item.draft)),
       });
@@ -614,11 +625,16 @@ export default function AdminImportar() {
         emptyMessage="Cadastre um evento antes de importar trabalhos."
       >
         <>
+          <datalist id="course-suggestions">
+            {courses.map((course) => (
+              <option key={course.id} value={course.name} />
+            ))}
+          </datalist>
           <Card className="mb-3 border-border/60 p-3 shadow-card">
             <div className="grid grid-cols-1 gap-3">
               <div>
                 <Label>Evento de destino</Label>
-                <Select value={eventId} onValueChange={setEventId}>
+                <Select value={selectedEventId} onValueChange={setEventId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um evento" />
                   </SelectTrigger>
@@ -708,6 +724,15 @@ export default function AdminImportar() {
                       </div>
                     </div>
                     <div>
+                      <Label className="text-xs">Cursos relacionados (separados por vírgula)</Label>
+                      <Input
+                        list="course-suggestions"
+                        value={draft.courses}
+                        onChange={(event) => updateDraft(index, { courses: event.target.value })}
+                        placeholder="Ex.: Direito, Administração"
+                      />
+                    </div>
+                    <div>
                       <Label className="text-xs">Resumo</Label>
                       <Textarea
                         rows={3}
@@ -725,7 +750,7 @@ export default function AdminImportar() {
 
               <Button
                 className="w-full gap-2 bg-brand text-primary-foreground hover:opacity-90"
-                disabled={validManual === 0 || !eventId || importMutation.isPending}
+                disabled={validManual === 0 || !selectedEventId || importMutation.isPending}
                 onClick={importManual}
               >
                 <DownloadCloud className="h-4 w-4" />
@@ -765,7 +790,7 @@ export default function AdminImportar() {
               )}
               <Button
                 className="w-full gap-2 bg-brand text-primary-foreground hover:opacity-90"
-                disabled={!jsonText.trim() || !eventId || importMutation.isPending}
+                disabled={!jsonText.trim() || !selectedEventId || importMutation.isPending}
                 onClick={importFile}
               >
                 <DownloadCloud className="h-4 w-4" /> {importMutation.isPending ? "Importando..." : "Importar arquivo"}
@@ -1084,6 +1109,15 @@ export default function AdminImportar() {
                       </div>
                     </div>
                     <div>
+                      <Label className="text-xs">Cursos relacionados (separados por vírgula)</Label>
+                      <Input
+                        list="course-suggestions"
+                        value={activePdfItem!.draft.courses}
+                        onChange={(event) => updateActivePdfDraft({ courses: event.target.value })}
+                        placeholder="Ex.: Enfermagem, Biomedicina"
+                      />
+                    </div>
+                    <div>
                       <Label className="text-xs">Resumo</Label>
                       <Textarea
                         rows={6}
@@ -1140,7 +1174,7 @@ export default function AdminImportar() {
 
               <Button
                 className="w-full gap-2 bg-brand text-primary-foreground hover:opacity-90"
-                disabled={importablePdfItems.length === 0 || !eventId || isImporting || isBatchReading}
+                disabled={importablePdfItems.length === 0 || !selectedEventId || isImporting || isBatchReading}
                 onClick={importPdfBatch}
               >
                 <DownloadCloud className="h-4 w-4" />

@@ -21,7 +21,8 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    await normalizeApiBlobError(error);
     const isLoginRequest = error?.config?.url === "/auth/login";
     const requestToken = getBearerTokenFromHeaders(error?.config?.headers);
     const storedToken = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
@@ -56,6 +57,29 @@ type ApiErrorData = ApiValidationErrorData & {
   retryAfterSeconds?: number;
   blockedUntil?: string;
 };
+
+function getHeaderValue(headers: unknown, name: string) {
+  if (!headers || typeof headers !== "object") return undefined;
+  if ("get" in headers && typeof headers.get === "function") return headers.get(name);
+  return (headers as Record<string, unknown>)[name];
+}
+
+export async function normalizeApiBlobError(error: unknown) {
+  if (!axios.isAxiosError(error)) return;
+
+  const response = error.response;
+  const data = response?.data;
+  if (!response || typeof Blob === "undefined" || !(data instanceof Blob)) return;
+
+  const contentType = getHeaderValue(response.headers, "content-type") ?? data.type;
+  if (typeof contentType !== "string" || !contentType.toLowerCase().includes("json")) return;
+
+  try {
+    response.data = JSON.parse(await data.text());
+  } catch {
+    // Preserve the original Blob when the server response is not valid JSON.
+  }
+}
 
 function getApiErrorData(error: unknown): ApiErrorData | undefined {
   if (!axios.isAxiosError(error)) return undefined;

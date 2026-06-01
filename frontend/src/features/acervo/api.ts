@@ -7,6 +7,7 @@ import type {
   EventMutationInput,
   ExtractedArticlePdfMetadata,
   ImportArticleInput,
+  CourseSummary,
 } from "@/types/acervo";
 
 type IncludeArticlesMode = "published" | "all" | "none";
@@ -45,6 +46,7 @@ export async function fetchArticles(params?: {
   q?: string;
   eventId?: string;
   author?: string;
+  course?: string;
 }) {
   const response = await api.get<Article[]>("/articles", {
     params: compact({
@@ -53,6 +55,7 @@ export async function fetchArticles(params?: {
       q: params?.q,
       eventId: params?.eventId,
       author: params?.author,
+      course: params?.course,
     }),
   });
 
@@ -78,6 +81,17 @@ export async function fetchAuthors(search?: string) {
 
 export async function fetchAreas(params?: { includeEmpty?: boolean; q?: string }) {
   const response = await api.get<AreaSummary[]>("/areas", {
+    params: compact({
+      includeEmpty: params?.includeEmpty,
+      q: params?.q,
+    }),
+  });
+
+  return response.data;
+}
+
+export async function fetchCourses(params?: { includeEmpty?: boolean; q?: string }) {
+  const response = await api.get<CourseSummary[]>("/courses", {
     params: compact({
       includeEmpty: params?.includeEmpty,
       q: params?.q,

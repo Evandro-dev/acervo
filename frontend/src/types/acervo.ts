@@ -19,6 +19,12 @@ export type AreaSummary = {
   articleCount: number;
 };
 
+export type CourseSummary = {
+  id: string;
+  name: string;
+  articleCount: number;
+};
+
 export type ArticleEventSummary = {
   id: string;
   slug: string;
@@ -32,6 +38,7 @@ export type Article = {
   authors: string[];
   authorProfiles: AuthorSummary[];
   area: string;
+  courses: string[];
   abstract: string;
   pdfUrl?: string;
   viewCount?: number;
@@ -192,6 +199,7 @@ export type ImportArticleInput = {
   title: string;
   authors: string[];
   area: string;
+  courses?: string[];
   abstract: string;
   pages?: string;
   pdfUrl?: string;
@@ -202,4 +210,13 @@ export type ImportArticleInput = {
   importedAt?: string;
   publishedAt?: string;
   status?: Uppercase<ArticleStatus>;
+};
+
+export type ArticleReportFilters = {
+  eventId?: string;
+  area?: string;
+  course?: string;
+  status?: "all" | ArticleStatus;
+  dateFrom?: string;
+  dateTo?: string;
 };

@@ -18,6 +18,13 @@ type ArticleAuthorShape = {
   author: AuthorShape;
 };
 
+type ArticleCourseShape = {
+  position: number;
+  course: {
+    name: string;
+  };
+};
+
 type EventSummaryShape = {
   id: string;
   slug: string;
@@ -42,6 +49,7 @@ type ArticleShape = {
   importedAt: Date | null;
   publishedAt: Date | null;
   authors: ArticleAuthorShape[];
+  courses?: ArticleCourseShape[];
   event?: EventSummaryShape | null;
 };
 
@@ -116,6 +124,9 @@ export function serializeArticle(article: ArticleShape, options?: { includeEvent
     authors: authorProfiles.map((author) => author.name),
     authorProfiles,
     area: article.area,
+    courses: [...(article.courses ?? [])]
+      .sort((left, right) => left.position - right.position)
+      .map((item) => item.course.name),
     abstract: article.abstract,
     pdfUrl: article.pdfUrl ?? undefined,
     viewCount: article.viewCount,

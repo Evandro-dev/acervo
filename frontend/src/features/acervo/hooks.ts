@@ -7,6 +7,7 @@ import {
   fetchArticle,
   fetchArticles,
   fetchAreas,
+  fetchCourses,
   fetchAuthor,
   fetchAuthors,
   fetchEvent,
@@ -41,6 +42,7 @@ const acervoKeys = {
   articles: (scope: string, filters?: Record<string, unknown>) => ["acervo", "articles", scope, filters ?? {}] as const,
   article: (id: string) => ["acervo", "article", id] as const,
   areas: (includeEmpty: boolean, search = "") => ["acervo", "areas", includeEmpty, search] as const,
+  courses: (includeEmpty: boolean, search = "") => ["acervo", "courses", includeEmpty, search] as const,
   authors: (search = "") => ["acervo", "authors", search] as const,
   author: (idOrSlug: string) => ["acervo", "author", idOrSlug] as const,
 };
@@ -107,6 +109,16 @@ export function useAreasQuery(options?: { includeEmpty?: boolean; search?: strin
   return useQuery({
     queryKey: acervoKeys.areas(includeEmpty, search),
     queryFn: () => fetchAreas({ includeEmpty, q: search || undefined }),
+  });
+}
+
+export function useCoursesQuery(options?: { includeEmpty?: boolean; search?: string }) {
+  const includeEmpty = options?.includeEmpty ?? false;
+  const search = options?.search ?? "";
+
+  return useQuery({
+    queryKey: acervoKeys.courses(includeEmpty, search),
+    queryFn: () => fetchCourses({ includeEmpty, q: search || undefined }),
   });
 }
 

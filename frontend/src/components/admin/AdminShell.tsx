@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Navigate, NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileCheck2, DownloadCloud, BookOpen, UsersRound } from "lucide-react";
+import { LayoutDashboard, FileCheck2, DownloadCloud, BookOpen, UsersRound, FileSpreadsheet } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { HeroBackButton } from "@/components/layout/HeroBackButton";
 import { SiteContainer } from "@/components/layout/SiteContainer";
@@ -13,6 +13,7 @@ const tabs = [
   { to: "/admin/publicacoes", label: "Publicações", icon: FileCheck2 },
   { to: "/admin/importar", label: "Importar", icon: DownloadCloud },
   { to: "/admin/eventos", label: "Eventos", icon: BookOpen },
+  { to: "/admin/relatorios", label: "Relatórios", icon: FileSpreadsheet },
   { to: "/admin/usuarios", label: "Usuários", icon: UsersRound, adminOnly: true },
 ];
 

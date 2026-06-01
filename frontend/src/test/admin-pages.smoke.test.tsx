@@ -9,6 +9,7 @@ import {
   useAdminArticlesQuery,
   useAdminEventsQuery,
   useAreasQuery,
+  useCoursesQuery,
   useDeleteArticleMutation,
   useExtractArticlePdfMetadataMutation,
   useImportArticlesMutation,
@@ -22,6 +23,7 @@ vi.mock("@/features/acervo/hooks", () => ({
   useAdminEventsQuery: vi.fn(),
   useAdminArticlesQuery: vi.fn(),
   useAreasQuery: vi.fn(),
+  useCoursesQuery: vi.fn(),
   useUpdateArticleStatusMutation: vi.fn(),
   useDeleteArticleMutation: vi.fn(),
   useExtractArticlePdfMetadataMutation: vi.fn(),
@@ -40,6 +42,7 @@ vi.mock("@/hooks/use-toast", () => ({
 const mockedUseAdminEventsQuery = vi.mocked(useAdminEventsQuery);
 const mockedUseAdminArticlesQuery = vi.mocked(useAdminArticlesQuery);
 const mockedUseAreasQuery = vi.mocked(useAreasQuery);
+const mockedUseCoursesQuery = vi.mocked(useCoursesQuery);
 const mockedUseUpdateArticleStatusMutation = vi.mocked(useUpdateArticleStatusMutation);
 const mockedUseDeleteArticleMutation = vi.mocked(useDeleteArticleMutation);
 const mockedUseExtractArticlePdfMetadataMutation = vi.mocked(useExtractArticlePdfMetadataMutation);
@@ -127,6 +130,7 @@ describe("Admin pages", () => {
     vi.clearAllMocks();
     mockedUseAuth.mockReturnValue(adminSession);
     mockedUseAreasQuery.mockReturnValue({ data: [], isLoading: false, isError: false } as never);
+    mockedUseCoursesQuery.mockReturnValue({ data: [], isLoading: false, isError: false } as never);
     mockedUseDeleteArticleMutation.mockReturnValue({ mutateAsync: vi.fn() } as never);
     mockedUseUpdateArticleStatusMutation.mockReturnValue({ mutateAsync: vi.fn() } as never);
     mockedUseExtractArticlePdfMetadataMutation.mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never);

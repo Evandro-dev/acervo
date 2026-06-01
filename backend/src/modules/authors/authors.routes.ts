@@ -59,6 +59,11 @@ export async function authorRoutes(app: FastifyInstance) {
                     author: true,
                   },
                 },
+                courses: {
+                  include: {
+                    course: true,
+                  },
+                },
               },
             },
           },

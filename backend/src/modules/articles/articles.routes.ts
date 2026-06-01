@@ -14,15 +14,17 @@ import { authorPayloadSchema, normalizeAuthorPayload } from "../../lib/contracts
 import { canManageArticle, getOptionalUser, isPrivilegedRole, requirePrivilegedUser } from "../../lib/permissions.js";
 import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
 import { prisma } from "../../lib/prisma.js";
+import { queryBooleanSchema } from "../../lib/query-boolean.js";
 import { serializeArticle } from "../../lib/serializers.js";
 import { suggestAreaFromArticleText } from "../areas/area-suggestion.service.js";
 import { ensureArea, sanitizeAreaName } from "../areas/areas.service.js";
 import { ensureAuthors } from "../authors/authors.service.js";
+import { ensureCourses, normalizeCourseLookup } from "../courses/courses.service.js";
 
 const articleStatusSchema = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
 const articleStatusQuerySchema = z.enum(["published", "draft", "archived", "all"]);
 const articlePdfQuerySchema = z.object({
-  download: z.coerce.boolean().default(false),
+  download: queryBooleanSchema,
 });
 const articleMetadataQuerySchema = z.object({
   eventId: z.string().optional(),
@@ -32,6 +34,7 @@ const articlePayloadSchema = z.object({
   title: z.string().min(3).max(220),
   abstract: z.string().max(10000).default(""),
   area: z.string().min(1).max(120),
+  courses: z.array(z.string().trim().min(2).max(160)).max(20).default([]),
   pages: z.string().max(40).optional(),
   pdfUrl: z.string().url().optional(),
   eventId: z.string(),
@@ -48,6 +51,7 @@ const articlePayloadSchema = z.object({
 const articleQuerySchema = z.object({
   status: articleStatusQuerySchema.default("published"),
   area: z.string().trim().optional(),
+  course: z.string().trim().optional(),
   q: z.string().trim().optional(),
   eventId: z.string().optional(),
   author: z.string().trim().optional(),
@@ -76,6 +80,11 @@ function getArticleInclude() {
         author: true,
       },
     },
+    courses: {
+      include: {
+        course: true,
+      },
+    },
   };
 }
 
@@ -102,6 +111,17 @@ export async function articleRoutes(app: FastifyInstance) {
       where: {
         ...(status ? { status } : {}),
         ...(query.area ? { area: query.area } : {}),
+        ...(query.course
+          ? {
+              courses: {
+                some: {
+                  course: {
+                    normalizedName: normalizeCourseLookup(query.course),
+                  },
+                },
+              },
+            }
+          : {}),
         ...(query.eventId ? { eventId: query.eventId } : {}),
         ...(query.author
           ? {
@@ -298,6 +318,7 @@ export async function articleRoutes(app: FastifyInstance) {
         payload.authors.map((author) => normalizeAuthorPayload(author)),
       );
       const area = await resolveArticleArea(tx, payload.area);
+      const courses = await ensureCourses(tx, payload.courses);
 
       return tx.article.create({
         data: {
@@ -320,6 +341,12 @@ export async function articleRoutes(app: FastifyInstance) {
           authors: {
             create: authors.map((author, position) => ({
               authorId: author.id,
+              position,
+            })),
+          },
+          courses: {
+            create: courses.map((course, position) => ({
+              courseId: course.id,
               position,
             })),
           },
@@ -359,6 +386,7 @@ export async function articleRoutes(app: FastifyInstance) {
           )
         : null;
       const area = payload.area ? await resolveArticleArea(tx, payload.area) : null;
+      const courses = payload.courses ? await ensureCourses(tx, payload.courses) : null;
 
       return tx.article.update({
         where: { id },
@@ -386,6 +414,17 @@ export async function articleRoutes(app: FastifyInstance) {
                   deleteMany: {},
                   create: authors.map((author, position) => ({
                     authorId: author.id,
+                    position,
+                  })),
+                },
+              }
+            : {}),
+          ...(courses
+            ? {
+                courses: {
+                  deleteMany: {},
+                  create: courses.map((course, position) => ({
+                    courseId: course.id,
                     position,
                   })),
                 },
@@ -445,6 +484,7 @@ export async function articleRoutes(app: FastifyInstance) {
           item.authors.map((author) => normalizeAuthorPayload(author)),
         );
         const area = await resolveArticleArea(tx, item.area);
+        const courses = await ensureCourses(tx, item.courses);
 
         const article = await tx.article.create({
           data: {
@@ -466,6 +506,12 @@ export async function articleRoutes(app: FastifyInstance) {
             authors: {
               create: authors.map((author, position) => ({
                 authorId: author.id,
+                position,
+              })),
+            },
+            courses: {
+              create: courses.map((course, position) => ({
+                courseId: course.id,
                 position,
               })),
             },

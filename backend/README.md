@@ -71,6 +71,16 @@ npm run dev
 - o cadastro público exige e-mail institucional em um dos domínios configurados em `INSTITUTIONAL_EMAIL_DOMAINS`
 - a variável antiga `INSTITUTIONAL_EMAIL_DOMAIN` continua compatível e recebe `ulife.com.br` como domínio adicional
 
+## Cursos e relatórios
+
+- cada trabalho pode ser associado a um ou mais cursos, permitindo registros interdisciplinares
+- cursos são normalizados nas tabelas `courses` e `article_courses`, sem duplicar nomes por diferença de caixa ou espaços
+- administradores e coordenadores podem baixar o Excel pela tela `Relatórios` ou pela rota protegida `GET /reports/articles.xlsx`
+- filtros opcionais: evento, área, curso, status e período de submissão
+- cada arquivo contém as abas `Visão geral`, `Resumo por área`, `Resumo por curso` e `Trabalhos detalhados`
+- campos textuais são neutralizados antes da exportação para evitar interpretação acidental como fórmulas pela planilha
+- relatórios acima de 10.000 trabalhos exigem filtros adicionais para limitar uso de memória no servidor
+
 ## Provisionar o administrador inicial
 
 Para criar ou redefinir a conta administrativa solicitada em um banco já existente, execute conscientemente:
