@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Navigate, NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileCheck2, DownloadCloud, BookOpen } from "lucide-react";
+import { LayoutDashboard, FileCheck2, DownloadCloud, BookOpen, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { HeroBackButton } from "@/components/layout/HeroBackButton";
 import { SiteContainer } from "@/components/layout/SiteContainer";
@@ -13,6 +13,7 @@ const tabs = [
   { to: "/admin/publicacoes", label: "Publicações", icon: FileCheck2 },
   { to: "/admin/importar", label: "Importar", icon: DownloadCloud },
   { to: "/admin/eventos", label: "Eventos", icon: BookOpen },
+  { to: "/admin/usuarios", label: "Usuários", icon: UsersRound, adminOnly: true },
 ];
 
 export function AdminShell({ children, title }: { children: ReactNode; title: string }) {
@@ -58,7 +59,7 @@ export function AdminShell({ children, title }: { children: ReactNode; title: st
       <nav className="sticky top-[57px] z-20 border-b bg-background">
         <SiteContainer>
           <ul className="flex gap-1 overflow-x-auto py-1.5">
-            {tabs.map((t) => (
+            {tabs.filter((tab) => !tab.adminOnly || user?.role === "ADMIN").map((t) => (
               <li key={t.to} className="shrink-0">
                 <NavLink
                   to={t.to}

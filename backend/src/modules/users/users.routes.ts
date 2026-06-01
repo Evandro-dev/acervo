@@ -1,8 +1,10 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { accessAccountPasswordSchema, accessAccountRoleSchema } from "../../lib/access-account.schemas.js";
 import { normalizeEmailAddress } from "../../lib/institutional-email.js";
 import { prisma } from "../../lib/prisma.js";
+import { isPrismaUniqueConstraintError } from "../../lib/prisma-errors.js";
 import { serializeUserAccount } from "../../lib/serializers.js";
 
 const accountSelect = {
@@ -16,36 +18,32 @@ const accountSelect = {
   avatarUrl: true,
 } as const;
 
-const passwordSchema = z
-  .string()
-  .min(8, "A senha deve ter pelo menos 8 caracteres.")
-  .max(120)
-  .regex(/[A-Za-z]/, "A senha deve conter ao menos uma letra.")
-  .regex(/\d/, "A senha deve conter ao menos um número.");
-
-const privilegedRoleSchema = z.enum(["ADMIN", "COORDENADOR"]);
-
 const createSchema = z.object({
-  name: z.string().min(2).max(120),
+  name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(180),
-  password: passwordSchema,
-  role: privilegedRoleSchema,
-  jobTitle: z.string().min(2).max(120).optional(),
-  bio: z.string().max(500).optional(),
-  area: z.string().max(120).optional(),
+  password: accessAccountPasswordSchema,
+  role: accessAccountRoleSchema,
+  jobTitle: z.string().trim().min(2).max(120).optional(),
+  bio: z.string().trim().max(500).optional(),
+  area: z.string().trim().max(120).optional(),
   avatarUrl: z.string().url().optional(),
 });
 
 const updateSchema = z.object({
-  name: z.string().min(2).max(120).optional(),
-  jobTitle: z.string().min(2).max(120).optional(),
-  bio: z.string().max(500).optional(),
-  area: z.string().max(120).optional(),
+  name: z.string().trim().min(2).max(120).optional(),
+  jobTitle: z.string().trim().min(2).max(120).optional(),
+  bio: z.string().trim().max(500).optional(),
+  area: z.string().trim().max(120).optional(),
   avatarUrl: z.string().url().optional(),
 });
 
+function preventAccessAccountResponseCaching(reply: FastifyReply) {
+  reply.header("Cache-Control", "no-store");
+}
+
 export async function userRoutes(app: FastifyInstance) {
-  app.get("/", { preHandler: [app.requireRole("ADMIN")] }, async () => {
+  app.get("/", { preHandler: [app.requireRole("ADMIN")] }, async (_req, reply) => {
+    preventAccessAccountResponseCaching(reply);
     const users = await prisma.user.findMany({
       select: accountSelect,
       orderBy: { name: "asc" },
@@ -55,33 +53,58 @@ export async function userRoutes(app: FastifyInstance) {
   });
 
   app.post("/", { preHandler: [app.requireRole("ADMIN")] }, async (req, reply) => {
+    preventAccessAccountResponseCaching(reply);
     const payload = createSchema.parse(req.body);
     const email = normalizeEmailAddress(payload.email);
     const exists = await prisma.user.findUnique({ where: { email } });
 
     if (exists) {
-      return reply.status(409).send({ error: "Já existe uma conta com este e-mail institucional." });
+      return reply.status(409).send({
+        code: "ACCOUNT_EXISTS",
+        error: "Já existe uma conta com este e-mail.",
+      });
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
-    const user = await prisma.user.create({
-      data: {
-        name: payload.name,
-        email,
-        passwordHash,
-        role: payload.role,
-        jobTitle: payload.jobTitle,
-        bio: payload.bio,
-        area: payload.area,
-        avatarUrl: payload.avatarUrl,
-      },
-      select: accountSelect,
+    let user;
+
+    try {
+      user = await prisma.user.create({
+        data: {
+          name: payload.name,
+          email,
+          passwordHash,
+          role: payload.role,
+          jobTitle: payload.jobTitle,
+          bio: payload.bio,
+          area: payload.area,
+          avatarUrl: payload.avatarUrl,
+        },
+        select: accountSelect,
+      });
+    } catch (error) {
+      if (isPrismaUniqueConstraintError(error)) {
+        return reply.status(409).send({
+          code: "ACCOUNT_EXISTS",
+          error: "Já existe uma conta com este e-mail.",
+        });
+      }
+
+      throw error;
+    }
+
+    req.log.info({
+      event: "access-account.created",
+      actorUserId: req.user.sub,
+      userId: user.id,
+      role: user.role,
     });
 
     return reply.status(201).send(serializeUserAccount(user));
   });
 
   app.get("/:id", { preHandler: [app.requireRole("ADMIN")] }, async (req, reply) => {
+    preventAccessAccountResponseCaching(reply);
     const { id } = req.params as { id: string };
     const user = await prisma.user.findUnique({
       where: { id },

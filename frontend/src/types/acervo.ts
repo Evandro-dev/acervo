@@ -136,6 +136,14 @@ export type RegisterAccessAccountPayload = {
   password: string;
 };
 
+export type CreateAccessAccountPayload = {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  jobTitle?: string;
+};
+
 export type LoginResponse = {
   user: UserAccount;
   token: string;

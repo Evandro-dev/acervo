@@ -7,7 +7,9 @@ import {
   isInstitutionalEmail,
   normalizeEmailAddress,
 } from "../../lib/institutional-email.js";
+import { accessAccountPasswordSchema } from "../../lib/access-account.schemas.js";
 import { prisma } from "../../lib/prisma.js";
+import { isPrismaUniqueConstraintError } from "../../lib/prisma-errors.js";
 import { serializeUserAccount } from "../../lib/serializers.js";
 import { createExclusiveAuthSession, revokeAuthSession } from "./auth-session.service.js";
 import {
@@ -15,6 +17,7 @@ import {
   getLoginAuditContext,
   reserveLoginAttempt,
 } from "./login-throttle.service.js";
+import { getPublicCoordinatorRegistrationRestriction } from "./public-registration.policy.js";
 
 const accountSelect = {
   id: true,
@@ -32,18 +35,11 @@ const loginSchema = z.object({
   password: z.string().max(120).default(""),
 });
 
-const passwordSchema = z
-  .string()
-  .min(8, "A senha deve ter pelo menos 8 caracteres.")
-  .max(120)
-  .regex(/[A-Za-z]/, "A senha deve conter ao menos uma letra.")
-  .regex(/\d/, "A senha deve conter ao menos um número.");
-
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(180),
   jobTitle: z.string().trim().min(2).max(120),
-  password: passwordSchema,
+  password: accessAccountPasswordSchema,
 });
 
 // Comparing against a real bcrypt hash for unknown accounts reduces timing-based user enumeration.
@@ -150,6 +146,13 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post("/register", async (req, reply) => {
     preventAuthResponseCaching(reply);
+    const restriction = getPublicCoordinatorRegistrationRestriction(env.PUBLIC_COORDINATOR_REGISTRATION_ENABLED);
+
+    if (restriction) {
+      req.log.warn({ event: "auth.register.disabled_attempt" });
+      return reply.status(404).send(restriction);
+    }
+
     const payload = registerSchema.parse(req.body);
     const email = normalizeEmailAddress(payload.email);
 
@@ -169,16 +172,29 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
-    const user = await prisma.user.create({
-      data: {
-        name: payload.name,
-        email,
-        passwordHash,
-        role: "COORDENADOR",
-        jobTitle: payload.jobTitle,
-      },
-      select: accountSelect,
-    });
+    let user;
+
+    try {
+      user = await prisma.user.create({
+        data: {
+          name: payload.name,
+          email,
+          passwordHash,
+          role: "COORDENADOR",
+          jobTitle: payload.jobTitle,
+        },
+        select: accountSelect,
+      });
+    } catch (error) {
+      if (isPrismaUniqueConstraintError(error)) {
+        return reply.status(409).send({
+          code: "ACCOUNT_EXISTS",
+          error: "Já existe uma conta com este e-mail institucional.",
+        });
+      }
+
+      throw error;
+    }
 
     return reply.status(201).send({
       message: "Conta criada com sucesso. Entre com suas credenciais para acessar o painel.",

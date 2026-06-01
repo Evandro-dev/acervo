@@ -2,18 +2,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import { useAuth } from "@/features/auth/auth-context";
-import { registerAccessAccount } from "@/features/auth/api";
 
 vi.mock("@/features/auth/auth-context", () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock("@/features/auth/api", () => ({
-  registerAccessAccount: vi.fn(),
-}));
-
 const mockedUseAuth = vi.mocked(useAuth);
-const mockedRegisterAccessAccount = vi.mocked(registerAccessAccount);
 
 function renderScreen(initialEntry = "/admin/login") {
   return render(
@@ -34,8 +28,6 @@ describe("AdminLogin", () => {
       logout: vi.fn(),
       refresh: vi.fn(),
     });
-
-    mockedRegisterAccessAccount.mockReset();
   });
 
   it("submits credentials through the auth layer", async () => {
@@ -58,7 +50,7 @@ describe("AdminLogin", () => {
 
     renderScreen();
 
-    fireEvent.change(screen.getByLabelText("E-mail institucional"), {
+    fireEvent.change(screen.getByLabelText("E-mail de acesso"), {
       target: { value: "admin@acervo.edu" },
     });
     fireEvent.change(screen.getByLabelText("Senha"), {
@@ -98,7 +90,7 @@ describe("AdminLogin", () => {
     });
 
     renderScreen();
-    fireEvent.change(screen.getByLabelText("E-mail institucional"), {
+    fireEvent.change(screen.getByLabelText("E-mail de acesso"), {
       target: { value: "admin@acervo.edu" },
     });
     fireEvent.change(screen.getByLabelText("Senha"), {
@@ -111,41 +103,11 @@ describe("AdminLogin", () => {
     expect(screen.getByRole("button", { name: /Tente novamente em/i })).toBeDisabled();
   });
 
-  it("submits the coordinator registration form", async () => {
-    mockedRegisterAccessAccount.mockResolvedValue({
-      message: "Conta criada com sucesso.",
-      user: {
-        id: "user-2",
-        name: "Maria Clara",
-        email: "maria@acervo.edu",
-        role: "COORDENADOR",
-        jobTitle: "Coordenadora de Pesquisa",
-      },
-    });
-
+  it("keeps public registration unavailable even when the old tab is requested", () => {
     renderScreen("/admin/login?tab=register");
 
-    fireEvent.change(await screen.findByLabelText("Nome completo"), {
-      target: { value: "Maria Clara" },
-    });
-    fireEvent.change(screen.getByLabelText("E-mail institucional"), {
-      target: { value: "maria@acervo.edu" },
-    });
-    fireEvent.change(screen.getByLabelText("Cargo na instituição"), {
-      target: { value: "Coordenadora de Pesquisa" },
-    });
-    fireEvent.change(screen.getByLabelText("Senha"), {
-      target: { value: "Senha2026" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
-
-    await waitFor(() =>
-      expect(mockedRegisterAccessAccount).toHaveBeenCalledWith({
-        name: "Maria Clara",
-        email: "maria@acervo.edu",
-        jobTitle: "Coordenadora de Pesquisa",
-        password: "Senha2026",
-      }),
-    );
+    expect(screen.queryByRole("button", { name: "Criar conta" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Cadastrar")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Entrar" })).toBeInTheDocument();
   });
 });

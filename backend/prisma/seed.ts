@@ -2,7 +2,7 @@ import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
-import { requireSeedAccessPassword } from "../src/lib/seed-access-password.js";
+import { requireSeedAccessPassword } from "../src/lib/initial-access-password.js";
 import { seedUsers } from "./seed-data.js";
 
 const connectionString = process.env.DATABASE_URL;

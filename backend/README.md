@@ -23,7 +23,9 @@ TRUST_PROXY_HOPS=1
 PORT=10000
 CORS_ORIGIN="http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173"
 INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br"
+PUBLIC_COORDINATOR_REGISTRATION_ENABLED="false"
 SEED_ACCESS_PASSWORD=""
+ADMIN_BOOTSTRAP_PASSWORD=""
 ```
 
 ## Fluxo recomendado
@@ -55,19 +57,33 @@ npm run dev
 
 ## Contas seed
 
-- Admin: `admin@acervo.edu`
-- Coordenador: `coord@acervo.edu`
+- Admin inicial: `unapousoalegre.oficial@gmail.com`
 - a senha inicial deve ser definida em `SEED_ACCESS_PASSWORD` somente no ambiente local antes de executar o seed
 - não execute o seed em produção nem reutilize essa senha em um ambiente publicado
 
 ## Cadastro de acesso
 
 - a tabela de contas internas continua sendo `users`
-- o cadastro público em `/auth/register` cria apenas contas `COORDENADOR`
-- contas `ADMIN` continuam sendo criadas internamente
+- o cadastro público antigo em `/auth/register` foi preservado, mas permanece bloqueado por padrão
+- apenas administradores autenticados podem listar e criar contas pela rota `/users` e pela tela `Usuários`
+- o fluxo público antigo só pode ser reativado intencionalmente com `PUBLIC_COORDINATOR_REGISTRATION_ENABLED=true` no backend e `VITE_PUBLIC_COORDINATOR_REGISTRATION_ENABLED=true` no frontend
 - o campo `Cargo na instituição` agora é salvo em `users.job_title`
 - o cadastro público exige e-mail institucional em um dos domínios configurados em `INSTITUTIONAL_EMAIL_DOMAINS`
 - a variável antiga `INSTITUTIONAL_EMAIL_DOMAIN` continua compatível e recebe `ulife.com.br` como domínio adicional
+
+## Provisionar o administrador inicial
+
+Para criar ou redefinir a conta administrativa solicitada em um banco já existente, execute conscientemente:
+
+```powershell
+$env:ADMIN_BOOTSTRAP_PASSWORD="defina-uma-senha-forte-2026"
+npm run admin:provision
+Remove-Item Env:ADMIN_BOOTSTRAP_PASSWORD
+```
+
+- o comando usa a `DATABASE_URL` atual e provisiona `unapousoalegre.oficial@gmail.com`
+- a senha não deve ser salva no Git nem reutilizada
+- sessões anteriores dessa conta são encerradas ao redefinir a senha
 
 ## Segurança atual
 
@@ -85,4 +101,4 @@ npm run dev
 ## Limites atuais
 
 - a sessão do frontend continua baseada em token no `localStorage`; uma evolução futura pode migrar o transporte para cookies `HttpOnly` com proteção contra CSRF
-- o cadastro público de coordenadores ainda não verifica posse real do e-mail; para produção, o ideal e migrar para convite ou verificação por e-mail
+- se o cadastro público antigo voltar a ser habilitado, ele ainda não verifica posse real do e-mail; para produção, o ideal é migrar para convite ou verificação por e-mail

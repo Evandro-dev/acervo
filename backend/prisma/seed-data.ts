@@ -1,18 +1,10 @@
 export const seedUsers = [
   {
-    name: "Roberta Manfron",
-    email: "admin@acervo.edu",
+    name: "Administração UNA Pouso Alegre",
+    email: "unapousoalegre.oficial@gmail.com",
     role: "ADMIN" as const,
-    jobTitle: "Administradora do ACERVO",
-    area: "Curadoria Digital",
-    bio: "Coordenadora do ACERVO institucional.",
-  },
-  {
-    name: "Coord. Geral",
-    email: "coord@acervo.edu",
-    role: "COORDENADOR" as const,
-    jobTitle: "Coordenação editorial",
-    area: "Gestão Acadêmica",
-    bio: "Responsável pela curadoria e publicação dos anais.",
+    jobTitle: "Administração do ACERVO",
+    area: "Gestão institucional",
+    bio: "Conta administrativa inicial da UNA Pouso Alegre.",
   },
 ];

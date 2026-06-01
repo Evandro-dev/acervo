@@ -22,6 +22,7 @@ const AdminPublicacoes = lazy(() => import("./pages/admin/AdminPublicacoes"));
 const AdminImportar = lazy(() => import("./pages/admin/AdminImportar"));
 const AdminEventos = lazy(() => import("./pages/admin/AdminEventos"));
 const AdminEventoForm = lazy(() => import("./pages/admin/AdminEventoForm"));
+const AdminUsuarios = lazy(() => import("./pages/admin/AdminUsuarios"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/admin/eventos" element={<AdminEventos />} />
               <Route path="/admin/eventos/novo" element={<AdminEventoForm />} />
               <Route path="/admin/eventos/:id" element={<AdminEventoForm />} />
+              <Route path="/admin/usuarios" element={<AdminUsuarios />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

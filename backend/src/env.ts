@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { z } from "zod";
 import { isSupportedDuration } from "./lib/duration.js";
+import { environmentBooleanSchema } from "./lib/environment-boolean.js";
 import { resolveInstitutionalEmailDomains } from "./lib/institutional-email.js";
 
 dotenv.config({ path: new URL("../.env", import.meta.url) });
@@ -20,6 +21,7 @@ const schema = z.object({
   ),
   INSTITUTIONAL_EMAIL_DOMAIN: z.string().optional(),
   INSTITUTIONAL_EMAIL_DOMAINS: z.string().optional(),
+  PUBLIC_COORDINATOR_REGISTRATION_ENABLED: environmentBooleanSchema,
 });
 
 const parsedEnv = schema.parse(process.env);
