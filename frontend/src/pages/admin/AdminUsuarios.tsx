@@ -124,7 +124,7 @@ export default function AdminUsuarios() {
               <span
                 aria-hidden="true"
                 data-testid="create-access-user-icon"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary-dark"
               >
                 <UserPlus className="h-5 w-5" />
               </span>
@@ -224,7 +224,7 @@ export default function AdminUsuarios() {
               <span
                 aria-hidden="true"
                 data-testid="access-users-list-icon"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-primary-dark"
               >
                 <UsersRound className="h-5 w-5" />
               </span>

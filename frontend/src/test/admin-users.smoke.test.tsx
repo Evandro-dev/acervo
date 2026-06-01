@@ -89,9 +89,11 @@ describe("AdminUsuarios", () => {
     renderUsersPage();
 
     expect(screen.getByText("unapousoalegre.oficial@gmail.com")).toBeInTheDocument();
-    expect(screen.getByTestId("create-access-user-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("access-users-list-icon")).toBeInTheDocument();
-    expect(screen.getByTestId("create-access-user-icon").closest(".grid")).toHaveClass("items-start");
+    const createUserIcon = screen.getByTestId("create-access-user-icon");
+    const accessUsersListIcon = screen.getByTestId("access-users-list-icon");
+    expect(createUserIcon).toHaveClass("bg-brand-soft", "text-primary-dark");
+    expect(accessUsersListIcon).toHaveClass("bg-brand-soft", "text-primary-dark");
+    expect(createUserIcon.closest(".grid")).toHaveClass("items-start");
 
     fireEvent.change(screen.getByLabelText("Nome completo"), {
       target: { value: "Maria Clara" },
