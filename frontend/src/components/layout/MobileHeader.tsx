@@ -2,6 +2,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { AccessPill } from "./AccessPill";
 import { SiteContainer } from "./SiteContainer";
+import { ProtectedImage } from "@/components/ui/protected-image";
 import { useAuth } from "@/features/auth/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +52,7 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
 
           {/* LOGO UNA */}
           <Link to="/" className="z-10 flex items-center">
-            <img
+            <ProtectedImage
               src="/logo_una.png"
               alt="Una"
               className="h-7 w-auto md:h-9"
@@ -69,7 +70,7 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
             {/* DIVISOR DESKTOP */}
             <div className="hidden h-8 w-px bg-white/20 lg:block" />
 
-            <img
+            <ProtectedImage
               src="/logo_acervo.png"
               alt="Acervo"
               className="h-8 w-auto md:h-10"

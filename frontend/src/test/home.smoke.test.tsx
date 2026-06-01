@@ -33,6 +33,7 @@ describe("Home", () => {
           id: "event-1",
           slug: "evento-1",
           title: "Evento de Teste",
+          cover: "/events/event-1/cover/capa.jpg",
           edition: "1ª Edição",
           year: 2025,
           date: "10 de Maio de 2025",
@@ -77,6 +78,7 @@ describe("Home", () => {
     );
 
     expect(screen.getAllByText("Evento de Teste").length).toBeGreaterThan(0);
+    expect(screen.getByRole("img", { name: "Imagem do evento Evento de Teste" })).toHaveAttribute("draggable", "false");
     expect(screen.getByText("Artigo em Destaque")).toBeInTheDocument();
     expect(screen.getByText("Publicação em destaque")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ler artigo/i })).toHaveAttribute("href", "/eventos/evento-1/artigos/article-1");

@@ -157,7 +157,7 @@ export default function EventoDetalhe() {
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium data-[state=active]:bg-brand data-[state=active]:text-primary-foreground"
+                  className="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                 >
                   {label}
                 </TabsTrigger>

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Calendar } from "lucide-react";
+import { ProtectedImage } from "@/components/ui/protected-image";
 import { cn } from "@/lib/utils";
 
 type EventCoverThumbProps = {
@@ -15,11 +16,8 @@ export function EventCoverThumb({
   className,
   iconClassName,
 }: EventCoverThumbProps) {
-  const [hasImageError, setHasImageError] = useState(false);
-
-  useEffect(() => {
-    setHasImageError(false);
-  }, [cover]);
+  const [failedCover, setFailedCover] = useState<string>();
+  const hasImageError = cover === failedCover;
 
   return (
     <div
@@ -29,12 +27,12 @@ export function EventCoverThumb({
       )}
     >
       {cover && !hasImageError ? (
-        <img
+        <ProtectedImage
           src={cover}
           alt={`Imagem do evento ${title}`}
           className="h-full w-full object-cover"
           loading="lazy"
-          onError={() => setHasImageError(true)}
+          onError={() => setFailedCover(cover)}
         />
       ) : (
         <Calendar className={cn("h-7 w-7", iconClassName)} />

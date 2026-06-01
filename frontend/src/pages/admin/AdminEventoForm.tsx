@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ProtectedImage } from "@/components/ui/protected-image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Textarea } from "@/components/ui/textarea";
@@ -741,7 +742,11 @@ export default function AdminEventoForm() {
               </div>
               <div className="overflow-hidden rounded-xl border border-border/60 bg-brand-soft">
                 {form.coverUrl ? (
-                  <img src={form.coverUrl} alt="Imagem atual do evento" className="h-32 w-full object-cover sm:h-full" />
+                  <ProtectedImage
+                    src={form.coverUrl}
+                    alt="Imagem atual do evento"
+                    className="h-32 w-full object-cover sm:h-full"
+                  />
                 ) : (
                   <div className="flex h-32 flex-col items-center justify-center gap-2 px-4 text-center text-xs text-muted-foreground sm:h-full">
                     <ImageIcon className="h-6 w-6 text-primary" />
