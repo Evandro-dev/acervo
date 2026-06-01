@@ -22,7 +22,7 @@ AUTH_SESSION_IDLE_TIMEOUT_MINUTES=30
 TRUST_PROXY_HOPS=1
 PORT=10000
 CORS_ORIGIN="http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173"
-INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br"
+INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br,prof.una.br"
 PUBLIC_COORDINATOR_REGISTRATION_ENABLED="false"
 SEED_ACCESS_PASSWORD=""
 ADMIN_BOOTSTRAP_PASSWORD=""
@@ -43,6 +43,7 @@ Esse fluxo já:
 - cria `backend/.env` a partir de `.env.example` se faltar
 - cria o banco `acervo` se ele não existir
 - aplica `prisma migrate deploy`
+- repete a aplicação quando outra execução ainda estiver segurando o advisory lock transitório do Prisma
 - executa o seed só quando o banco estiver vazio
 - o seed cria apenas usuários de acesso e não popula eventos/artigos de exemplo
 
@@ -69,12 +70,13 @@ npm run dev
 - o fluxo público antigo só pode ser reativado intencionalmente com `PUBLIC_COORDINATOR_REGISTRATION_ENABLED=true` no backend e `VITE_PUBLIC_COORDINATOR_REGISTRATION_ENABLED=true` no frontend
 - o campo `Cargo na instituição` agora é salvo em `users.job_title`
 - o cadastro público exige e-mail institucional em um dos domínios configurados em `INSTITUTIONAL_EMAIL_DOMAINS`
-- a variável antiga `INSTITUTIONAL_EMAIL_DOMAIN` continua compatível e recebe `ulife.com.br` como domínio adicional
+- a variável antiga `INSTITUTIONAL_EMAIL_DOMAIN` continua compatível e recebe `ulife.com.br` e `prof.una.br` como domínios adicionais
 
 ## Cursos e relatórios
 
 - cada trabalho pode ser associado a um ou mais cursos, permitindo registros interdisciplinares
 - cursos são normalizados nas tabelas `courses` e `article_courses`, sem duplicar nomes por diferença de caixa ou espaços
+- o catálogo institucional reaplicável pode ser sincronizado com `npm run catalog:sync`
 - administradores e coordenadores podem baixar o Excel pela tela `Relatórios` ou pela rota protegida `GET /reports/articles.xlsx`
 - filtros opcionais: evento, área, curso, status e período de submissão
 - cada arquivo contém as abas `Visão geral`, `Resumo por área`, `Resumo por curso` e `Trabalhos detalhados`

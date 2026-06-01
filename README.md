@@ -51,6 +51,7 @@ O comando `npm run dev` faz o bootstrap do backend antes de subir os servidores:
 - verifica/cria o banco configurado, quando aplicável
 - gera o Prisma Client
 - aplica as migrations do Prisma
+- repete migrations automaticamente quando outra execução ainda estiver segurando o advisory lock transitório do Prisma
 - executa o seed inicial somente se o banco estiver vazio
 - sobe backend em `http://localhost:10000`
 - sobe frontend em `http://localhost:8080` ou na porta que o Vite escolher
@@ -136,7 +137,7 @@ JWT_EXPIRES_IN="12h"
 AUTH_SESSION_IDLE_TIMEOUT_MINUTES=30
 TRUST_PROXY_HOPS=1
 CORS_ORIGIN="https://acervouna.vercel.app"
-INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br"
+INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br,prof.una.br"
 ```
 
 ### Banco de dados

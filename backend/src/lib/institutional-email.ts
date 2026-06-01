@@ -1,4 +1,4 @@
-export const DEFAULT_INSTITUTIONAL_EMAIL_DOMAINS = ["acervo.edu", "ulife.com.br"] as const;
+export const DEFAULT_INSTITUTIONAL_EMAIL_DOMAINS = ["acervo.edu", "ulife.com.br", "prof.una.br"] as const;
 
 const DOMAIN_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -37,7 +37,7 @@ export function resolveInstitutionalEmailDomains(options: {
   }
 
   const fallbackDomains = options.legacyDomain?.trim()
-    ? [options.legacyDomain, DEFAULT_INSTITUTIONAL_EMAIL_DOMAINS[1]]
+    ? [options.legacyDomain, ...DEFAULT_INSTITUTIONAL_EMAIL_DOMAINS.slice(1)]
     : DEFAULT_INSTITUTIONAL_EMAIL_DOMAINS;
 
   return parseInstitutionalEmailDomains(fallbackDomains.join(","));

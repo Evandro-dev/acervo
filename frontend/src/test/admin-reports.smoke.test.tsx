@@ -12,6 +12,20 @@ vi.mock("@/features/acervo/hooks", () => ({
   useCoursesQuery: vi.fn(),
 }));
 
+vi.mock("@/components/ui/date-range-picker", () => ({
+  DateRangePicker: ({
+    label,
+    onChange,
+  }: {
+    label: string;
+    onChange: (range: { from: Date; to: Date }) => void;
+  }) => (
+    <button type="button" onClick={() => onChange({ from: new Date(2026, 0, 1), to: new Date(2026, 5, 30) })}>
+      {label}
+    </button>
+  ),
+}));
+
 vi.mock("@/features/auth/auth-context", () => ({
   useAuth: vi.fn(),
 }));
@@ -71,7 +85,7 @@ describe("AdminRelatorios", () => {
     fireEvent.change(screen.getByLabelText("Área"), { target: { value: "Saúde" } });
     fireEvent.change(screen.getByLabelText("Curso"), { target: { value: "Enfermagem" } });
     fireEvent.change(screen.getByLabelText("Status"), { target: { value: "published" } });
-    fireEvent.change(screen.getByLabelText("Submissão a partir de"), { target: { value: "2026-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Período de submissão" }));
     fireEvent.click(screen.getByRole("button", { name: "Baixar relatório Excel" }));
 
     await waitFor(() =>
@@ -81,6 +95,7 @@ describe("AdminRelatorios", () => {
         course: "Enfermagem",
         status: "published",
         dateFrom: "2026-01-01",
+        dateTo: "2026-06-30",
       }),
     );
     expect(mockedTriggerBrowserDownload).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/\.xlsx$/));

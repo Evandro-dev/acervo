@@ -4,7 +4,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Label } from "@/components/ui/label";
 import { useAdminEventsQuery, useAreasQuery, useCoursesQuery } from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
@@ -12,6 +12,7 @@ import { downloadArticleReport } from "@/features/reports/api";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
 import { triggerBrowserDownload } from "@/lib/article-download";
+import { dateRangeFromIsoDates, dateRangeToIsoDates } from "@/lib/date-range";
 import type { ArticleReportFilters } from "@/types/acervo";
 
 const emptyFilters: ArticleReportFilters = {
@@ -25,9 +26,14 @@ export default function AdminRelatorios() {
   const { data: courses = [] } = useCoursesQuery({ includeEmpty: true });
   const [filters, setFilters] = useState<ArticleReportFilters>(emptyFilters);
   const [isDownloading, setIsDownloading] = useState(false);
+  const submissionDateRange = dateRangeFromIsoDates(filters.dateFrom, filters.dateTo);
 
   const updateFilter = (name: keyof ArticleReportFilters, value: string) => {
     setFilters((current) => ({ ...current, [name]: value || undefined }));
+  };
+
+  const updateSubmissionDateRange = (range: Parameters<typeof dateRangeToIsoDates>[0]) => {
+    setFilters((current) => ({ ...current, ...dateRangeToIsoDates(range) }));
   };
 
   const download = async () => {
@@ -139,23 +145,14 @@ export default function AdminRelatorios() {
               </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="report-date-from">Submissão a partir de</Label>
-              <Input
-                id="report-date-from"
-                type="date"
-                value={filters.dateFrom ?? ""}
-                onChange={(event) => updateFilter("dateFrom", event.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="report-date-to">Submissão até</Label>
-              <Input
-                id="report-date-to"
-                type="date"
-                value={filters.dateTo ?? ""}
-                onChange={(event) => updateFilter("dateTo", event.target.value)}
+            <div className="md:col-span-2 xl:col-span-3">
+              <DateRangePicker
+                id="report-submission-period"
+                label="Período de submissão"
+                value={submissionDateRange}
+                onChange={updateSubmissionDateRange}
+                placeholder="Todos os períodos de submissão"
+                clearLabel="Remover filtro de período"
               />
             </div>
           </div>

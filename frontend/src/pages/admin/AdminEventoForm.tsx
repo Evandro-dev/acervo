@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
-import { CalendarDays, ExternalLink, FileText, ImageIcon, Plus, Save, Trash2, Upload } from "lucide-react";
+import { ExternalLink, FileText, ImageIcon, Plus, Save, Trash2, Upload } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AreaCombobox } from "@/components/ui/area-combobox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +25,7 @@ import {
 import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
+import { formatDateRangeLabel } from "@/lib/date-range";
 import { isUsableResourceUrl } from "@/lib/file-links";
 import { cn } from "@/lib/utils";
 import { eventTypes, type Event, type EventMutationInput, type EventRule, type EventType } from "@/types/acervo";
@@ -146,39 +144,6 @@ function isSupportedCoverImageFile(file: File) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function formatEventDateValue(range: DateRange) {
-  const from = range.from;
-  if (!from) return "";
-
-  const to = range.to ?? from;
-  const sameDay =
-    from.getDate() === to.getDate() &&
-    from.getMonth() === to.getMonth() &&
-    from.getFullYear() === to.getFullYear();
-  const sameMonth = from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear();
-  const sameYear = from.getFullYear() === to.getFullYear();
-
-  if (sameDay) {
-    return format(from, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
-  }
-
-  if (sameMonth) {
-    return `${format(from, "d", { locale: ptBR })} a ${format(to, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}`;
-  }
-
-  if (sameYear) {
-    return `${format(from, "d 'de' MMMM", { locale: ptBR })} a ${format(to, "d 'de' MMMM 'de' yyyy", {
-      locale: ptBR,
-    })}`;
-  }
-
-  return `${format(from, "d 'de' MMMM 'de' yyyy", { locale: ptBR })} a ${format(
-    to,
-    "d 'de' MMMM 'de' yyyy",
-    { locale: ptBR },
-  )}`;
 }
 
 function createRuleItem(value?: Partial<Omit<RuleFormItem, "key" | "pendingFile">>): RuleFormItem {
@@ -538,9 +503,6 @@ export default function AdminEventoForm() {
     uploadEventCoverImageMutation.isPending ||
     uploadEventRuleFileMutation.isPending;
   const defaultOpenSections = ["identificacao", "contato", "ficha", "temas", "comissao", "normas", "edicoes"];
-  const periodButtonLabel = selectedDateRange
-    ? formatEventDateValue(selectedDateRange)
-    : form.date.trim() || "Clique para escolher o período do evento";
   const previousEditionEventOptions = adminEvents.filter((event) => event.id !== id);
 
   const handleEventPeriodChange = (range: DateRange | undefined) => {
@@ -555,7 +517,7 @@ export default function AdminEventoForm() {
     setForm((current) => ({
       ...current,
       year: from.getFullYear(),
-      date: formatEventDateValue({ from, to: range?.to }),
+      date: formatDateRangeLabel({ from, to: range?.to }),
     }));
   };
 
@@ -722,48 +684,13 @@ export default function AdminEventoForm() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label>Período do evento</Label>
-                {form.date.trim() ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto px-0 text-xs text-muted-foreground hover:bg-transparent"
-                    onClick={() => {
-                      setSelectedDateRange(undefined);
-                      setForm((current) => ({ ...current, date: "" }));
-                    }}
-                  >
-                    Limpar período
-                  </Button>
-                ) : null}
-              </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "justify-start gap-2 rounded-xl border-border/60 px-3 py-6 text-left font-normal",
-                      !form.date.trim() && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarDays data-icon="inline-start" />
-                    {periodButtonLabel}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar
-                    mode="range"
-                    locale={ptBR}
-                    selected={selectedDateRange}
-                    onSelect={handleEventPeriodChange}
-                    numberOfMonths={1}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateRangePicker
+                label="Período do evento"
+                value={selectedDateRange}
+                onChange={handleEventPeriodChange}
+                placeholder="Clique para escolher o período do evento"
+                fallbackLabel={form.date}
+              />
               <p className="text-xs text-muted-foreground">
                 Ao escolher o calendário, o sistema salva automaticamente o ano do evento como <strong>{form.year}</strong>.
               </p>

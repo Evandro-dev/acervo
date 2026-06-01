@@ -194,7 +194,7 @@ async function main() {
 
   await ensureDatabaseExists(databaseUrl);
   await syncPrismaClient();
-  await run(npmCommand, ["run", "prisma:deploy"]);
+  await run(npmCommand, ["run", "prisma:deploy:retry"]);
   await seedIfEmpty(databaseUrl);
 }
 
