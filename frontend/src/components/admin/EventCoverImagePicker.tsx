@@ -55,8 +55,8 @@ export function EventCoverImagePicker({
       />
 
       {previewUrl ? (
-        <div className="group relative w-full max-w-xl overflow-hidden rounded-xl border border-border/60 bg-brand-soft shadow-card">
-          <ProtectedImage src={previewUrl} alt="Preview da imagem do evento" className="aspect-video w-full object-cover" />
+        <div className="group relative h-56 w-full overflow-hidden rounded-xl border border-border/60 bg-muted/30 shadow-card sm:h-72">
+          <ProtectedImage src={previewUrl} alt="Preview da imagem do evento" className="h-full w-full object-contain" />
           <label
             htmlFor={inputId}
             className={cn(
@@ -88,7 +88,7 @@ export function EventCoverImagePicker({
         <label
           htmlFor={inputId}
           className={cn(
-            "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/30 px-3 py-10 text-center text-sm text-muted-foreground transition-colors hover:bg-muted/50",
+            "flex h-56 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 px-3 text-center text-sm text-muted-foreground transition-colors hover:bg-muted/50 sm:h-72",
             disabled && "pointer-events-none opacity-50",
           )}
         >
