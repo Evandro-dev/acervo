@@ -249,14 +249,6 @@
     width: 0.5rem;
   }
 
-  .acervo-dropdown-scrollbar[data-radix-select-viewport] {
-    scrollbar-width: thin;
-  }
-
-  .acervo-dropdown-scrollbar[data-radix-select-viewport]::-webkit-scrollbar {
-    display: block;
-  }
-
   .acervo-dropdown-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
