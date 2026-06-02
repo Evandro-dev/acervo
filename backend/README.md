@@ -116,7 +116,7 @@ Remove-Item Env:ADMIN_BOOTSTRAP_PASSWORD
 
 ## Uploads persistentes
 
-- em produção, configure `BLOB_READ_WRITE_TOKEN` somente no backend para armazenar capas de eventos, PDFs de normas e PDFs de trabalhos no Vercel Blob
+- em produção, configure `BLOB_READ_WRITE_TOKEN` somente no backend para armazenar capas de eventos, documentos de normas e PDFs de trabalhos no Vercel Blob
 - sem `BLOB_READ_WRITE_TOKEN`, o backend usa `backend/uploads/` como fallback local
 - `UPLOADS_DIRECTORY` permanece disponível para apontar esse fallback a outro diretório em ambientes autogerenciados
 - nunca exponha `BLOB_READ_WRITE_TOKEN` no frontend, em arquivos versionados ou em mensagens

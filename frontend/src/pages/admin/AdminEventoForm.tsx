@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
 import { ExternalLink, FileText, Plus, Save, Trash2, Upload } from "lucide-react";
+import { DocumentFilePicker } from "@/components/admin/DocumentFilePicker";
 import { EventCoverImagePicker } from "@/components/admin/EventCoverImagePicker";
-import { PdfFilePicker } from "@/components/admin/PdfFilePicker";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AreaCombobox } from "@/components/ui/area-combobox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -30,6 +30,11 @@ import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
 import { formatDateRangeLabel } from "@/lib/date-range";
 import { isStoredEventRuleFileUrl } from "@/lib/event-rule-file";
+import {
+  eventRuleDocumentAccept,
+  isSupportedEventRuleDocument,
+  removeEventRuleDocumentExtension,
+} from "@/lib/event-rule-documents";
 import { isUsableResourceUrl } from "@/lib/file-links";
 import { cn } from "@/lib/utils";
 import { eventTypes, type Event, type EventMutationInput, type EventRule, type EventType } from "@/types/acervo";
@@ -996,11 +1001,11 @@ export default function AdminEventoForm() {
 
                     <div className="flex flex-wrap items-center gap-2 rounded-xl bg-brand-soft px-3 py-2 text-xs text-primary-dark">
                       <FileText className="h-4 w-4" />
-                      O fluxo principal é submeter o PDF no Acervo. Use link externo somente quando o arquivo já estiver hospedado fora.
+                      O fluxo principal é submeter o arquivo no Acervo. Use link externo somente quando ele já estiver hospedado fora.
                     </div>
 
                     <SegmentedControl
-                      ariaLabel="Origem do PDF da norma"
+                      ariaLabel="Origem do arquivo da norma"
                       className="grid-cols-2"
                       value={getRuleFileMode(rule)}
                       onValueChange={(mode) =>
@@ -1014,7 +1019,7 @@ export default function AdminEventoForm() {
                           value: "upload",
                           label: (
                             <>
-                              <Upload className="h-4 w-4" /> Enviar PDF
+                              <Upload className="h-4 w-4" /> Enviar arquivo
                             </>
                           ),
                         },
@@ -1031,7 +1036,7 @@ export default function AdminEventoForm() {
 
                     {rule.useExternalLink ? (
                       <div className="flex flex-col gap-2">
-                        <Label>Link externo do PDF</Label>
+                        <Label>Link externo do arquivo</Label>
                         <Input
                           value={rule.fileUrl}
                           onChange={(event) =>
@@ -1059,21 +1064,38 @@ export default function AdminEventoForm() {
                       </div>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        <Label>PDF da norma</Label>
-                        <PdfFilePicker
-                          title={rule.fileUrl ? "Selecionar novo PDF da norma" : "Selecionar PDF da norma"}
-                          description="Envie o arquivo .pdf que será publicado com o evento."
+                        <Label>Arquivo da norma</Label>
+                        <DocumentFilePicker
+                          accept={eventRuleDocumentAccept}
+                          title={
+                            rule.fileUrl ? "Selecionar novo arquivo da norma" : "Selecionar arquivo da norma"
+                          }
+                          description="Envie um arquivo .pdf, .docx ou .pptx para publicar com o evento."
                           selectedFile={rule.pendingFile}
                           onFilesChange={(files) => {
                             const file = files[0] ?? null;
+                            if (file && !isSupportedEventRuleDocument(file)) {
+                              toast({
+                                title: "Arquivo não suportado",
+                                description: "Selecione um arquivo PDF, DOCX ou PPTX.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+
                             setForm((current) => ({
                               ...current,
                               rules: replaceItemByKey(current.rules, rule.key, {
                                 pendingFile: file,
-                                title: file && !rule.title.trim() ? file.name.replace(/\.pdf$/i, "") : rule.title,
+                                title:
+                                  file && !rule.title.trim()
+                                    ? removeEventRuleDocumentExtension(file.name)
+                                    : rule.title,
                               }),
                             }));
                           }}
+                          removeAriaLabel="Remover arquivo da norma selecionado"
+                          replaceLabel="Trocar arquivo"
                           onRemove={() =>
                             setForm((current) => ({
                               ...current,

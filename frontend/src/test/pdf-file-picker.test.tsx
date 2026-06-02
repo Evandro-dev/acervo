@@ -5,13 +5,13 @@ describe("PdfFilePicker", () => {
   it("shows a reusable upload area with hover feedback", () => {
     render(
       <PdfFilePicker
-        title="Selecionar PDF da norma"
+        title="Selecionar PDF acadêmico"
         description="Envie o arquivo PDF."
         onFilesChange={vi.fn()}
       />,
     );
 
-    const uploadArea = screen.getByText("Selecionar PDF da norma").closest("label");
+    const uploadArea = screen.getByText("Selecionar PDF acadêmico").closest("label");
     expect(uploadArea).toHaveClass("border-dashed", "hover:bg-muted/50");
     expect(screen.getByText("Envie o arquivo PDF.")).toBeInTheDocument();
   });

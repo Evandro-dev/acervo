@@ -4,6 +4,11 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
+import {
+  isEventRuleDocumentExtensionSupported,
+  type EventRuleDocumentExtension,
+  type ValidatedEventRuleDocument,
+} from "./event-rule-documents.js";
 import { removePublicBlob, uploadPublicBlob } from "./public-blob-storage.js";
 import { slugify } from "./slug.js";
 import { resolveUploadsDirectory } from "./uploads-directory.js";
@@ -48,7 +53,7 @@ export function isSafeEventRuleFileName(fileName: string) {
 
 function getComparableEventRuleFileKey(fileName: string) {
   const extension = path.extname(fileName).toLowerCase();
-  if (extension !== ".pdf") return "";
+  if (!isEventRuleDocumentExtensionSupported(fileName)) return "";
 
   return path
     .basename(fileName, extension)
@@ -56,11 +61,11 @@ function getComparableEventRuleFileKey(fileName: string) {
     .replace(/-[0-9a-f]{8}$/i, "");
 }
 
-function buildEventRuleFileName(originalFileName: string) {
-  const extension = path.extname(originalFileName).toLowerCase() || ".pdf";
-  const basename = path.basename(originalFileName, extension);
+function buildEventRuleFileName(originalFileName: string, validatedExtension: EventRuleDocumentExtension) {
+  const originalExtension = path.extname(originalFileName);
+  const basename = path.basename(originalFileName, originalExtension);
   const slug = slugify(basename) || "norma";
-  return `${Date.now()}-${slug}-${randomUUID().slice(0, 8)}${extension === ".pdf" ? ".pdf" : extension}`;
+  return `${Date.now()}-${slug}-${randomUUID().slice(0, 8)}${validatedExtension}`;
 }
 
 export function buildEventRuleFileUrl(request: FastifyRequest, eventId: string, fileName: string) {
@@ -68,19 +73,23 @@ export function buildEventRuleFileUrl(request: FastifyRequest, eventId: string, 
   return `${getRequestProtocol(request)}://${getRequestHost(request)}/events/${eventId}/files/${encodedFileName}`;
 }
 
-export async function saveEventRuleFile(eventId: string, originalFileName: string, data: Uint8Array) {
-  const fileName = buildEventRuleFileName(originalFileName);
+export async function saveEventRuleFile(
+  eventId: string,
+  originalFileName: string,
+  document: ValidatedEventRuleDocument,
+) {
+  const fileName = buildEventRuleFileName(originalFileName, document.descriptor.extension);
   const blobUrl = await uploadPublicBlob(
     `acervo/events/${eventId}/rules/${fileName}`,
-    Buffer.from(data),
-    "application/pdf",
+    Buffer.from(document.data),
+    document.descriptor.contentType,
   );
   if (blobUrl) return { fileName, blobUrl };
 
   const targetDirectory = getEventRuleEventDirectory(eventId);
 
   await mkdir(targetDirectory, { recursive: true });
-  await writeFile(getEventRuleFilePath(eventId, fileName), data);
+  await writeFile(getEventRuleFilePath(eventId, fileName), document.data);
 
   return { fileName, blobUrl: null };
 }

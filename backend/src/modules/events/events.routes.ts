@@ -31,7 +31,10 @@ import {
   removeEventRuleResource,
   saveEventRuleFile,
 } from "../../lib/event-rule-files.js";
-import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
+import {
+  getEventRuleDocumentContentType,
+  readValidatedEventRuleDocumentUpload,
+} from "../../lib/event-rule-documents.js";
 import { requirePrivilegedUser } from "../../lib/permissions.js";
 import { prisma } from "../../lib/prisma.js";
 import { queryBooleanSchema } from "../../lib/query-boolean.js";
@@ -237,10 +240,11 @@ export async function eventRoutes(app: FastifyInstance) {
       readableFileName = replacementFileName;
     }
 
-    reply.header("Content-Type", "application/pdf");
+    const contentType = getEventRuleDocumentContentType(readableFileName);
+    reply.header("Content-Type", contentType);
     reply.header(
       "Content-Disposition",
-      `${download ? "attachment" : "inline"}; filename="${readableFileName}"`,
+      `${download || contentType !== "application/pdf" ? "attachment" : "inline"}; filename="${readableFileName}"`,
     );
 
     return reply.send(createEventRuleReadStream(id, readableFileName));
@@ -344,9 +348,9 @@ export async function eventRoutes(app: FastifyInstance) {
     if (!event) return reply.status(404).send({ error: "Evento não encontrado" });
 
     const file = await req.file();
-    if (!file) return reply.status(400).send({ error: "Envie um arquivo PDF no campo 'file'" });
+    if (!file) return reply.status(400).send({ error: "Envie um arquivo PDF, DOCX ou PPTX no campo 'file'" });
 
-    const upload = await saveEventRuleFile(id, file.filename, await readValidatedPdfUpload(file));
+    const upload = await saveEventRuleFile(id, file.filename, await readValidatedEventRuleDocumentUpload(file));
     return reply.status(201).send({
       fileUrl: upload.blobUrl ?? buildEventRuleFileUrl(req, id, upload.fileName),
     });

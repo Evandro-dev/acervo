@@ -42,7 +42,7 @@ describe("EventoDetalhe", () => {
         themes: [],
         committee: [],
         catalog: {},
-        rules: [],
+        rules: [{ title: "Template de apresentação", file: "https://example.com/template-apresentacao.pptx" }],
         previousEditions: [],
         contact: { email: "evento@ulife.com.br" },
         articleCount: 0,
@@ -72,5 +72,11 @@ describe("EventoDetalhe", () => {
     expect(publicationsTab).toHaveAttribute("data-state", "active");
     expect(publicationsTab).toHaveClass("bg-brand", "!text-primary-foreground", "shadow-sm");
     expect(activeTab).toHaveClass("text-foreground/70", "hover:bg-muted");
+
+    const aboutTab = screen.getByRole("tab", { name: "Sobre" });
+    fireEvent.mouseDown(aboutTab);
+    fireEvent.click(aboutTab);
+    fireEvent.click(screen.getByRole("button", { name: "Normas" }));
+    expect(screen.getByRole("button", { name: "PowerPoint" })).toBeInTheDocument();
   });
 });

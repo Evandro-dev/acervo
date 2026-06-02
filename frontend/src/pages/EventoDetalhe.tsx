@@ -16,6 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { getApiResourceUrl } from "@/lib/api";
 import { reserveViewTracking, rollbackViewTracking } from "@/lib/engagement";
 import { getBrandedNavigationItemStateClassName } from "@/lib/branded-navigation";
+import { getEventRuleDocumentLabel } from "@/lib/event-rule-documents";
 import { isUsableResourceUrl } from "@/lib/file-links";
 import { cn } from "@/lib/utils";
 import type { EventCommitteeMember, EventPreviousEdition } from "@/types/acervo";
@@ -307,7 +308,7 @@ export default function EventoDetalhe() {
                             toast({ title: "Arquivo indisponível", description: "A norma ainda não foi vinculada." });
                           }}
                         >
-                          <FileDown className="h-4 w-4" /> PDF
+                          <FileDown className="h-4 w-4" /> {getEventRuleDocumentLabel(rule.file)}
                         </Button>
                       </Card>
                     ))}

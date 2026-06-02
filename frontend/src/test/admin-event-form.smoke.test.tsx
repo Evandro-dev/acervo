@@ -77,7 +77,7 @@ describe("AdminEventoForm", () => {
     } as never);
   });
 
-  it("creates an event and uploads its cover image and rule PDFs before persisting final rules", async () => {
+  it("creates an event and uploads its cover image and rule documents before persisting final rules", async () => {
     const createMutateAsync = vi.fn().mockResolvedValue({
       id: "event-1",
       title: "Congresso Completo",
@@ -87,7 +87,7 @@ describe("AdminEventoForm", () => {
       title: "Congresso Completo",
     });
     const uploadMutateAsync = vi.fn().mockResolvedValue({
-      fileUrl: "http://localhost:10000/events/event-1/files/norma-submissao.pdf",
+      fileUrl: "http://localhost:10000/events/event-1/files/template-apresentacao.pptx",
     });
     const uploadCoverMutateAsync = vi.fn().mockResolvedValue({
       coverUrl: "http://localhost:10000/events/event-1/cover/capa-evento.jpg",
@@ -146,16 +146,18 @@ describe("AdminEventoForm", () => {
       target: { value: "Normas de submissão" },
     });
 
-    expect(screen.getByRole("group", { name: "Origem do PDF da norma" })).toHaveClass("gap-2", "bg-muted");
-    expect(screen.getByRole("button", { name: "Enviar PDF" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("group", { name: "Origem do arquivo da norma" })).toHaveClass("gap-2", "bg-muted");
+    expect(screen.getByRole("button", { name: "Enviar arquivo" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Usar link externo" })).toHaveClass(
       "hover:bg-background/70",
       "hover:text-foreground",
     );
 
-    const pdfInput = container.querySelector('input[type="file"][accept*=".pdf"]') as HTMLInputElement;
-    const file = new File(["pdf-content"], "norma-submissao.pdf", { type: "application/pdf" });
-    fireEvent.change(pdfInput, { target: { files: [file] } });
+    const ruleDocumentInput = container.querySelector('input[type="file"][accept*=".pptx"]') as HTMLInputElement;
+    const file = new File(["slides"], "template-apresentacao.pptx", {
+      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    });
+    fireEvent.change(ruleDocumentInput, { target: { files: [file] } });
 
     fireEvent.click(screen.getByRole("button", { name: "Salvar evento completo" }));
 
@@ -195,7 +197,7 @@ describe("AdminEventoForm", () => {
           rules: [
             {
               title: "Normas de submissão",
-              file: "http://localhost:10000/events/event-1/files/norma-submissao.pdf",
+              file: "http://localhost:10000/events/event-1/files/template-apresentacao.pptx",
             },
           ],
         }),
