@@ -158,13 +158,16 @@ export default function AdminPublicacoes() {
 
   return (
     <AdminShell title="Publicações">
-      <div className="mb-3 grid grid-cols-3 rounded-md bg-muted p-1 text-xs font-medium">
+      <div className="mb-3 grid grid-cols-3 gap-2 rounded-md bg-muted p-1 text-xs font-medium">
         {tabs.map((currentTab) => (
           <button
             key={currentTab.key}
+            type="button"
             onClick={() => setTab(currentTab.key)}
-            className={`flex items-center justify-center gap-1 rounded px-2 py-1.5 ${
-              tab === currentTab.key ? "bg-background shadow-card" : "text-muted-foreground"
+            className={`flex items-center justify-center gap-1 rounded px-2 py-1.5 transition-colors ${
+              tab === currentTab.key
+                ? "bg-background shadow-card"
+                : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
             }`}
           >
             {currentTab.label}
