@@ -38,6 +38,7 @@ import { prisma } from "../../lib/prisma.js";
 import { queryBooleanSchema } from "../../lib/query-boolean.js";
 import { serializeEvent } from "../../lib/serializers.js";
 import { slugify } from "../../lib/slug.js";
+import { resolveUpdatedEventCoverUrl } from "./event-cover.policy.js";
 
 const eventPayloadSchema = z.object({
   slug: z.string().min(2).max(160).optional(),
@@ -47,7 +48,7 @@ const eventPayloadSchema = z.object({
   date: z.string().min(2).max(120),
   area: z.string().min(1).max(120),
   type: eventTypeSchema,
-  coverUrl: z.string().url().optional(),
+  coverUrl: z.string().url().nullable().optional(),
   presentation: z.string().min(10),
   themes: z.array(z.string().min(1).max(120)).default([]),
   committee: eventCommitteeSchema.default([]),
@@ -159,7 +160,7 @@ function getRemovedLocalRuleFiles(eventId: string, currentRules: unknown, nextRu
     });
 }
 
-function getRemovedLocalCoverFile(eventId: string, currentCoverUrl: string | null, nextCoverUrl?: string) {
+function getRemovedLocalCoverFile(eventId: string, currentCoverUrl: string | null, nextCoverUrl?: string | null) {
   const currentFileName = extractLocalEventCoverFileName(eventId, currentCoverUrl);
   if (!currentFileName) return null;
 
@@ -366,7 +367,7 @@ export async function eventRoutes(app: FastifyInstance) {
       date: payload.date ?? current.date,
       area: payload.area ?? current.area,
       type: payload.type ?? current.type,
-      coverUrl: payload.coverUrl ?? current.coverUrl ?? undefined,
+      coverUrl: resolveUpdatedEventCoverUrl(current.coverUrl, payload.coverUrl),
       presentation: payload.presentation ?? current.presentation,
       themes: payload.themes ?? current.themes,
       committee: payload.committee ?? current.committee ?? [],

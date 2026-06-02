@@ -22,6 +22,7 @@ AUTH_SESSION_IDLE_TIMEOUT_MINUTES=30
 TRUST_PROXY_HOPS=1
 PORT=10000
 CORS_ORIGIN="http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173"
+# UPLOADS_DIRECTORY="/var/data"
 INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br,prof.una.br"
 PUBLIC_COORDINATOR_REGISTRATION_ENABLED="false"
 SEED_ACCESS_PASSWORD=""
@@ -111,6 +112,12 @@ Remove-Item Env:ADMIN_BOOTSTRAP_PASSWORD
 - identificadores de conta e IP armazenados como HMAC nos contadores de segurança
 - leitura do IP real atrás do proxy da hospedagem configurada por `TRUST_PROXY_HOPS`
 - resposta estruturada com `Retry-After` e `retryAfterSeconds` para o frontend exibir o temporizador
+
+## Uploads persistentes na Render
+
+- localmente, capas de eventos, PDFs de normas e PDFs de trabalhos ficam em `backend/uploads/`
+- na Render, monte um disco persistente em `/var/data` e configure `UPLOADS_DIRECTORY="/var/data"`
+- sem um disco persistente, a Render descarta arquivos enviados após reinícios e deploys; os registros do banco continuam existindo, mas os arquivos deixam de ser encontrados
 
 ## Limites atuais
 

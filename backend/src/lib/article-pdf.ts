@@ -4,8 +4,9 @@ import path from "node:path";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
 import { slugify } from "./slug.js";
+import { resolveUploadsDirectory } from "./uploads-directory.js";
 
-const articlePdfDirectory = path.resolve(process.cwd(), "uploads", "articles");
+const articlePdfDirectory = path.join(resolveUploadsDirectory(env.UPLOADS_DIRECTORY), "articles");
 
 function getRequestHost(request: FastifyRequest) {
   const forwardedHost = request.headers["x-forwarded-host"];

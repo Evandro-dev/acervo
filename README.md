@@ -136,7 +136,8 @@ JWT_SECRET="sua_chave_secreta"
 JWT_EXPIRES_IN="12h"
 AUTH_SESSION_IDLE_TIMEOUT_MINUTES=30
 TRUST_PROXY_HOPS=1
-CORS_ORIGIN="https://acervouna.vercel.app"
+CORS_ORIGIN="https://acervouna.vercel.app,https://acervouna.com.br,https://www.acervouna.com.br"
+UPLOADS_DIRECTORY="/var/data"
 INSTITUTIONAL_EMAIL_DOMAINS="acervo.edu,ulife.com.br,prof.una.br"
 ```
 
@@ -193,7 +194,8 @@ Defina uma senha local com pelo menos 12 caracteres em `SEED_ACCESS_PASSWORD` an
 
 ## Observações
 
-- os PDFs enviados ficam em `backend/uploads/`
+- localmente, capas de eventos e PDFs enviados ficam em `backend/uploads/`
+- na Render, configure um disco persistente montado em `/var/data` e defina `UPLOADS_DIRECTORY="/var/data"`; sem isso, uploads locais somem após reinícios e deploys
 - o seed automático não roda se já existirem usuários no banco, para não apagar dados já cadastrados
 - o seed atual cria apenas usuários de acesso e não adiciona eventos ou artigos fictícios
 - para resetar tudo manualmente, use os comandos do Prisma dentro de `backend/`

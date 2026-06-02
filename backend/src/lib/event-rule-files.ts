@@ -5,8 +5,9 @@ import { randomUUID } from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
 import { slugify } from "./slug.js";
+import { resolveUploadsDirectory } from "./uploads-directory.js";
 
-const eventRuleDirectory = path.resolve(process.cwd(), "uploads", "events");
+const eventRuleDirectory = path.join(resolveUploadsDirectory(env.UPLOADS_DIRECTORY), "events");
 
 function getRequestHost(request: FastifyRequest) {
   const forwardedHost = request.headers["x-forwarded-host"];

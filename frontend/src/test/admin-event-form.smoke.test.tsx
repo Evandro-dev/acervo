@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import AdminEventoForm from "@/pages/admin/AdminEventoForm";
 import {
   useAdminEventsQuery,
@@ -201,5 +201,74 @@ describe("AdminEventoForm", () => {
         description: "Congresso Completo",
       }),
     );
+  });
+
+  it("removes the persisted cover when an edited event is saved without its current image", async () => {
+    const updateMutateAsync = vi.fn().mockResolvedValue({
+      id: "event-1",
+      title: "Congresso Completo",
+    });
+    const uploadCoverMutateAsync = vi.fn();
+
+    mockedUseEventQuery.mockReturnValue({
+      data: {
+        id: "event-1",
+        slug: "congresso-completo",
+        title: "Congresso Completo",
+        edition: "1ª Edição",
+        year: 2026,
+        date: "15 de junho de 2026",
+        area: "Tecnologia",
+        type: "Congresso",
+        cover: "http://localhost:10000/events/event-1/cover/current.png",
+        presentation: "Apresentação completa do evento com detalhes suficientes.",
+        themes: [],
+        committee: [],
+        rules: [],
+        previousEditions: [],
+        contact: { email: "congresso@acervo.edu" },
+        catalog: {},
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseCreateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUpdateEventMutation.mockReturnValue({
+      mutateAsync: updateMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCoverImageMutation.mockReturnValue({
+      mutateAsync: uploadCoverMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUploadEventRuleFileMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+
+    render(
+      <MemoryRouter
+        initialEntries={["/admin/eventos/event-1"]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <Routes>
+          <Route path="/admin/eventos/:id" element={<AdminEventoForm />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remover imagem do evento" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar evento completo" }));
+
+    await waitFor(() =>
+      expect(updateMutateAsync).toHaveBeenCalledWith({
+        id: "event-1",
+        payload: expect.objectContaining({ coverUrl: null }),
+      }),
+    );
+    expect(uploadCoverMutateAsync).not.toHaveBeenCalled();
   });
 });

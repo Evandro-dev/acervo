@@ -195,7 +195,7 @@ export type EventMutationInput = {
   date: string;
   area: string;
   type: EventType;
-  coverUrl?: string;
+  coverUrl?: string | null;
   presentation: string;
   themes: string[];
   committee: EventCommitteeMember[];

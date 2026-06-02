@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
-import { ExternalLink, FileText, ImageIcon, Plus, Save, Trash2, Upload } from "lucide-react";
+import { ExternalLink, FileText, Plus, Save, Trash2, Upload } from "lucide-react";
+import { EventCoverImagePicker } from "@/components/admin/EventCoverImagePicker";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AreaCombobox } from "@/components/ui/area-combobox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -10,7 +11,6 @@ import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ProtectedImage } from "@/components/ui/protected-image";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,6 +71,7 @@ type FormState = {
   type: EventType;
   coverUrl: string;
   coverFile: File | null;
+  removeCoverOnSave: boolean;
   presentation: string;
   contactEmail: string;
   contactPhone: string;
@@ -185,6 +186,7 @@ function emptyForm(): FormState {
     type: "Congresso",
     coverUrl: "",
     coverFile: null,
+    removeCoverOnSave: false,
     presentation: "",
     contactEmail: "",
     contactPhone: "",
@@ -209,6 +211,7 @@ function mapEventToForm(event: Event): FormState {
     type: event.type,
     coverUrl: event.cover ?? "",
     coverFile: null,
+    removeCoverOnSave: false,
     presentation: event.presentation,
     contactEmail: event.contact.email,
     contactPhone: event.contact.phone ?? "",
@@ -397,7 +400,7 @@ function validateAndPrepare(form: FormState) {
     date,
     area,
     type: form.type,
-    coverUrl: coverUrl || undefined,
+    coverUrl: coverUrl || (form.removeCoverOnSave ? null : undefined),
     presentation,
     themes,
     committee,
@@ -489,13 +492,11 @@ export default function AdminEventoForm() {
   const uploadEventRuleFileMutation = useUploadEventRuleFileMutation();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
-  const [coverInputKey, setCoverInputKey] = useState(0);
 
   useEffect(() => {
     if (!existing) return;
     setForm(mapEventToForm(existing));
     setSelectedDateRange(undefined);
-    setCoverInputKey((current) => current + 1);
   }, [existing]);
 
   const isSubmitting =
@@ -706,54 +707,31 @@ export default function AdminEventoForm() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
-              <div className="flex flex-col gap-2">
-                <Label>Imagem do evento</Label>
-                <Input
-                  key={coverInputKey}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] ?? null;
-                    setForm((current) => ({ ...current, coverFile: file }));
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Caso não tenha uma imagem, será exibido um ícone de calendário para seu evento.
-                </p>
-                {form.coverFile ? (
-                  <div className="flex flex-wrap items-center gap-2 rounded-md bg-brand-soft px-3 py-2 text-xs text-primary-dark">
-                    <ImageIcon className="h-4 w-4" />
-                    <span className="min-w-0 flex-1 truncate">Nova imagem selecionada: {form.coverFile.name}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto px-1 py-0 text-xs text-primary-dark hover:bg-transparent"
-                      onClick={() => {
-                        setForm((current) => ({ ...current, coverFile: null }));
-                        setCoverInputKey((current) => current + 1);
-                      }}
-                    >
-                      Remover seleção
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-              <div className="overflow-hidden rounded-xl border border-border/60 bg-brand-soft">
-                {form.coverUrl ? (
-                  <ProtectedImage
-                    src={form.coverUrl}
-                    alt="Imagem atual do evento"
-                    className="h-32 w-full object-cover sm:h-full"
-                  />
-                ) : (
-                  <div className="flex h-32 flex-col items-center justify-center gap-2 px-4 text-center text-xs text-muted-foreground sm:h-full">
-                    <ImageIcon className="h-6 w-6 text-primary" />
-                    Nenhuma imagem cadastrada
-                  </div>
-                )}
-              </div>
+            <div className="flex flex-col gap-2">
+              <Label>Imagem do evento</Label>
+              <EventCoverImagePicker
+                currentCoverUrl={form.coverUrl || undefined}
+                disabled={isSubmitting}
+                selectedFile={form.coverFile}
+                onChange={(file) =>
+                  setForm((current) => ({
+                    ...current,
+                    coverFile: file,
+                    removeCoverOnSave: file ? false : current.removeCoverOnSave,
+                  }))
+                }
+                onRemove={() =>
+                  setForm((current) => ({
+                    ...current,
+                    coverUrl: "",
+                    coverFile: null,
+                    removeCoverOnSave: true,
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Caso não tenha uma imagem, será exibido um ícone de calendário para seu evento.
+              </p>
             </div>
 
             <div className="flex flex-col gap-2">

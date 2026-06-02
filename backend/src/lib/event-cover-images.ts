@@ -7,8 +7,9 @@ import type { MultipartFile } from "@fastify/multipart";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
 import { slugify } from "./slug.js";
+import { resolveUploadsDirectory } from "./uploads-directory.js";
 
-const eventCoverDirectory = path.resolve(process.cwd(), "uploads", "events");
+const eventCoverDirectory = path.join(resolveUploadsDirectory(env.UPLOADS_DIRECTORY), "events");
 
 const allowedImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const allowedImageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
