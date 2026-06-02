@@ -4,6 +4,7 @@ import AdminRelatorios from "@/pages/admin/AdminRelatorios";
 import { useAdminEventsQuery, useAreasQuery, useCoursesQuery } from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 import { downloadArticleReport } from "@/features/reports/api";
+import { useArticleReportCountQuery } from "@/features/reports/hooks";
 import { triggerBrowserDownload } from "@/lib/article-download";
 
 vi.mock("@/features/acervo/hooks", () => ({
@@ -34,6 +35,10 @@ vi.mock("@/features/reports/api", () => ({
   downloadArticleReport: vi.fn(),
 }));
 
+vi.mock("@/features/reports/hooks", () => ({
+  useArticleReportCountQuery: vi.fn(),
+}));
+
 vi.mock("@/lib/article-download", () => ({
   triggerBrowserDownload: vi.fn(),
 }));
@@ -43,6 +48,7 @@ const mockedUseAdminEventsQuery = vi.mocked(useAdminEventsQuery);
 const mockedUseAreasQuery = vi.mocked(useAreasQuery);
 const mockedUseCoursesQuery = vi.mocked(useCoursesQuery);
 const mockedDownloadArticleReport = vi.mocked(downloadArticleReport);
+const mockedUseArticleReportCountQuery = vi.mocked(useArticleReportCountQuery);
 const mockedTriggerBrowserDownload = vi.mocked(triggerBrowserDownload);
 
 describe("AdminRelatorios", () => {
@@ -72,6 +78,11 @@ describe("AdminRelatorios", () => {
       data: [{ id: "course-1", name: "Enfermagem", articleCount: 2 }],
     } as never);
     mockedDownloadArticleReport.mockResolvedValue(new Blob(["xlsx"]));
+    mockedUseArticleReportCountQuery.mockReturnValue({
+      data: { count: 2 },
+      isError: false,
+      isFetching: false,
+    } as never);
   });
 
   it("downloads an XLSX report using the selected filters", async () => {
@@ -102,5 +113,23 @@ describe("AdminRelatorios", () => {
       }),
     );
     expect(mockedTriggerBrowserDownload).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/\.xlsx$/));
+  });
+
+  it("disables export when no work matches the selected filters", () => {
+    mockedUseArticleReportCountQuery.mockReturnValue({
+      data: { count: 0 },
+      isError: false,
+      isFetching: false,
+    } as never);
+
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AdminRelatorios />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "Baixar relatório Excel" })).toBeDisabled();
+    expect(screen.getByText("Nenhum trabalho para exportar")).toBeInTheDocument();
+    expect(screen.getByText(/Eventos sem publicações não geram linhas no relatório/)).toBeInTheDocument();
   });
 });

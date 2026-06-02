@@ -78,10 +78,12 @@ npm run dev
 - cursos são normalizados nas tabelas `courses` e `article_courses`, sem duplicar nomes por diferença de caixa ou espaços
 - o catálogo institucional reaplicável pode ser sincronizado com `npm run catalog:sync`
 - administradores e coordenadores podem baixar o Excel pela tela `Relatórios` ou pela rota protegida `GET /reports/articles.xlsx`
+- a tela consulta `GET /reports/articles/count` para informar quantos trabalhos correspondem aos filtros e bloquear exportações vazias
 - filtros opcionais: evento, área, curso, status e período de submissão
 - cada arquivo contém as abas `Visão geral`, `Resumo por área`, `Resumo por curso` e `Trabalhos detalhados`
 - campos textuais são neutralizados antes da exportação para evitar interpretação acidental como fórmulas pela planilha
 - relatórios acima de 10.000 trabalhos exigem filtros adicionais para limitar uso de memória no servidor
+- relatórios sem nenhum trabalho correspondente aos filtros não geram arquivos vazios
 
 ## Provisionar o administrador inicial
 

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAdminEventsQuery, useAreasQuery, useCoursesQuery } from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 import { downloadArticleReport } from "@/features/reports/api";
+import { useArticleReportCountQuery } from "@/features/reports/hooks";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
 import { triggerBrowserDownload } from "@/lib/article-download";
@@ -28,6 +29,11 @@ export default function AdminRelatorios() {
   const [filters, setFilters] = useState<ArticleReportFilters>(emptyFilters);
   const [isDownloading, setIsDownloading] = useState(false);
   const submissionDateRange = dateRangeFromIsoDates(filters.dateFrom, filters.dateTo);
+  const reportCountQuery = useArticleReportCountQuery(filters, isAuthenticated);
+  const reportCount = reportCountQuery.data?.count;
+  const isReportEmpty = reportCount === 0;
+  const isDownloadDisabled =
+    isDownloading || reportCountQuery.isFetching || reportCountQuery.isError || reportCount === undefined || isReportEmpty;
 
   const updateFilter = (name: keyof ArticleReportFilters, value: string) => {
     setFilters((current) => ({ ...current, [name]: value || undefined }));
@@ -78,6 +84,27 @@ export default function AdminRelatorios() {
               O Excel contém visão geral, resumo numérico por área, resumo numérico por curso e trabalhos detalhados.
             </AlertDescription>
           </Alert>
+
+          {reportCountQuery.isError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Não foi possível verificar os trabalhos</AlertTitle>
+              <AlertDescription>Atualize a página para tentar novamente antes de gerar o relatório.</AlertDescription>
+            </Alert>
+          ) : isReportEmpty ? (
+            <Alert>
+              <AlertTitle>Nenhum trabalho para exportar</AlertTitle>
+              <AlertDescription>
+                Cadastre uma publicação ou ajuste os filtros selecionados. Eventos sem publicações não geram linhas no
+                relatório.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {reportCountQuery.isFetching || reportCount === undefined
+                ? "Verificando trabalhos disponíveis..."
+                : `${reportCount} ${reportCount === 1 ? "trabalho disponível" : "trabalhos disponíveis"} para exportação.`}
+            </p>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="space-y-2">
@@ -159,7 +186,7 @@ export default function AdminRelatorios() {
           </div>
 
           <div className="flex justify-center">
-            <Button type="button" onClick={download} disabled={isDownloading} className="w-full gap-2 bg-brand sm:w-auto">
+            <Button type="button" onClick={download} disabled={isDownloadDisabled} className="w-full gap-2 bg-brand sm:w-auto">
               <FileSpreadsheet className="h-4 w-4" />
               {isDownloading ? "Gerando relatório..." : "Baixar relatório Excel"}
             </Button>

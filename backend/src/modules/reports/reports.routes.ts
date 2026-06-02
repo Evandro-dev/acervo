@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { articleReportQuerySchema, buildArticleReportWhere } from "./article-report.filters.js";
-import { exceedsArticleReportLimit, MAX_ARTICLE_REPORT_ITEMS } from "./article-report.policy.js";
+import { exceedsArticleReportLimit, hasArticleReportItems, MAX_ARTICLE_REPORT_ITEMS } from "./article-report.policy.js";
 import { buildArticleReportWorkbook } from "./article-report.workbook.js";
 
 const articleReportInclude = {
@@ -28,6 +28,16 @@ const articleReportInclude = {
 type ArticleReportRecord = Prisma.ArticleGetPayload<{ include: typeof articleReportInclude }>;
 
 export async function reportRoutes(app: FastifyInstance) {
+  app.get("/articles/count", { preHandler: [app.requireRole("ADMIN", "COORDENADOR")] }, async (req, reply) => {
+    const filters = articleReportQuerySchema.parse(req.query ?? {});
+    const count = await prisma.article.count({
+      where: buildArticleReportWhere(filters),
+    });
+
+    reply.header("Cache-Control", "no-store");
+    return { count };
+  });
+
   app.get("/articles.xlsx", { preHandler: [app.requireRole("ADMIN", "COORDENADOR")] }, async (req, reply) => {
     const filters = articleReportQuerySchema.parse(req.query ?? {});
     const [articles, selectedEvent] = await Promise.all([
@@ -49,6 +59,13 @@ export async function reportRoutes(app: FastifyInstance) {
       return reply.status(422).send({
         code: "REPORT_TOO_LARGE",
         error: `O relatório excede ${MAX_ARTICLE_REPORT_ITEMS} trabalhos. Aplique filtros antes de exportar.`,
+      });
+    }
+
+    if (!hasArticleReportItems(articles.length)) {
+      return reply.status(422).send({
+        code: "REPORT_EMPTY",
+        error: "Nenhum trabalho foi encontrado para os filtros selecionados.",
       });
     }
 

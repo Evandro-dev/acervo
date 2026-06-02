@@ -15,3 +15,11 @@ export async function downloadArticleReport(filters: ArticleReportFilters) {
 
   return response.data;
 }
+
+export async function fetchArticleReportCount(filters: ArticleReportFilters) {
+  const response = await api.get<{ count: number }>("/reports/articles/count", {
+    params: compact(filters),
+  });
+
+  return response.data;
+}
