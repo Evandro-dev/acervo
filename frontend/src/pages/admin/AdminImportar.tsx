@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { PdfFilePicker } from "@/components/admin/PdfFilePicker";
 import { AreaCombobox } from "@/components/ui/area-combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ import {
 import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
+import { formatFileSize } from "@/lib/file-size";
 import type { ExtractedArticlePdfMetadata, ImportArticleInput } from "@/types/acervo";
 
 const modalidades = ["Resumo Simples", "Resumo Expandido", "Artigo Científico"] as const;
@@ -106,12 +108,6 @@ const toPdfImportItem = (draft: PdfDraft): ImportArticleInput => ({
   importedFrom: "Leitura automática de PDF",
   submittedAt: new Date().toISOString().slice(0, 10),
 });
-
-function formatFileSize(size: number) {
-  if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-  if (size >= 1024) return `${Math.round(size / 1024)} KB`;
-  return `${size} B`;
-}
 
 function splitCommaSeparated(value: string) {
   return value
@@ -384,7 +380,7 @@ export default function AdminImportar() {
     toast({ title: "Arquivo carregado", description: file.name });
   };
 
-  const onPdfFiles = (files: FileList | null) => {
+  const onPdfFiles = (files: ArrayLike<File> | null) => {
     if (!files?.length) return;
 
     const selectedFiles = Array.from(files).filter(isPdfFile);
@@ -809,25 +805,12 @@ export default function AdminImportar() {
                 </div>
 
                 {!pdfItems.length ? (
-                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/30 px-3 py-10 text-center text-sm text-muted-foreground hover:bg-muted/50">
-                    <FileText className="h-6 w-6" />
-                    <div>
-                      <div className="font-semibold text-foreground">Selecionar arquivos .pdf</div>
-                      <div className="text-[11px]">
-                        A leitura automática funciona melhor com PDFs acadêmicos digitais.
-                      </div>
-                    </div>
-                    <input
-                      type="file"
-                      accept="application/pdf,.pdf"
-                      multiple
-                      className="hidden"
-                      onChange={(event) => {
-                        onPdfFiles(event.target.files);
-                        event.target.value = "";
-                      }}
-                    />
-                  </label>
+                  <PdfFilePicker
+                    title="Selecionar arquivos .pdf"
+                    description="A leitura automática funciona melhor com PDFs acadêmicos digitais."
+                    multiple
+                    onFilesChange={(files) => onPdfFiles(files)}
+                  />
                 ) : (
                   <div className="rounded-lg border border-border bg-muted/20 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">

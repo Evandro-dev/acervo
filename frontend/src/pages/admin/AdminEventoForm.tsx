@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
 import { ExternalLink, FileText, Plus, Save, Trash2, Upload } from "lucide-react";
 import { EventCoverImagePicker } from "@/components/admin/EventCoverImagePicker";
+import { PdfFilePicker } from "@/components/admin/PdfFilePicker";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AreaCombobox } from "@/components/ui/area-combobox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -27,6 +28,7 @@ import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
 import { formatDateRangeLabel } from "@/lib/date-range";
+import { isStoredEventRuleFileUrl } from "@/lib/event-rule-file";
 import { isUsableResourceUrl } from "@/lib/file-links";
 import { cn } from "@/lib/utils";
 import { eventTypes, type Event, type EventMutationInput, type EventRule, type EventType } from "@/types/acervo";
@@ -131,11 +133,6 @@ function createCommitteeItem(value?: Partial<Omit<CommitteeFormItem, "key">>): C
   };
 }
 
-function isLocalEventRuleFileUrl(fileUrl: string) {
-  const trimmed = fileUrl.trim();
-  return trimmed.startsWith("/events/") || /\/events\/[^/]+\/files\/[^/]+$/i.test(trimmed);
-}
-
 function isSupportedCoverImageFile(file: File) {
   const supportedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
   const supportedExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
@@ -156,7 +153,7 @@ function createRuleItem(value?: Partial<Omit<RuleFormItem, "key" | "pendingFile"
     title: value?.title ?? "",
     fileUrl,
     pendingFile: null,
-    useExternalLink: value?.useExternalLink ?? (fileUrl ? !isLocalEventRuleFileUrl(fileUrl) : false),
+    useExternalLink: value?.useExternalLink ?? (fileUrl ? !isStoredEventRuleFileUrl(fileUrl) : false),
   };
 }
 
@@ -991,7 +988,7 @@ export default function AdminEventoForm() {
                             rules: replaceItemByKey(current.rules, rule.key, {
                               useExternalLink: false,
                               pendingFile: null,
-                              fileUrl: isLocalEventRuleFileUrl(rule.fileUrl) ? rule.fileUrl : "",
+                              fileUrl: isStoredEventRuleFileUrl(rule.fileUrl) ? rule.fileUrl : "",
                             }),
                           }))
                         }
@@ -1009,7 +1006,7 @@ export default function AdminEventoForm() {
                             rules: replaceItemByKey(current.rules, rule.key, {
                               useExternalLink: true,
                               pendingFile: null,
-                              fileUrl: !rule.fileUrl || isLocalEventRuleFileUrl(rule.fileUrl) ? "" : rule.fileUrl,
+                              fileUrl: !rule.fileUrl || isStoredEventRuleFileUrl(rule.fileUrl) ? "" : rule.fileUrl,
                             }),
                           }))
                         }
@@ -1049,11 +1046,12 @@ export default function AdminEventoForm() {
                     ) : (
                       <div className="flex flex-col gap-2">
                         <Label>PDF da norma</Label>
-                        <Input
-                          type="file"
-                          accept="application/pdf,.pdf"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0] ?? null;
+                        <PdfFilePicker
+                          title={rule.fileUrl ? "Selecionar novo PDF da norma" : "Selecionar PDF da norma"}
+                          description="Envie o arquivo .pdf que será publicado com o evento."
+                          selectedFile={rule.pendingFile}
+                          onFilesChange={(files) => {
+                            const file = files[0] ?? null;
                             setForm((current) => ({
                               ...current,
                               rules: replaceItemByKey(current.rules, rule.key, {
@@ -1062,13 +1060,14 @@ export default function AdminEventoForm() {
                               }),
                             }));
                           }}
+                          onRemove={() =>
+                            setForm((current) => ({
+                              ...current,
+                              rules: replaceItemByKey(current.rules, rule.key, { pendingFile: null }),
+                            }))
+                          }
                         />
-                        {rule.pendingFile ? (
-                          <div className="rounded-md bg-brand-soft px-3 py-2 text-xs text-primary-dark">
-                            Novo PDF selecionado: <strong>{rule.pendingFile.name}</strong>
-                          </div>
-                        ) : null}
-                        {rule.fileUrl && isLocalEventRuleFileUrl(rule.fileUrl) ? (
+                        {rule.fileUrl && isStoredEventRuleFileUrl(rule.fileUrl) ? (
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                             <FileText className="h-4 w-4" />
                             <span className="truncate">Arquivo atual vinculado.</span>
