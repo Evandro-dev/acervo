@@ -6,6 +6,7 @@ import { pipeline } from "node:stream/promises";
 import type { MultipartFile } from "@fastify/multipart";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
+import { removePublicBlob, uploadPublicBlob } from "./public-blob-storage.js";
 import { slugify } from "./slug.js";
 import { resolveUploadsDirectory } from "./uploads-directory.js";
 
@@ -106,12 +107,19 @@ export function buildEventCoverImageUrl(request: FastifyRequest, eventId: string
 
 export async function saveEventCoverImage(eventId: string, file: MultipartFile) {
   const fileName = buildEventCoverImageFileName(file);
+  const blobUrl = await uploadPublicBlob(
+    `acervo/events/${eventId}/covers/${fileName}`,
+    file.file,
+    file.mimetype,
+  );
+  if (blobUrl) return { fileName, blobUrl };
+
   const targetDirectory = getEventCoverDirectory(eventId);
 
   await mkdir(targetDirectory, { recursive: true });
   await pipeline(file.file, createWriteStream(getEventCoverImagePath(eventId, fileName)));
 
-  return fileName;
+  return { fileName, blobUrl: null };
 }
 
 export async function eventCoverImageExists(eventId: string, fileName: string) {
@@ -134,6 +142,25 @@ export async function removeEventCoverImage(eventId: string, fileName: string) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code !== "ENOENT") throw error;
   }
+}
+
+export async function removeEventCoverResource(eventId: string, resourceUrl?: string | null) {
+  if (await removePublicBlob(resourceUrl)) return;
+
+  const fileName = extractLocalEventCoverFileName(eventId, resourceUrl);
+  if (fileName) await removeEventCoverImage(eventId, fileName);
+}
+
+export async function removeSavedEventCoverImage(
+  eventId: string,
+  upload: { fileName: string; blobUrl: string | null },
+) {
+  if (upload.blobUrl) {
+    await removePublicBlob(upload.blobUrl);
+    return;
+  }
+
+  await removeEventCoverImage(eventId, upload.fileName);
 }
 
 export function extractLocalEventCoverFileName(eventId: string, resourceUrl?: string | null) {

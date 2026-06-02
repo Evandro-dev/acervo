@@ -1,8 +1,10 @@
 import { createReadStream } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { access, mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
+import { removePublicBlob, uploadPublicBlob } from "./public-blob-storage.js";
 import { slugify } from "./slug.js";
 import { resolveUploadsDirectory } from "./uploads-directory.js";
 
@@ -41,8 +43,16 @@ export function getArticlePdfPath(articleId: string) {
 }
 
 export async function saveArticlePdf(articleId: string, data: Uint8Array) {
+  const blobUrl = await uploadPublicBlob(
+    `acervo/articles/${articleId}/${Date.now()}-${randomUUID().slice(0, 8)}.pdf`,
+    Buffer.from(data),
+    "application/pdf",
+  );
+  if (blobUrl) return blobUrl;
+
   await mkdir(articlePdfDirectory, { recursive: true });
   await writeFile(getArticlePdfPath(articleId), data);
+  return null;
 }
 
 export async function articlePdfExists(articleId: string) {
@@ -54,7 +64,9 @@ export async function articlePdfExists(articleId: string) {
   }
 }
 
-export async function removeArticlePdf(articleId: string) {
+export async function removeArticlePdf(articleId: string, resourceUrl?: string | null) {
+  await removePublicBlob(resourceUrl);
+
   try {
     await unlink(getArticlePdfPath(articleId));
   } catch (error) {

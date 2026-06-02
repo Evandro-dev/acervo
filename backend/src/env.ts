@@ -17,6 +17,7 @@ const schema = z.object({
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(1),
   PORT: z.coerce.number().default(10000),
   UPLOADS_DIRECTORY: z.string().trim().min(1).optional(),
+  BLOB_READ_WRITE_TOKEN: z.string().trim().optional(),
   CORS_ORIGIN: z.string().default(
     "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081,http://localhost:5173,http://127.0.0.1:5173,https://acervo-0fud.onrender.com,https://acervouna.vercel.app/,https://acervouna.com.br,https://www.acervouna.com.br",
   ),

@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { removeArticlePdf } from "../../lib/article-pdf.js";
 import {
   buildEventCoverImageUrl,
   createEventCoverImageReadStream,
   eventCoverImageExists,
-  extractLocalEventCoverFileName,
   getEventCoverImageContentType,
   isSafeEventCoverImageFileName,
   isEventCoverImageUpload,
-  removeEventCoverImage,
+  removeEventCoverResource,
+  removeSavedEventCoverImage,
   saveEventCoverImage,
 } from "../../lib/event-cover-images.js";
 import {
@@ -25,11 +25,10 @@ import {
   buildEventRuleFileUrl,
   createEventRuleReadStream,
   eventRuleFileExists,
-  extractLocalEventRuleFileName,
   findReplacementEventRuleFile,
   isSafeEventRuleFileName,
   removeEventRuleDirectory,
-  removeEventRuleFile,
+  removeEventRuleResource,
   saveEventRuleFile,
 } from "../../lib/event-rule-files.js";
 import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
@@ -145,27 +144,27 @@ function parseStoredRules(value: unknown) {
   return parsed.success ? parsed.data : [];
 }
 
-function getRemovedLocalRuleFiles(eventId: string, currentRules: unknown, nextRules: unknown) {
-  const nextFileNames = new Set(
-    parseStoredRules(nextRules)
-      .map((rule) => extractLocalEventRuleFileName(eventId, rule.file))
-      .filter((fileName): fileName is string => Boolean(fileName)),
-  );
+function getRemovedRuleResources(currentRules: unknown, nextRules: unknown) {
+  const nextFiles = new Set(parseStoredRules(nextRules).map((rule) => rule.file));
 
   return parseStoredRules(currentRules)
-    .map((rule) => extractLocalEventRuleFileName(eventId, rule.file))
-    .filter((fileName): fileName is string => {
-      if (!fileName) return false;
-      return !nextFileNames.has(fileName);
-    });
+    .map((rule) => rule.file)
+    .filter((file) => !nextFiles.has(file));
 }
 
-function getRemovedLocalCoverFile(eventId: string, currentCoverUrl: string | null, nextCoverUrl?: string | null) {
-  const currentFileName = extractLocalEventCoverFileName(eventId, currentCoverUrl);
-  if (!currentFileName) return null;
+function getRemovedCoverResource(currentCoverUrl: string | null, nextCoverUrl?: string | null) {
+  if (!currentCoverUrl || currentCoverUrl === nextCoverUrl) return null;
+  return currentCoverUrl;
+}
 
-  const nextFileName = extractLocalEventCoverFileName(eventId, nextCoverUrl);
-  return currentFileName !== nextFileName ? currentFileName : null;
+async function removeResourcesBestEffort(req: FastifyRequest, context: string, tasks: Array<Promise<unknown>>) {
+  const results = await Promise.allSettled(tasks);
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      req.log.error({ err: result.reason, context }, "Falha ao remover arquivo antigo");
+    }
+  }
 }
 
 export async function eventRoutes(app: FastifyInstance) {
@@ -312,24 +311,29 @@ export async function eventRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: "Apenas imagens JPG, PNG, WEBP ou GIF são permitidas" });
     }
 
-    let fileName: string | null = null;
+    let upload: Awaited<ReturnType<typeof saveEventCoverImage>> | null = null;
     try {
-      fileName = await saveEventCoverImage(id, file);
-      const coverUrl = buildEventCoverImageUrl(req, id, fileName);
-      const previousLocalCoverFile = extractLocalEventCoverFileName(id, event.coverUrl);
+      upload = await saveEventCoverImage(id, file);
+      const coverUrl = upload.blobUrl ?? buildEventCoverImageUrl(req, id, upload.fileName);
 
       await prisma.event.update({
         where: { id },
         data: { coverUrl },
       });
 
-      if (previousLocalCoverFile && previousLocalCoverFile !== fileName) {
-        await removeEventCoverImage(id, previousLocalCoverFile);
+      if (event.coverUrl && event.coverUrl !== coverUrl) {
+        await removeResourcesBestEffort(req, "substituir capa do evento", [
+          removeEventCoverResource(id, event.coverUrl),
+        ]);
       }
 
       return reply.status(201).send({ coverUrl });
     } catch (error) {
-      if (fileName) await removeEventCoverImage(id, fileName);
+      if (upload) {
+        await removeResourcesBestEffort(req, "desfazer upload de capa sem registro", [
+          removeSavedEventCoverImage(id, upload),
+        ]);
+      }
       throw error;
     }
   });
@@ -342,9 +346,9 @@ export async function eventRoutes(app: FastifyInstance) {
     const file = await req.file();
     if (!file) return reply.status(400).send({ error: "Envie um arquivo PDF no campo 'file'" });
 
-    const fileName = await saveEventRuleFile(id, file.filename, await readValidatedPdfUpload(file));
+    const upload = await saveEventRuleFile(id, file.filename, await readValidatedPdfUpload(file));
     return reply.status(201).send({
-      fileUrl: buildEventRuleFileUrl(req, id, fileName),
+      fileUrl: upload.blobUrl ?? buildEventRuleFileUrl(req, id, upload.fileName),
     });
   });
 
@@ -385,8 +389,8 @@ export async function eventRoutes(app: FastifyInstance) {
       },
     });
 
-    const removedLocalRuleFiles = getRemovedLocalRuleFiles(current.id, current.rules, merged.rules);
-    const removedLocalCoverFile = getRemovedLocalCoverFile(current.id, current.coverUrl, merged.coverUrl);
+    const removedRuleResources = getRemovedRuleResources(current.rules, merged.rules);
+    const removedCoverResource = getRemovedCoverResource(current.coverUrl, merged.coverUrl);
 
     const event = await prisma.event.update({
       where: { id },
@@ -394,8 +398,10 @@ export async function eventRoutes(app: FastifyInstance) {
       include: getEventInclude("all"),
     });
 
-    await Promise.all(removedLocalRuleFiles.map((fileName) => removeEventRuleFile(current.id, fileName)));
-    if (removedLocalCoverFile) await removeEventCoverImage(current.id, removedLocalCoverFile);
+    await removeResourcesBestEffort(req, "atualizar arquivos do evento", [
+      ...removedRuleResources.map((resourceUrl) => removeEventRuleResource(current.id, resourceUrl)),
+      ...(removedCoverResource ? [removeEventCoverResource(current.id, removedCoverResource)] : []),
+    ]);
 
     return serializeEvent(event);
   });
@@ -406,26 +412,25 @@ export async function eventRoutes(app: FastifyInstance) {
       where: { id },
       select: {
         id: true,
+        coverUrl: true,
         rules: true,
         articles: {
-          select: { id: true },
+          select: { id: true, pdfUrl: true },
         },
       },
     });
 
     if (!event) return reply.status(404).send({ error: "Evento não encontrado" });
 
-    const localRuleFiles = parseStoredRules(event.rules)
-      .map((rule) => extractLocalEventRuleFileName(id, rule.file))
-      .filter((fileName): fileName is string => Boolean(fileName));
-
-    await Promise.all([
-      ...localRuleFiles.map((fileName) => removeEventRuleFile(id, fileName)),
-      ...event.articles.map((article: { id: string }) => removeArticlePdf(article.id)),
-    ]);
-
     await prisma.event.delete({ where: { id } });
-    await removeEventRuleDirectory(id);
+    await removeResourcesBestEffort(req, "excluir arquivos do evento", [
+      removeEventCoverResource(id, event.coverUrl),
+      ...parseStoredRules(event.rules).map((rule) => removeEventRuleResource(id, rule.file)),
+      ...event.articles.map((article: { id: string; pdfUrl: string | null }) =>
+        removeArticlePdf(article.id, article.pdfUrl),
+      ),
+      removeEventRuleDirectory(id),
+    ]);
 
     return reply.status(204).send();
   });

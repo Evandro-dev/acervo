@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
   articlePdfExists,
@@ -95,6 +95,14 @@ async function resolveArticleArea(tx: any, area: string) {
     area: sanitizeAreaName(areaRecord.name),
     areaId: areaRecord.id,
   };
+}
+
+async function removeArticlePdfBestEffort(req: FastifyRequest, articleId: string, resourceUrl?: string | null) {
+  try {
+    await removeArticlePdf(articleId, resourceUrl);
+  } catch (error) {
+    req.log.error({ err: error, articleId }, "Falha ao remover PDF antigo do trabalho");
+  }
 }
 
 export async function articleRoutes(app: FastifyInstance) {
@@ -232,7 +240,9 @@ export async function articleRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: "Acesso negado" });
     }
 
-    if (await articlePdfExists(article.id)) {
+    const isLocalPdf = article.pdfUrl.includes(`/articles/${article.id}/pdf`);
+
+    if (isLocalPdf && (await articlePdfExists(article.id))) {
       if (download) {
         await prisma.article.update({
           where: { id: article.id },
@@ -250,7 +260,7 @@ export async function articleRoutes(app: FastifyInstance) {
       return reply.send(createArticlePdfReadStream(article.id));
     }
 
-    if (article.pdfUrl.includes(`/articles/${article.id}/pdf`)) {
+    if (isLocalPdf) {
       return reply.status(404).send({ error: "Arquivo PDF não foi encontrado no servidor" });
     }
 
@@ -295,15 +305,26 @@ export async function articleRoutes(app: FastifyInstance) {
     const file = await req.file();
     if (!file) return reply.status(400).send({ error: "Envie um arquivo PDF no campo 'file'" });
 
-    await saveArticlePdf(id, await readValidatedPdfUpload(file));
+    const uploadedBlobUrl = await saveArticlePdf(id, await readValidatedPdfUpload(file));
+    const uploadedPdfUrl = uploadedBlobUrl ?? buildArticlePdfUrl(req, id);
+    let updated;
 
-    const updated = await prisma.article.update({
-      where: { id },
-      data: {
-        pdfUrl: buildArticlePdfUrl(req, id),
-      },
-      include: getArticleInclude(),
-    });
+    try {
+      updated = await prisma.article.update({
+        where: { id },
+        data: {
+          pdfUrl: uploadedPdfUrl,
+        },
+        include: getArticleInclude(),
+      });
+    } catch (error) {
+      if (uploadedBlobUrl) await removeArticlePdfBestEffort(req, id, uploadedBlobUrl);
+      throw error;
+    }
+
+    if (current.pdfUrl && current.pdfUrl !== uploadedPdfUrl) {
+      await removeArticlePdfBestEffort(req, id, current.pdfUrl);
+    }
 
     return reply.send(serializeArticle(updated));
   });
@@ -459,8 +480,11 @@ export async function articleRoutes(app: FastifyInstance) {
 
   app.delete("/:id", { preHandler: [app.requireRole("ADMIN", "COORDENADOR")] }, async (req, reply) => {
     const { id } = req.params as { id: string };
-    await removeArticlePdf(id);
+    const article = await prisma.article.findUnique({ where: { id }, select: { id: true, pdfUrl: true } });
+    if (!article) return reply.status(404).send({ error: "Artigo nÃ£o encontrado" });
+
     await prisma.article.delete({ where: { id } });
+    await removeArticlePdfBestEffort(req, id, article.pdfUrl);
     return reply.status(204).send();
   });
 

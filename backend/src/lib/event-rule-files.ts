@@ -4,6 +4,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
+import { removePublicBlob, uploadPublicBlob } from "./public-blob-storage.js";
 import { slugify } from "./slug.js";
 import { resolveUploadsDirectory } from "./uploads-directory.js";
 
@@ -69,12 +70,19 @@ export function buildEventRuleFileUrl(request: FastifyRequest, eventId: string, 
 
 export async function saveEventRuleFile(eventId: string, originalFileName: string, data: Uint8Array) {
   const fileName = buildEventRuleFileName(originalFileName);
+  const blobUrl = await uploadPublicBlob(
+    `acervo/events/${eventId}/rules/${fileName}`,
+    Buffer.from(data),
+    "application/pdf",
+  );
+  if (blobUrl) return { fileName, blobUrl };
+
   const targetDirectory = getEventRuleEventDirectory(eventId);
 
   await mkdir(targetDirectory, { recursive: true });
   await writeFile(getEventRuleFilePath(eventId, fileName), data);
 
-  return fileName;
+  return { fileName, blobUrl: null };
 }
 
 export async function eventRuleFileExists(eventId: string, fileName: string) {
@@ -118,6 +126,13 @@ export async function removeEventRuleFile(eventId: string, fileName: string) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code !== "ENOENT") throw error;
   }
+}
+
+export async function removeEventRuleResource(eventId: string, resourceUrl: string) {
+  if (await removePublicBlob(resourceUrl)) return;
+
+  const fileName = extractLocalEventRuleFileName(eventId, resourceUrl);
+  if (fileName) await removeEventRuleFile(eventId, fileName);
 }
 
 export async function removeEventRuleDirectory(eventId: string) {
