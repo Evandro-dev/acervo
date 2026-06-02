@@ -659,8 +659,9 @@ export default function AdminImportar() {
             </div>
           </Card>
 
-          <Tabs defaultValue="manual" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+          <Card className="border-border/60 p-3 shadow-card" data-testid="import-mode-card">
+            <Tabs defaultValue="manual" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 gap-2">
               <TabsTrigger value="manual" className="text-xs hover:bg-background/70 hover:text-foreground">
                 <Plus className="mr-1 h-3.5 w-3.5" /> Manual
               </TabsTrigger>
@@ -1184,8 +1185,9 @@ export default function AdminImportar() {
                       importablePdfItems.length === 1 ? "trabalho" : "trabalhos"
                     } e anexar PDFs`}
               </Button>
-            </TabsContent>
-          </Tabs>
+              </TabsContent>
+            </Tabs>
+          </Card>
         </>
       </QueryState>
     </AdminShell>

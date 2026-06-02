@@ -297,6 +297,8 @@ describe("Admin pages", () => {
     const { container } = renderAdminPage(<AdminImportar />);
 
     const pdfTab = screen.getByRole("tab", { name: /pdf/i });
+    expect(screen.getByTestId("import-mode-card")).toContainElement(pdfTab);
+    expect(screen.getByRole("tablist")).toHaveClass("gap-2");
     expect(pdfTab).toHaveClass("hover:bg-background/70", "hover:text-foreground");
     fireEvent.mouseDown(pdfTab);
     fireEvent.click(pdfTab);
