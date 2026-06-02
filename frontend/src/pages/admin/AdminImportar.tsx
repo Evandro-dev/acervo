@@ -38,6 +38,7 @@ import {
 import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
+import { chunkItems } from "@/lib/chunk-items";
 import { addCommaSeparatedValue, splitCommaSeparatedValues } from "@/lib/comma-separated-values";
 import { formatFileSize } from "@/lib/file-size";
 import {
@@ -49,6 +50,7 @@ import { cn } from "@/lib/utils";
 import type { ExtractedArticlePdfMetadata, ImportArticleInput } from "@/types/acervo";
 
 const modalidades = ["Resumo Simples", "Resumo Expandido", "Artigo Científico"] as const;
+const ARTICLE_IMPORT_BATCH_SIZE = 25;
 type Modalidade = (typeof modalidades)[number];
 type PdfQueueStatus = "pending" | "reading" | "ready" | "failed" | "saving" | "saved" | "partial";
 
@@ -239,7 +241,9 @@ export default function AdminImportar() {
   const failedPdfCount = pdfItems.filter((item) => item.status === "failed").length;
   const readyPdfCount = pdfItems.filter((item) => item.status === "ready").length;
   const savedPdfCount = pdfItems.filter((item) => item.status === "saved").length;
-  const importablePdfItems = pdfItems.filter(canImportPdfItem);
+  const importablePdfItems = pdfItems.filter(
+    (item) => canImportPdfItem(item) && item.status !== "saved" && item.status !== "partial",
+  );
   const hasStartedPdfProcessing = pdfItems.some((item) => item.status !== "pending");
   const showActivePdfReview = Boolean(
     activePdfItem && activePdfItem.status !== "pending" && activePdfItem.status !== "reading",
@@ -508,6 +512,11 @@ export default function AdminImportar() {
 
     const previousStatuses = new Map(importablePdfItems.map((item) => [item.id, item.status]));
     const importableIds = new Set(importablePdfItems.map((item) => item.id));
+    const savedIds = new Set<string>();
+    const partialIds = new Set<string>();
+    const partialMessages = new Map<string, string>();
+    const pendingIds = new Set(importablePdfItems.map((item) => item.id));
+    let importedCount = 0;
 
     setIsBatchSaving(true);
     setPdfItems((currentItems) =>
@@ -523,34 +532,34 @@ export default function AdminImportar() {
     );
 
     try {
-      const result = await importMutation.mutateAsync({
-        eventId: selectedEventId,
-        publishImmediately: publishNow,
-        items: importablePdfItems.map((item) => toPdfImportItem(item.draft)),
-      });
+      for (const batch of chunkItems(importablePdfItems, ARTICLE_IMPORT_BATCH_SIZE)) {
+        const result = await importMutation.mutateAsync({
+          eventId: selectedEventId,
+          publishImmediately: publishNow,
+          items: batch.map((item) => toPdfImportItem(item.draft)),
+        });
+        importedCount += result.count;
 
-      const savedIds = new Set<string>();
-      const partialIds = new Set<string>();
-      const partialMessages = new Map<string, string>();
+        for (const [index, item] of batch.entries()) {
+          const createdArticle = result.items[index];
+          pendingIds.delete(item.id);
 
-      for (const [index, item] of importablePdfItems.entries()) {
-        const createdArticle = result.items[index];
+          if (!createdArticle?.id) {
+            partialIds.add(item.id);
+            partialMessages.set(item.id, "O trabalho foi criado, mas o PDF precisa ser anexado manualmente.");
+            continue;
+          }
 
-        if (!createdArticle?.id) {
-          partialIds.add(item.id);
-          partialMessages.set(item.id, "O trabalho foi criado, mas o PDF precisa ser anexado manualmente.");
-          continue;
-        }
-
-        try {
-          await uploadPdfMutation.mutateAsync({ id: createdArticle.id, file: item.file });
-          savedIds.add(item.id);
-        } catch (error) {
-          partialIds.add(item.id);
-          partialMessages.set(
-            item.id,
-            getApiErrorMessage(error, "Abra a publicação na curadoria e anexe o PDF manualmente."),
-          );
+          try {
+            await uploadPdfMutation.mutateAsync({ id: createdArticle.id, file: item.file });
+            savedIds.add(item.id);
+          } catch (error) {
+            partialIds.add(item.id);
+            partialMessages.set(
+              item.id,
+              getApiErrorMessage(error, "Abra a publicação na curadoria e anexe o PDF manualmente."),
+            );
+          }
         }
       }
 
@@ -583,7 +592,7 @@ export default function AdminImportar() {
         });
       } else {
         toast({
-          title: `${result.count} ${result.count === 1 ? "trabalho importado" : "trabalhos importados"}`,
+          title: `${importedCount} ${importedCount === 1 ? "trabalho importado" : "trabalhos importados"}`,
           description: publishNow ? "Já disponíveis no Acervo." : "Salvos como rascunho para revisão.",
         });
       }
@@ -592,7 +601,15 @@ export default function AdminImportar() {
     } catch (error) {
       setPdfItems((currentItems) =>
         currentItems.map((item) =>
-          importableIds.has(item.id)
+          savedIds.has(item.id)
+            ? { ...item, status: "saved", error: null }
+            : partialIds.has(item.id)
+              ? {
+                  ...item,
+                  status: "partial",
+                  error: partialMessages.get(item.id) ?? "O PDF não foi anexado automaticamente.",
+                }
+              : pendingIds.has(item.id)
             ? {
                 ...item,
                 status: previousStatuses.get(item.id) ?? "ready",
@@ -600,7 +617,14 @@ export default function AdminImportar() {
             : item,
         ),
       );
-      toast({ title: "Falha na importação do lote", description: getApiErrorMessage(error), variant: "destructive" });
+      toast({
+        title: "Falha na importação do lote",
+        description:
+          savedIds.size + partialIds.size > 0
+            ? `${savedIds.size + partialIds.size} trabalho(s) já foram processados. ${getApiErrorMessage(error)}`
+            : getApiErrorMessage(error),
+        variant: "destructive",
+      });
     } finally {
       setIsBatchSaving(false);
     }

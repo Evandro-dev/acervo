@@ -393,4 +393,66 @@ describe("Admin pages", () => {
       }),
     );
   });
+
+  it("splits large PDF queues into bounded imports before uploading every file", async () => {
+    const files = Array.from(
+      { length: 26 },
+      (_, index) => new File([`pdf-${index + 1}`], `trabalho-${index + 1}.pdf`, { type: "application/pdf" }),
+    );
+    const extractMutateAsync = vi.fn().mockImplementation(({ file }: { file: File }) =>
+      Promise.resolve({
+        title: file.name,
+        authors: ["Ana Silva"],
+        emails: [],
+        abstract: "",
+        areaSuggestions: [],
+        suggestedCourses: [],
+        courseSuggestions: [],
+        pageCount: 1,
+        warnings: [],
+      }),
+    );
+    let importedArticleIndex = 0;
+    const importMutateAsync = vi.fn().mockImplementation(({ items }: { items: unknown[] }) =>
+      Promise.resolve({
+        count: items.length,
+        items: items.map(() => ({ id: `article-${++importedArticleIndex}` })),
+      }),
+    );
+    const uploadMutateAsync = vi.fn().mockResolvedValue({});
+
+    mockedUseAdminEventsQuery.mockReturnValue({
+      data: [adminEvent],
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseExtractArticlePdfMetadataMutation.mockReturnValue({
+      mutateAsync: extractMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseImportArticlesMutation.mockReturnValue({ mutateAsync: importMutateAsync, isPending: false } as never);
+    mockedUseUploadArticlePdfMutation.mockReturnValue({ mutateAsync: uploadMutateAsync, isPending: false } as never);
+
+    const { container } = renderAdminPage(<AdminImportar />);
+    const pdfTab = screen.getByRole("tab", { name: /pdf/i });
+    fireEvent.mouseDown(pdfTab);
+    fireEvent.click(pdfTab);
+
+    await waitFor(() => {
+      expect(container.querySelector('input[type="file"][accept*=".pdf"]')).not.toBeNull();
+    });
+    const pdfInput = container.querySelector('input[type="file"][accept*=".pdf"]');
+    fireEvent.change(pdfInput!, { target: { files } });
+    fireEvent.click(screen.getByRole("button", { name: /Ler 26 PDFs pendentes/i }));
+
+    await waitFor(() => expect(extractMutateAsync).toHaveBeenCalledTimes(26));
+    const saveButton = screen.getByRole("button", { name: /Salvar 26 trabalhos e anexar PDFs/i });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(importMutateAsync).toHaveBeenCalledTimes(2));
+    expect(importMutateAsync.mock.calls[0][0].items).toHaveLength(25);
+    expect(importMutateAsync.mock.calls[1][0].items).toHaveLength(1);
+    await waitFor(() => expect(uploadMutateAsync).toHaveBeenCalledTimes(26));
+  });
 });

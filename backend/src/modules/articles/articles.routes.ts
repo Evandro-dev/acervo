@@ -14,6 +14,7 @@ import { authorPayloadSchema, normalizeAuthorPayload } from "../../lib/contracts
 import { canManageArticle, getOptionalUser, isPrivilegedRole, requirePrivilegedUser } from "../../lib/permissions.js";
 import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
 import { prisma } from "../../lib/prisma.js";
+import { isPrismaTransactionExpiredError } from "../../lib/prisma-errors.js";
 import { queryBooleanSchema } from "../../lib/query-boolean.js";
 import { serializeArticle } from "../../lib/serializers.js";
 import { suggestAreaFromArticleText } from "../areas/area-suggestion.service.js";
@@ -21,6 +22,10 @@ import { ensureArea, sanitizeAreaName } from "../areas/areas.service.js";
 import { ensureAuthors } from "../authors/authors.service.js";
 import { ensureCourses, normalizeCourseLookup } from "../courses/courses.service.js";
 import { suggestCoursesFromArticleText } from "../courses/course-suggestion.service.js";
+import {
+  createImportedArticles,
+  MAX_ARTICLE_IMPORT_ITEMS,
+} from "./article-import.service.js";
 
 const articleStatusSchema = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
 const articleStatusQuerySchema = z.enum(["published", "draft", "archived", "all"]);
@@ -511,61 +516,41 @@ export async function articleRoutes(app: FastifyInstance) {
       .object({
         eventId: z.string(),
         publishImmediately: z.boolean().default(false),
-        items: z.array(articlePayloadSchema.omit({ eventId: true })).min(1),
+        items: z
+          .array(articlePayloadSchema.omit({ eventId: true }))
+          .min(1)
+          .max(MAX_ARTICLE_IMPORT_ITEMS, `Envie no maximo ${MAX_ARTICLE_IMPORT_ITEMS} trabalhos por lote.`),
       })
       .parse(req.body);
 
-    const now = new Date();
+    const event = await prisma.event.findUnique({
+      where: { id: payload.eventId },
+      select: { id: true },
+    });
+    if (!event) return reply.status(404).send({ error: "Evento não encontrado" });
 
-    const created = await prisma.$transaction(async (tx: any) => {
-      const items = [];
-
-      for (const item of payload.items) {
-        const authors = await ensureAuthors(
-          tx,
-          item.authors.map((author) => normalizeAuthorPayload(author)),
-        );
-        const area = await resolveArticleArea(tx, item.area);
-        const courses = await ensureCourses(tx, item.courses);
-
-        const article = await tx.article.create({
-          data: {
-            title: item.title,
-            abstract: item.abstract,
-            area: area.area,
-            areaId: area.areaId,
-            pages: item.pages,
-            pdfUrl: item.pdfUrl,
-            eventId: payload.eventId,
-            modality: item.modality,
-            importedFrom: item.importedFrom ?? "Importação manual",
-            externalId: item.externalId,
-            status: payload.publishImmediately ? "PUBLISHED" : "DRAFT",
-            submittedAt: item.submittedAt ?? now,
-            importedAt: item.importedAt ?? now,
-            publishedAt: payload.publishImmediately ? item.publishedAt ?? now : item.publishedAt,
-            createdById: req.user.sub,
-            authors: {
-              create: authors.map((author, position) => ({
-                authorId: author.id,
-                position,
-              })),
-            },
-            courses: {
-              create: courses.map((course, position) => ({
-                courseId: course.id,
-                position,
-              })),
-            },
-          },
-          include: getArticleInclude(),
+    let created;
+    try {
+      created = await createImportedArticles(prisma, {
+        eventId: payload.eventId,
+        createdById: req.user.sub,
+        publishImmediately: payload.publishImmediately,
+        items: payload.items.map((item) => ({
+          ...item,
+          authors: item.authors.map((author) => normalizeAuthorPayload(author)),
+        })),
+        include: getArticleInclude(),
+      });
+    } catch (error) {
+      if (isPrismaTransactionExpiredError(error)) {
+        return reply.status(503).send({
+          code: "ARTICLE_IMPORT_TIMEOUT",
+          error: "A importacao demorou alem do esperado. Tente novamente com um lote menor.",
         });
-
-        items.push(article);
       }
 
-      return items;
-    });
+      throw error;
+    }
 
     return reply.status(201).send({
       count: created.length,
