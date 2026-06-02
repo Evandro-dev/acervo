@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { ExcelFileIcon } from "@/components/ui/excel-file-icon";
-import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/ui/select-field";
 import { useAdminEventsQuery, useAreasQuery, useCoursesQuery } from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 import { downloadArticleReport } from "@/features/reports/api";
@@ -20,6 +20,9 @@ import type { ArticleReportFilters } from "@/types/acervo";
 const emptyFilters: ArticleReportFilters = {
   status: "all",
 };
+const allEventsValue = "__all_events__";
+const allAreasValue = "__all_areas__";
+const allCoursesValue = "__all_courses__";
 
 export default function AdminRelatorios() {
   const { isAuthenticated } = useAuth();
@@ -107,71 +110,52 @@ export default function AdminRelatorios() {
           )}
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="report-event">Evento</Label>
-              <select
-                id="report-event"
-                value={filters.eventId ?? ""}
-                onChange={(event) => updateFilter("eventId", event.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Todos os eventos</option>
-                {events.map((event) => (
-                  <option key={event.id} value={event.id}>
-                    {event.title}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <SelectField
+              id="report-event"
+              label="Evento"
+              value={filters.eventId ?? allEventsValue}
+              onValueChange={(value) => updateFilter("eventId", value === allEventsValue ? "" : value)}
+              options={[
+                { value: allEventsValue, label: "Todos os eventos" },
+                ...events.map((event) => ({ value: event.id, label: event.title })),
+              ]}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="report-area">Área</Label>
-              <select
-                id="report-area"
-                value={filters.area ?? ""}
-                onChange={(event) => updateFilter("area", event.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Todas as áreas</option>
-                {areas.map((area) => (
-                  <option key={area.id} value={area.name}>
-                    {area.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <SelectField
+              id="report-area"
+              label="Área"
+              value={filters.area ?? allAreasValue}
+              onValueChange={(value) => updateFilter("area", value === allAreasValue ? "" : value)}
+              options={[
+                { value: allAreasValue, label: "Todas as áreas" },
+                ...areas.map((area) => ({ value: area.name, label: area.name })),
+              ]}
+            />
 
-            <div className="space-y-2 md:col-span-2 xl:col-span-1">
-              <Label htmlFor="report-course">Curso</Label>
-              <select
-                id="report-course"
-                value={filters.course ?? ""}
-                onChange={(event) => updateFilter("course", event.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">Todos os cursos</option>
-                {courses.map((course) => (
-                  <option key={course.id} value={course.name}>
-                    {course.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <SelectField
+              id="report-course"
+              label="Curso"
+              value={filters.course ?? allCoursesValue}
+              onValueChange={(value) => updateFilter("course", value === allCoursesValue ? "" : value)}
+              options={[
+                { value: allCoursesValue, label: "Todos os cursos" },
+                ...courses.map((course) => ({ value: course.name, label: course.name })),
+              ]}
+              className="md:col-span-2 xl:col-span-1"
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="report-status">Status</Label>
-              <select
-                id="report-status"
-                value={filters.status ?? "all"}
-                onChange={(event) => updateFilter("status", event.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="all">Todos os status</option>
-                <option value="published">Publicados</option>
-                <option value="draft">Rascunhos</option>
-                <option value="archived">Arquivados</option>
-              </select>
-            </div>
+            <SelectField
+              id="report-status"
+              label="Status"
+              value={filters.status ?? "all"}
+              onValueChange={(value) => updateFilter("status", value)}
+              options={[
+                { value: "all", label: "Todos os status" },
+                { value: "published", label: "Publicados" },
+                { value: "draft", label: "Rascunhos" },
+                { value: "archived", label: "Arquivados" },
+              ]}
+            />
 
             <div>
               <DateRangePicker

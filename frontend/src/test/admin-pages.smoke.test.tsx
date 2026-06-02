@@ -261,6 +261,9 @@ describe("Admin pages", () => {
             { name: "Oncologia", score: 14, source: "event-theme" },
             { name: "Saúde", score: 8, source: "event-area" },
           ],
+          suggestedCourses: ["Biomedicina"],
+          courseSuggestionConfidence: "high",
+          courseSuggestions: [{ name: "Biomedicina", score: 42, source: "explicit-text" }],
           pageCount: 5,
           warnings: [],
         });
@@ -277,6 +280,8 @@ describe("Admin pages", () => {
           { name: "Nanotecnologia", score: 11, source: "catalog-area" },
           { name: "Tecnologia", score: 6, source: "event-theme" },
         ],
+        suggestedCourses: [],
+        courseSuggestions: [],
         pageCount: 7,
         warnings: [],
       });
@@ -338,6 +343,7 @@ describe("Admin pages", () => {
     expect(screen.getByDisplayValue("Alice Cunha, Barbara Oliveira")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Oncologia")).toBeInTheDocument();
     expect(screen.getByDisplayValue("1-5")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remover curso Biomedicina" })).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByLabelText("Próximo arquivo na revisão")[0]);
     await waitFor(() => expect(screen.getByDisplayValue("Nanotecnologia Aplicada")).toBeInTheDocument());
@@ -355,6 +361,7 @@ describe("Admin pages", () => {
             title: "Leucemia Infantil",
             authors: ["Alice Cunha", "Barbara Oliveira"],
             area: "Oncologia",
+            courses: ["Biomedicina"],
             pages: "1-5",
             modality: "Resumo Expandido",
             importedFrom: expect.stringMatching(/^Leitura/i),
@@ -363,6 +370,7 @@ describe("Admin pages", () => {
             title: "Nanotecnologia Aplicada",
             authors: ["Pedro Souza"],
             area: "Nanotecnologia",
+            courses: [],
             pages: "1-7",
             modality: "Artigo Científico",
             importedFrom: expect.stringMatching(/^Leitura/i),

@@ -95,10 +95,14 @@ describe("AdminRelatorios", () => {
     expect(screen.getByTestId("excel-report-icon")).toHaveAttribute("viewBox", "0 0 32 32");
     expect(screen.getByLabelText("Curso").parentElement).toHaveClass("md:col-span-2", "xl:col-span-1");
     expect(screen.getByRole("button", { name: "Baixar relatório Excel" }).parentElement).toHaveClass("justify-center");
-    fireEvent.change(screen.getByLabelText("Evento"), { target: { value: "event-1" } });
-    fireEvent.change(screen.getByLabelText("Área"), { target: { value: "Saúde" } });
-    fireEvent.change(screen.getByLabelText("Curso"), { target: { value: "Enfermagem" } });
-    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "published" } });
+    fireEvent.click(screen.getByLabelText("Evento"));
+    fireEvent.click(screen.getByRole("option", { name: "Congresso UNA" }));
+    fireEvent.click(screen.getByLabelText("Área"));
+    fireEvent.click(screen.getByRole("option", { name: "Saúde" }));
+    fireEvent.click(screen.getByLabelText("Curso"));
+    fireEvent.click(screen.getByRole("option", { name: "Enfermagem" }));
+    fireEvent.click(screen.getByLabelText("Status"));
+    fireEvent.click(screen.getByRole("option", { name: "Publicados" }));
     fireEvent.click(screen.getByRole("button", { name: "Período de submissão" }));
     fireEvent.click(screen.getByRole("button", { name: "Baixar relatório Excel" }));
 

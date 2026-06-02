@@ -4,6 +4,11 @@ import { extractPdfLines } from "./line-extractor.js";
 import type { ExtractedArticlePdfMetadata, ExtractedLine } from "./types.js";
 import { normalizeWhitespace } from "./text.js";
 
+export type ArticlePdfMetadataAnalysis = {
+  metadata: ExtractedArticlePdfMetadata;
+  suggestionText: string;
+};
+
 function getFirstPageHeaderLines(lines: ExtractedLine[]) {
   const firstPageLines = lines.filter((line) => line.page === 1);
   return sliceHeaderLines(firstPageLines);
@@ -19,7 +24,7 @@ function shouldContinueScanning(lines: ExtractedLine[]) {
   return !(title.lines.length && authors.length && abstract);
 }
 
-export async function extractArticlePdfMetadata(data: Uint8Array): Promise<ExtractedArticlePdfMetadata> {
+export async function extractArticlePdfMetadataAnalysis(data: Uint8Array): Promise<ArticlePdfMetadataAnalysis> {
   const { lines, pageCount } = await extractPdfLines(data, { shouldContinueScanning });
   const emails = extractEmails(lines);
   const headerLines = getFirstPageHeaderLines(lines);
@@ -41,11 +46,18 @@ export async function extractArticlePdfMetadata(data: Uint8Array): Promise<Extra
   }
 
   return {
-    title: title.lines.length ? normalizeWhitespace(title.lines.map((line) => line.text).join(" ")) : undefined,
-    authors,
-    emails,
-    abstract,
-    pageCount,
-    warnings,
+    metadata: {
+      title: title.lines.length ? normalizeWhitespace(title.lines.map((line) => line.text).join(" ")) : undefined,
+      authors,
+      emails,
+      abstract,
+      pageCount,
+      warnings,
+    },
+    suggestionText: normalizeWhitespace(lines.map((line) => line.text).join(" ")),
   };
+}
+
+export async function extractArticlePdfMetadata(data: Uint8Array): Promise<ExtractedArticlePdfMetadata> {
+  return (await extractArticlePdfMetadataAnalysis(data)).metadata;
 }

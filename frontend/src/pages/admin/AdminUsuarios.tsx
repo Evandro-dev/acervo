@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/ui/select-field";
 import { StatePanel } from "@/components/ui/state-panel";
 import { useAuth } from "@/features/auth/auth-context";
 import {
@@ -20,6 +21,7 @@ import {
 } from "@/features/users/hooks";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
+import { accessUserRoleOptions } from "@/lib/access-user-role-options";
 import type { UpdateAccessAccountPayload, UserAccount, UserRole } from "@/types/acervo";
 
 const initialRole: UserRole = "COORDENADOR";
@@ -179,18 +181,13 @@ export default function AdminUsuarios() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="access-user-role">Perfil de acesso</Label>
-                  <select
-                    id="access-user-role"
-                    value={role}
-                    onChange={(event) => setRole(event.target.value as UserRole)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  >
-                    <option value="COORDENADOR">Coordenador</option>
-                    <option value="ADMIN">Administrador</option>
-                  </select>
-                </div>
+                <SelectField
+                  id="access-user-role"
+                  label="Perfil de acesso"
+                  value={role}
+                  options={accessUserRoleOptions}
+                  onValueChange={(value) => setRole(value as UserRole)}
+                />
 
                 <div className="space-y-2">
                   <Label htmlFor="access-user-password">Senha inicial</Label>

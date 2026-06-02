@@ -183,6 +183,13 @@ export type ExtractedArticlePdfMetadata = {
     score: number;
     source: "event-theme" | "event-area" | "catalog-area";
   }>;
+  suggestedCourses?: string[];
+  courseSuggestionConfidence?: "high" | "medium" | "low";
+  courseSuggestions?: Array<{
+    name: string;
+    score: number;
+    source: "explicit-text" | "title" | "content-keyword";
+  }>;
   pageCount: number;
   warnings: string[];
 };

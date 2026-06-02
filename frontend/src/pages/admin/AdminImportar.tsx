@@ -19,6 +19,7 @@ import { AreaCombobox } from "@/components/ui/area-combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CourseMultiCombobox } from "@/components/ui/course-multi-combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QueryState } from "@/components/ui/query-state";
@@ -37,6 +38,7 @@ import {
 import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
+import { addCommaSeparatedValue, splitCommaSeparatedValues } from "@/lib/comma-separated-values";
 import { formatFileSize } from "@/lib/file-size";
 import {
   segmentedControlItemClassName,
@@ -93,7 +95,7 @@ const toImportItem = (draft: Draft): ImportArticleInput => ({
     .map((author) => author.trim())
     .filter(Boolean),
   area: draft.area || "Geral",
-  courses: splitCommaSeparated(draft.courses),
+  courses: splitCommaSeparatedValues(draft.courses),
   abstract: draft.abstract,
   modality: draft.modalidade,
   importedFrom: "Importação manual",
@@ -107,20 +109,13 @@ const toPdfImportItem = (draft: PdfDraft): ImportArticleInput => ({
     .map((author) => author.trim())
     .filter(Boolean),
   area: draft.area || "Geral",
-  courses: splitCommaSeparated(draft.courses),
+  courses: splitCommaSeparatedValues(draft.courses),
   abstract: draft.abstract,
   pages: draft.pages || undefined,
   modality: draft.modalidade,
   importedFrom: "Leitura automática de PDF",
   submittedAt: new Date().toISOString().slice(0, 10),
 });
-
-function splitCommaSeparated(value: string) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
 
 function isPdfFile(file: File) {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -156,6 +151,9 @@ function applyMetadataToPdfDraft(draft: PdfDraft, metadata: ExtractedArticlePdfM
     authors: draft.authors || (metadata.authors.length ? metadata.authors.join(", ") : draft.authors),
     abstract: draft.abstract || metadata.abstract || draft.abstract,
     area: draft.area || metadata.suggestedArea || draft.area,
+    courses:
+      draft.courses ||
+      (metadata.suggestedCourses?.length ? metadata.suggestedCourses.join(", ") : draft.courses),
     pages: draft.pages || formatPageRangeFromPageCount(metadata.pageCount),
     modalidade: inferModalidadeFromPageCount(metadata.pageCount),
   };
@@ -232,6 +230,7 @@ export default function AdminImportar() {
       ),
     [areas, event?.themes],
   );
+  const courseSuggestions = useMemo(() => courses.map((course) => course.name), [courses]);
 
   const activePdfItem = pdfItems[activePdfIndex] ?? null;
   const isFirstPdfItem = activePdfIndex === 0;
@@ -343,7 +342,7 @@ export default function AdminImportar() {
           area: String(row.area ?? "Geral"),
           courses: Array.isArray(row.courses)
             ? row.courses.map(String)
-            : splitCommaSeparated(String(row.courses ?? "")),
+            : splitCommaSeparatedValues(String(row.courses ?? "")),
           abstract: String(row.abstract ?? ""),
           pages: row.pages ? String(row.pages) : undefined,
           modality: modalidade,
@@ -627,11 +626,6 @@ export default function AdminImportar() {
         emptyMessage="Cadastre um evento antes de importar trabalhos."
       >
         <>
-          <datalist id="course-suggestions">
-            {courses.map((course) => (
-              <option key={course.id} value={course.name} />
-            ))}
-          </datalist>
           <Card className="mb-3 border-border/60 p-3 shadow-card">
             <div className="grid grid-cols-1 gap-3">
               <div>
@@ -727,11 +721,14 @@ export default function AdminImportar() {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs">Cursos relacionados (separados por vírgula)</Label>
-                      <Input
-                        list="course-suggestions"
+                      <Label htmlFor={`manual-related-courses-${index}`} className="text-xs">
+                        Cursos relacionados (separados por vírgula)
+                      </Label>
+                      <CourseMultiCombobox
+                        id={`manual-related-courses-${index}`}
                         value={draft.courses}
-                        onChange={(event) => updateDraft(index, { courses: event.target.value })}
+                        options={courseSuggestions}
+                        onValueChange={(courses) => updateDraft(index, { courses })}
                         placeholder="Ex.: Direito, Administração"
                       />
                     </div>
@@ -1035,6 +1032,40 @@ export default function AdminImportar() {
                         </div>
                       )}
 
+                      {(activePdfItem.metadata.courseSuggestions?.length ?? 0) > 0 && (
+                        <div>
+                          <div className="mb-1 text-xs text-muted-foreground">
+                            <strong className="text-foreground">Cursos sugeridos:</strong>{" "}
+                            confirme os cursos relacionados antes de salvar
+                            {activePdfItem.metadata.courseSuggestionConfidence
+                              ? ` (${activePdfItem.metadata.courseSuggestionConfidence})`
+                              : ""}.
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {activePdfItem.metadata.courseSuggestions?.map((suggestion) => (
+                              <Button
+                                key={`${activePdfItem.id}-${suggestion.name}`}
+                                type="button"
+                                size="sm"
+                                variant={
+                                  splitCommaSeparatedValues(activePdfItem.draft.courses).includes(suggestion.name)
+                                    ? "default"
+                                    : "outline"
+                                }
+                                className="h-7 px-2 text-[11px]"
+                                onClick={() =>
+                                  updateActivePdfDraft({
+                                    courses: addCommaSeparatedValue(activePdfItem.draft.courses, suggestion.name),
+                                  })
+                                }
+                              >
+                                {suggestion.name}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {activePdfItem.metadata.warnings.length > 0 && (
                         <div className="rounded-md bg-amber-500/10 p-3 text-xs text-amber-700">
                           {activePdfItem.metadata.warnings.map((warning) => (
@@ -1099,11 +1130,14 @@ export default function AdminImportar() {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs">Cursos relacionados (separados por vírgula)</Label>
-                      <Input
-                        list="course-suggestions"
+                      <Label htmlFor="pdf-related-courses" className="text-xs">
+                        Cursos relacionados (separados por vírgula)
+                      </Label>
+                      <CourseMultiCombobox
+                        id="pdf-related-courses"
                         value={activePdfItem!.draft.courses}
-                        onChange={(event) => updateActivePdfDraft({ courses: event.target.value })}
+                        options={courseSuggestions}
+                        onValueChange={(courses) => updateActivePdfDraft({ courses })}
                         placeholder="Ex.: Enfermagem, Biomedicina"
                       />
                     </div>

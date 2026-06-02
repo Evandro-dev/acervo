@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/ui/select-field";
+import { accessUserRoleOptions } from "@/lib/access-user-role-options";
 import type { UpdateAccessAccountPayload, UserAccount, UserRole } from "@/types/acervo";
 
 type AccessUserEditDialogProps = {
@@ -98,18 +100,13 @@ function AccessUserEditForm({
           onChange={(event) => setJobTitle(event.target.value)}
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="edit-access-user-role">Perfil de acesso</Label>
-        <select
-          id="edit-access-user-role"
-          value={role}
-          onChange={(event) => setRole(event.target.value as UserRole)}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        >
-          <option value="COORDENADOR">Coordenador</option>
-          <option value="ADMIN">Administrador</option>
-        </select>
-      </div>
+      <SelectField
+        id="edit-access-user-role"
+        label="Perfil de acesso"
+        value={role}
+        options={accessUserRoleOptions}
+        onValueChange={(value) => setRole(value as UserRole)}
+      />
       <div className="space-y-2">
         <Label htmlFor="edit-access-user-password">Nova senha opcional</Label>
         <Input

@@ -9,7 +9,7 @@ import {
   removeArticlePdf,
   saveArticlePdf,
 } from "../../lib/article-pdf.js";
-import { extractArticlePdfMetadata } from "../../lib/article-pdf-metadata.js";
+import { extractArticlePdfMetadataAnalysis } from "../../lib/article-pdf-metadata.js";
 import { authorPayloadSchema, normalizeAuthorPayload } from "../../lib/contracts.js";
 import { canManageArticle, getOptionalUser, isPrivilegedRole, requirePrivilegedUser } from "../../lib/permissions.js";
 import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
@@ -20,6 +20,7 @@ import { suggestAreaFromArticleText } from "../areas/area-suggestion.service.js"
 import { ensureArea, sanitizeAreaName } from "../areas/areas.service.js";
 import { ensureAuthors } from "../authors/authors.service.js";
 import { ensureCourses, normalizeCourseLookup } from "../courses/courses.service.js";
+import { suggestCoursesFromArticleText } from "../courses/course-suggestion.service.js";
 
 const articleStatusSchema = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
 const articleStatusQuerySchema = z.enum(["published", "draft", "archived", "all"]);
@@ -176,19 +177,35 @@ export async function articleRoutes(app: FastifyInstance) {
       const file = await req.file();
       if (!file) return reply.status(400).send({ error: "Envie um arquivo PDF no campo 'file'" });
 
-      const metadata = await extractArticlePdfMetadata(await readValidatedPdfUpload(file));
-      const areaSuggestion = await suggestAreaFromArticleText({
-        title: metadata.title,
-        abstract: metadata.abstract,
-        eventId: query.eventId,
-      });
+      const { metadata, suggestionText } = await extractArticlePdfMetadataAnalysis(
+        await readValidatedPdfUpload(file),
+      );
+      const [areaSuggestion, courseSuggestion] = await Promise.all([
+        suggestAreaFromArticleText({
+          title: metadata.title,
+          abstract: metadata.abstract,
+          eventId: query.eventId,
+        }),
+        suggestCoursesFromArticleText({
+          title: metadata.title,
+          abstract: metadata.abstract,
+          extractedText: suggestionText,
+        }),
+      ]);
 
       return reply.send({
         ...metadata,
         suggestedArea: areaSuggestion.suggestedArea,
         areaSuggestions: areaSuggestion.areaSuggestions,
         areaSuggestionConfidence: areaSuggestion.areaSuggestionConfidence,
-        warnings: [...metadata.warnings, ...areaSuggestion.warnings],
+        suggestedCourses: courseSuggestion.suggestedCourses,
+        courseSuggestions: courseSuggestion.courseSuggestions,
+        courseSuggestionConfidence: courseSuggestion.courseSuggestionConfidence,
+        warnings: [
+          ...metadata.warnings,
+          ...areaSuggestion.warnings,
+          ...courseSuggestion.warnings,
+        ],
       });
     },
   );
