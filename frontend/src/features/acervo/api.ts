@@ -135,6 +135,10 @@ export async function uploadEventRuleFile(id: string, file: File) {
   return response.data;
 }
 
+export async function removeUploadedEventRuleFile(id: string, fileUrl: string) {
+  await api.delete(`/events/${id}/rules/upload`, { data: { fileUrl } });
+}
+
 export async function uploadEventCoverImage(id: string, file: File) {
   const formData = new FormData();
   formData.append("file", file);

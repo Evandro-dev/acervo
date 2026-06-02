@@ -1,0 +1,1 @@
+export const FILE_UPLOAD_LIMIT_BYTES = 25 * 1024 * 1024;

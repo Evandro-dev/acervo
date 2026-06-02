@@ -1,8 +1,6 @@
 import type { MultipartFile } from "@fastify/multipart";
 import { createInvalidPdfBinaryError, createInvalidPdfUploadError } from "./pdf-processing-errors.js";
 
-export const PDF_UPLOAD_LIMIT_BYTES = 25 * 1024 * 1024;
-
 const PDF_SIGNATURE = "%PDF-";
 const PDF_SIGNATURE_SCAN_LIMIT = 1024;
 

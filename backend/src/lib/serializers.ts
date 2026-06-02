@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { eventCommitteeSchema, eventPreviousEditionsSchema, eventRulesSchema } from "./contracts.js";
+import { eventCommitteeSchema, eventPreviousEditionsSchema } from "./contracts.js";
+import { parseStoredEventRules } from "./event-rules.js";
 
 type ArticleStatus = string;
 type Role = string;
@@ -189,7 +190,7 @@ export function serializeEvent(event: EventShape, options?: { includeArticles?: 
       publisher: event.publisher ?? "—",
       address: event.address ?? "—",
     },
-    rules: safeParse(eventRulesSchema, event.rules ?? [], []),
+    rules: parseStoredEventRules(event.rules),
     previousEditions: safeParse(eventPreviousEditionsSchema, event.previousEditions ?? [], []),
     contact: {
       email: event.contactEmail,

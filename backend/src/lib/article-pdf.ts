@@ -6,9 +6,15 @@ import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
 import { removePublicBlob, uploadPublicBlob } from "./public-blob-storage.js";
 import { slugify } from "./slug.js";
+import { assertSafeStorageResourceId } from "./storage-path.js";
 import { resolveUploadsDirectory } from "./uploads-directory.js";
 
 const articlePdfDirectory = path.join(resolveUploadsDirectory(env.UPLOADS_DIRECTORY), "articles");
+
+function getArticlePdfBlobPathPrefix(articleId: string) {
+  assertSafeStorageResourceId(articleId);
+  return `/acervo/articles/${articleId}/`;
+}
 
 function getRequestHost(request: FastifyRequest) {
   const forwardedHost = request.headers["x-forwarded-host"];
@@ -35,14 +41,17 @@ function getRequestProtocol(request: FastifyRequest) {
 }
 
 export function buildArticlePdfUrl(request: FastifyRequest, articleId: string) {
+  assertSafeStorageResourceId(articleId);
   return `${getRequestProtocol(request)}://${getRequestHost(request)}/articles/${articleId}/pdf`;
 }
 
 export function getArticlePdfPath(articleId: string) {
+  assertSafeStorageResourceId(articleId);
   return path.join(articlePdfDirectory, `${articleId}.pdf`);
 }
 
 export async function saveArticlePdf(articleId: string, data: Uint8Array) {
+  assertSafeStorageResourceId(articleId);
   const blobUrl = await uploadPublicBlob(
     `acervo/articles/${articleId}/${Date.now()}-${randomUUID().slice(0, 8)}.pdf`,
     Buffer.from(data),
@@ -65,7 +74,7 @@ export async function articlePdfExists(articleId: string) {
 }
 
 export async function removeArticlePdf(articleId: string, resourceUrl?: string | null) {
-  await removePublicBlob(resourceUrl);
+  await removePublicBlob(resourceUrl, { pathnamePrefix: getArticlePdfBlobPathPrefix(articleId) });
 
   try {
     await unlink(getArticlePdfPath(articleId));

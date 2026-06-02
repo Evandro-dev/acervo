@@ -13,6 +13,7 @@ import {
   fetchEvent,
   fetchEvents,
   importArticles,
+  removeUploadedEventRuleFile,
   trackArticleView,
   trackEventView,
   updateArticleStatus,
@@ -180,6 +181,12 @@ export function useUploadEventRuleFileMutation() {
   return useMutation({
     mutationFn: ({ id, file }: { id: string; file: File }) => uploadEventRuleFile(id, file),
     onSuccess: invalidate,
+  });
+}
+
+export function useRemoveUploadedEventRuleFileMutation() {
+  return useMutation({
+    mutationFn: ({ id, fileUrl }: { id: string; fileUrl: string }) => removeUploadedEventRuleFile(id, fileUrl),
   });
 }
 

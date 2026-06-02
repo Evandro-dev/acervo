@@ -3,8 +3,8 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import { ZodError } from "zod";
-import { PDF_UPLOAD_LIMIT_BYTES } from "./lib/pdf-upload.js";
 import { getPublicErrorMessage } from "./lib/public-error-message.js";
+import { FILE_UPLOAD_LIMIT_BYTES } from "./lib/upload-limits.js";
 import { env } from "./env.js";
 import { authPlugin } from "./plugins/auth.js";
 import { prisma } from "./lib/prisma.js";
@@ -48,7 +48,7 @@ await app.register(cors, {
   allowedHeaders: ["Content-Type", "Authorization"],
 });
 await app.register(jwt, { secret: env.JWT_SECRET });
-await app.register(multipart, { limits: { fileSize: PDF_UPLOAD_LIMIT_BYTES, files: 1 } });
+await app.register(multipart, { limits: { fileSize: FILE_UPLOAD_LIMIT_BYTES, files: 1 } });
 await app.register(authPlugin);
 
 function isZodError(error: unknown): error is ZodError {

@@ -6,6 +6,7 @@ import {
   useAreasQuery,
   useCreateEventMutation,
   useEventQuery,
+  useRemoveUploadedEventRuleFileMutation,
   useUpdateEventMutation,
   useUploadEventCoverImageMutation,
   useUploadEventRuleFileMutation,
@@ -18,6 +19,7 @@ vi.mock("@/features/acervo/hooks", () => ({
   useAreasQuery: vi.fn(),
   useCreateEventMutation: vi.fn(),
   useEventQuery: vi.fn(),
+  useRemoveUploadedEventRuleFileMutation: vi.fn(),
   useUpdateEventMutation: vi.fn(),
   useUploadEventCoverImageMutation: vi.fn(),
   useUploadEventRuleFileMutation: vi.fn(),
@@ -35,6 +37,7 @@ const mockedUseAdminEventsQuery = vi.mocked(useAdminEventsQuery);
 const mockedUseAreasQuery = vi.mocked(useAreasQuery);
 const mockedUseCreateEventMutation = vi.mocked(useCreateEventMutation);
 const mockedUseEventQuery = vi.mocked(useEventQuery);
+const mockedUseRemoveUploadedEventRuleFileMutation = vi.mocked(useRemoveUploadedEventRuleFileMutation);
 const mockedUseUpdateEventMutation = vi.mocked(useUpdateEventMutation);
 const mockedUseUploadEventCoverImageMutation = vi.mocked(useUploadEventCoverImageMutation);
 const mockedUseUploadEventRuleFileMutation = vi.mocked(useUploadEventRuleFileMutation);
@@ -74,6 +77,10 @@ describe("AdminEventoForm", () => {
       data: undefined,
       isLoading: false,
       isError: false,
+    } as never);
+    mockedUseRemoveUploadedEventRuleFileMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
     } as never);
   });
 
@@ -279,5 +286,78 @@ describe("AdminEventoForm", () => {
       }),
     );
     expect(uploadCoverMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("cleans newly uploaded rule documents when the final event update fails", async () => {
+    const fileUrl = "http://localhost:10000/events/event-1/files/template-apresentacao.pptx";
+    const cleanupMutateAsync = vi.fn().mockResolvedValue(undefined);
+
+    mockedUseCreateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ id: "event-1", title: "Congresso Completo" }),
+      isPending: false,
+    } as never);
+    mockedUseUpdateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue(new Error("Falha ao concluir atualização")),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCoverImageMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventRuleFileMutation.mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ fileUrl }),
+      isPending: false,
+    } as never);
+    mockedUseRemoveUploadedEventRuleFileMutation.mockReturnValue({
+      mutateAsync: cleanupMutateAsync,
+      isPending: false,
+    } as never);
+
+    const { container } = render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AdminEventoForm />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(container.querySelector("input[required]")!, {
+      target: { value: "Congresso Completo" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Digite ou escolha uma área"), {
+      target: { value: "Tecnologia" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Contextualize o evento, objetivos, público e escopo."), {
+      target: { value: "Apresentação completa do evento com detalhes suficientes." },
+    });
+    fireEvent.change(container.querySelector('input[type="email"]')!, {
+      target: { value: "congresso@acervo.edu" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Normas de submissão"), {
+      target: { value: "Template de apresentação" },
+    });
+
+    const ruleDocumentInput = container.querySelector('input[type="file"][accept*=".pptx"]') as HTMLInputElement;
+    fireEvent.change(ruleDocumentInput, {
+      target: {
+        files: [
+          new File(["slides"], "template-apresentacao.pptx", {
+            type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar evento completo" }));
+
+    await waitFor(() =>
+      expect(cleanupMutateAsync).toHaveBeenCalledWith({
+        id: "event-1",
+        fileUrl,
+      }),
+    );
+    expect(mockedToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Evento salvo parcialmente",
+        variant: "destructive",
+      }),
+    );
   });
 });

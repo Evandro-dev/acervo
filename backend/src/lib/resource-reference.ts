@@ -1,9 +1,6 @@
-const PLACEHOLDER_HOSTS = new Set(["acervo.local"]);
 const INTERNAL_RESOURCE_REFERENCE_PATTERN = /^\/(?!\/)[^\s\\]*$/;
 
-export function isUsableResourceUrl(value?: string) {
-  if (!value) return false;
-
+export function isSafeResourceReference(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return false;
 
@@ -14,15 +11,9 @@ export function isUsableResourceUrl(value?: string) {
     return (
       (parsed.protocol === "http:" || parsed.protocol === "https:") &&
       !parsed.username &&
-      !parsed.password &&
-      !PLACEHOLDER_HOSTS.has(parsed.hostname.toLowerCase())
+      !parsed.password
     );
   } catch {
     return false;
   }
-}
-
-export function isUsableExternalResourceUrl(value?: string) {
-  const trimmed = value?.trim();
-  return Boolean(trimmed && !trimmed.startsWith("/") && isUsableResourceUrl(trimmed));
 }

@@ -8,12 +8,23 @@ import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
 import { removePublicBlob, uploadPublicBlob } from "./public-blob-storage.js";
 import { slugify } from "./slug.js";
+import {
+  assertSafeStorageResourceId,
+  escapeRegExp,
+  isSafeStorageFileName,
+  truncateStorageFileSlug,
+} from "./storage-path.js";
 import { resolveUploadsDirectory } from "./uploads-directory.js";
 
 const eventCoverDirectory = path.join(resolveUploadsDirectory(env.UPLOADS_DIRECTORY), "events");
 
 const allowedImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const allowedImageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+
+function getEventCoverBlobPathPrefix(eventId: string) {
+  assertSafeStorageResourceId(eventId);
+  return `/acervo/events/${eventId}/covers/`;
+}
 
 function getRequestHost(request: FastifyRequest) {
   const forwardedHost = request.headers["x-forwarded-host"];
@@ -40,6 +51,7 @@ function getRequestProtocol(request: FastifyRequest) {
 }
 
 function getEventCoverDirectory(eventId: string) {
+  assertSafeStorageResourceId(eventId);
   return path.join(eventCoverDirectory, eventId, "covers");
 }
 
@@ -68,7 +80,7 @@ function buildEventCoverImageFileName(file: MultipartFile) {
     ? originalExtension
     : getExtensionFromMimeType(file.mimetype) || ".jpg";
   const basename = path.basename(file.filename, originalExtension);
-  const slug = slugify(basename) || "capa-evento";
+  const slug = truncateStorageFileSlug(slugify(basename)) || "capa-evento";
 
   return `${Date.now()}-${slug}-${randomUUID().slice(0, 8)}${extension}`;
 }
@@ -97,15 +109,21 @@ export function getEventCoverImageContentType(fileName: string) {
 }
 
 export function isSafeEventCoverImageFileName(fileName: string) {
-  return fileName === path.basename(fileName) && !fileName.includes("..");
+  return (
+    fileName === path.basename(fileName) &&
+    isSafeStorageFileName(fileName) &&
+    allowedImageExtensions.has(path.extname(fileName).toLowerCase())
+  );
 }
 
 export function buildEventCoverImageUrl(request: FastifyRequest, eventId: string, fileName: string) {
+  assertSafeStorageResourceId(eventId);
   const encodedFileName = encodeURIComponent(fileName);
   return `${getRequestProtocol(request)}://${getRequestHost(request)}/events/${eventId}/cover/${encodedFileName}`;
 }
 
 export async function saveEventCoverImage(eventId: string, file: MultipartFile) {
+  assertSafeStorageResourceId(eventId);
   const fileName = buildEventCoverImageFileName(file);
   const blobUrl = await uploadPublicBlob(
     `acervo/events/${eventId}/covers/${fileName}`,
@@ -117,7 +135,12 @@ export async function saveEventCoverImage(eventId: string, file: MultipartFile) 
   const targetDirectory = getEventCoverDirectory(eventId);
 
   await mkdir(targetDirectory, { recursive: true });
-  await pipeline(file.file, createWriteStream(getEventCoverImagePath(eventId, fileName)));
+  try {
+    await pipeline(file.file, createWriteStream(getEventCoverImagePath(eventId, fileName)));
+  } catch (error) {
+    await removeEventCoverImage(eventId, fileName).catch(() => undefined);
+    throw error;
+  }
 
   return { fileName, blobUrl: null };
 }
@@ -145,7 +168,7 @@ export async function removeEventCoverImage(eventId: string, fileName: string) {
 }
 
 export async function removeEventCoverResource(eventId: string, resourceUrl?: string | null) {
-  if (await removePublicBlob(resourceUrl)) return;
+  if (await removePublicBlob(resourceUrl, { pathnamePrefix: getEventCoverBlobPathPrefix(eventId) })) return;
 
   const fileName = extractLocalEventCoverFileName(eventId, resourceUrl);
   if (fileName) await removeEventCoverImage(eventId, fileName);
@@ -156,7 +179,7 @@ export async function removeSavedEventCoverImage(
   upload: { fileName: string; blobUrl: string | null },
 ) {
   if (upload.blobUrl) {
-    await removePublicBlob(upload.blobUrl);
+    await removePublicBlob(upload.blobUrl, { pathnamePrefix: getEventCoverBlobPathPrefix(eventId) });
     return;
   }
 
@@ -167,12 +190,14 @@ export function extractLocalEventCoverFileName(eventId: string, resourceUrl?: st
   if (!resourceUrl) return null;
 
   try {
+    assertSafeStorageResourceId(eventId);
     const parsed = resourceUrl.startsWith("http://") || resourceUrl.startsWith("https://")
       ? new URL(resourceUrl)
       : new URL(resourceUrl, "http://local.acervo");
-    const pathMatch = parsed.pathname.match(new RegExp(`^/events/${eventId}/cover/([^/]+)$`));
+    const pathMatch = parsed.pathname.match(new RegExp(`^/events/${escapeRegExp(eventId)}/cover/([^/]+)$`));
     if (!pathMatch?.[1]) return null;
-    return decodeURIComponent(pathMatch[1]);
+    const fileName = decodeURIComponent(pathMatch[1]);
+    return isSafeEventCoverImageFileName(fileName) ? fileName : null;
   } catch {
     return null;
   }

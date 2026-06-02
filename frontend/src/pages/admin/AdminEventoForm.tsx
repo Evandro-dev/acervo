@@ -21,6 +21,7 @@ import {
   useAdminEventsQuery,
   useCreateEventMutation,
   useEventQuery,
+  useRemoveUploadedEventRuleFileMutation,
   useUpdateEventMutation,
   useUploadEventCoverImageMutation,
   useUploadEventRuleFileMutation,
@@ -35,7 +36,7 @@ import {
   isSupportedEventRuleDocument,
   removeEventRuleDocumentExtension,
 } from "@/lib/event-rule-documents";
-import { isUsableResourceUrl } from "@/lib/file-links";
+import { isUsableExternalResourceUrl, isUsableResourceUrl } from "@/lib/file-links";
 import { cn } from "@/lib/utils";
 import { eventTypes, type Event, type EventMutationInput, type EventRule, type EventType } from "@/types/acervo";
 
@@ -344,7 +345,7 @@ function validateAndPrepare(form: FormState) {
         throw new Error("Informe o link externo da edição anterior ou altere o destino.");
       }
 
-      if (!isUsableResourceUrl(externalUrl) || externalUrl.startsWith("/")) {
+      if (!isUsableExternalResourceUrl(externalUrl)) {
         throw new Error("O link externo da edição anterior precisa ser uma URL http ou https válida.");
       }
     }
@@ -374,12 +375,12 @@ function validateAndPrepare(form: FormState) {
       if (!fileUrl) {
         throw new Error("Cada norma com link externo precisa de uma URL válida.");
       }
-      if (!isUsableResourceUrl(fileUrl)) {
-        throw new Error("Os links externos das normas precisam apontar para recursos válidos.");
+      if (!isUsableExternalResourceUrl(fileUrl)) {
+        throw new Error("Os links externos das normas precisam ser URLs http ou https válidas.");
       }
     } else {
       if (!fileUrl && !rule.pendingFile) {
-        throw new Error("Cada norma precisa de um PDF enviado ou de uma URL válida.");
+        throw new Error("Cada norma precisa de um arquivo enviado ou de uma URL válida.");
       }
       if (fileUrl && !isUsableResourceUrl(fileUrl)) {
         throw new Error("As URLs das normas precisam apontar para recursos válidos.");
@@ -515,6 +516,7 @@ export default function AdminEventoForm() {
   const updateEventMutation = useUpdateEventMutation();
   const uploadEventCoverImageMutation = useUploadEventCoverImageMutation();
   const uploadEventRuleFileMutation = useUploadEventRuleFileMutation();
+  const removeUploadedEventRuleFileMutation = useRemoveUploadedEventRuleFileMutation();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
 
@@ -528,7 +530,8 @@ export default function AdminEventoForm() {
     createEventMutation.isPending ||
     updateEventMutation.isPending ||
     uploadEventCoverImageMutation.isPending ||
-    uploadEventRuleFileMutation.isPending;
+    uploadEventRuleFileMutation.isPending ||
+    removeUploadedEventRuleFileMutation.isPending;
   const defaultOpenSections = ["identificacao", "contato", "ficha", "temas", "comissao", "normas", "edicoes"];
   const previousEditionEventOptions = adminEvents.filter((event) => event.id !== id);
 
@@ -599,10 +602,20 @@ export default function AdminEventoForm() {
           rules: finalRules,
         };
 
-        savedEvent = await updateEventMutation.mutateAsync({
-          id: savedEvent.id,
-          payload: finalPayload,
-        });
+        const savedEventId = savedEvent.id;
+        try {
+          savedEvent = await updateEventMutation.mutateAsync({
+            id: savedEventId,
+            payload: finalPayload,
+          });
+        } catch (error) {
+          await Promise.allSettled(
+            [...uploadedRuleUrls.values()].map((fileUrl) =>
+              removeUploadedEventRuleFileMutation.mutateAsync({ id: savedEventId, fileUrl }),
+            ),
+          );
+          throw error;
+        }
 
         if (failedRules.length > 0) {
           postSaveIssues.push(
@@ -957,7 +970,7 @@ export default function AdminEventoForm() {
           <FormAccordionSection
             value="normas"
             title="Normas"
-            description="Cadastre título e PDF real de cada norma publicada no evento."
+            description="Cadastre título e arquivo PDF, DOCX ou PPTX de cada norma publicada no evento."
           >
             {form.rules.length === 0 ? <EmptyHint>Nenhuma norma cadastrada.</EmptyHint> : null}
             <div className="flex flex-col gap-3">

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSafeResourceReference } from "./resource-reference.js";
 
 export const eventTypeValues = ["Congresso", "Simpósio", "Seminário", "Workshop", "Expo"] as const;
 export const eventTypeSchema = z.enum(eventTypeValues);
@@ -12,7 +13,12 @@ export const eventCommitteeSchema = z.array(eventCommitteeMemberSchema);
 
 export const eventRuleSchema = z.object({
   title: z.string().min(1).max(160),
-  file: z.string().min(1).max(500),
+  file: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .refine(isSafeResourceReference, "Informe um caminho interno ou uma URL HTTP/HTTPS válida"),
 });
 
 export const eventRulesSchema = z.array(eventRuleSchema);

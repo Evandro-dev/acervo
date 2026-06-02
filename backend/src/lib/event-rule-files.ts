@@ -9,11 +9,22 @@ import {
   type EventRuleDocumentExtension,
   type ValidatedEventRuleDocument,
 } from "./event-rule-documents.js";
-import { removePublicBlob, uploadPublicBlob } from "./public-blob-storage.js";
+import { isManagedPublicBlobUrl, removePublicBlob, uploadPublicBlob } from "./public-blob-storage.js";
 import { slugify } from "./slug.js";
+import {
+  assertSafeStorageResourceId,
+  escapeRegExp,
+  isSafeStorageFileName,
+  truncateStorageFileSlug,
+} from "./storage-path.js";
 import { resolveUploadsDirectory } from "./uploads-directory.js";
 
 const eventRuleDirectory = path.join(resolveUploadsDirectory(env.UPLOADS_DIRECTORY), "events");
+
+function getEventRuleBlobPathPrefix(eventId: string) {
+  assertSafeStorageResourceId(eventId);
+  return `/acervo/events/${eventId}/rules/`;
+}
 
 function getRequestHost(request: FastifyRequest) {
   const forwardedHost = request.headers["x-forwarded-host"];
@@ -40,6 +51,7 @@ function getRequestProtocol(request: FastifyRequest) {
 }
 
 function getEventRuleEventDirectory(eventId: string) {
+  assertSafeStorageResourceId(eventId);
   return path.join(eventRuleDirectory, eventId);
 }
 
@@ -48,7 +60,11 @@ export function getEventRuleFilePath(eventId: string, fileName: string) {
 }
 
 export function isSafeEventRuleFileName(fileName: string) {
-  return fileName === path.basename(fileName) && !fileName.includes("..");
+  return (
+    fileName === path.basename(fileName) &&
+    isSafeStorageFileName(fileName) &&
+    isEventRuleDocumentExtensionSupported(fileName)
+  );
 }
 
 function getComparableEventRuleFileKey(fileName: string) {
@@ -64,11 +80,12 @@ function getComparableEventRuleFileKey(fileName: string) {
 function buildEventRuleFileName(originalFileName: string, validatedExtension: EventRuleDocumentExtension) {
   const originalExtension = path.extname(originalFileName);
   const basename = path.basename(originalFileName, originalExtension);
-  const slug = slugify(basename) || "norma";
+  const slug = truncateStorageFileSlug(slugify(basename)) || "norma";
   return `${Date.now()}-${slug}-${randomUUID().slice(0, 8)}${validatedExtension}`;
 }
 
 export function buildEventRuleFileUrl(request: FastifyRequest, eventId: string, fileName: string) {
+  assertSafeStorageResourceId(eventId);
   const encodedFileName = encodeURIComponent(fileName);
   return `${getRequestProtocol(request)}://${getRequestHost(request)}/events/${eventId}/files/${encodedFileName}`;
 }
@@ -78,6 +95,7 @@ export async function saveEventRuleFile(
   originalFileName: string,
   document: ValidatedEventRuleDocument,
 ) {
+  assertSafeStorageResourceId(eventId);
   const fileName = buildEventRuleFileName(originalFileName, document.descriptor.extension);
   const blobUrl = await uploadPublicBlob(
     `acervo/events/${eventId}/rules/${fileName}`,
@@ -89,7 +107,12 @@ export async function saveEventRuleFile(
   const targetDirectory = getEventRuleEventDirectory(eventId);
 
   await mkdir(targetDirectory, { recursive: true });
-  await writeFile(getEventRuleFilePath(eventId, fileName), document.data);
+  try {
+    await writeFile(getEventRuleFilePath(eventId, fileName), document.data);
+  } catch (error) {
+    await removeEventRuleFile(eventId, fileName).catch(() => undefined);
+    throw error;
+  }
 
   return { fileName, blobUrl: null };
 }
@@ -138,10 +161,23 @@ export async function removeEventRuleFile(eventId: string, fileName: string) {
 }
 
 export async function removeEventRuleResource(eventId: string, resourceUrl: string) {
-  if (await removePublicBlob(resourceUrl)) return;
+  if (await removePublicBlob(resourceUrl, { pathnamePrefix: getEventRuleBlobPathPrefix(eventId) })) return true;
 
   const fileName = extractLocalEventRuleFileName(eventId, resourceUrl);
-  if (fileName) await removeEventRuleFile(eventId, fileName);
+  if (!fileName) return false;
+
+  await removeEventRuleFile(eventId, fileName);
+  return true;
+}
+
+export function getEventRuleResourceKey(eventId: string, resourceUrl: string) {
+  const pathnamePrefix = getEventRuleBlobPathPrefix(eventId);
+  if (isManagedPublicBlobUrl(resourceUrl, pathnamePrefix)) {
+    return `blob:${new URL(resourceUrl).pathname}`;
+  }
+
+  const fileName = extractLocalEventRuleFileName(eventId, resourceUrl);
+  return fileName ? `local:${fileName}` : null;
 }
 
 export async function removeEventRuleDirectory(eventId: string) {
@@ -152,12 +188,14 @@ export function extractLocalEventRuleFileName(eventId: string, resourceUrl: stri
   if (!resourceUrl) return null;
 
   try {
+    assertSafeStorageResourceId(eventId);
     const parsed = resourceUrl.startsWith("http://") || resourceUrl.startsWith("https://")
       ? new URL(resourceUrl)
       : new URL(resourceUrl, "http://local.acervo");
-    const pathMatch = parsed.pathname.match(new RegExp(`^/events/${eventId}/files/([^/]+)$`));
+    const pathMatch = parsed.pathname.match(new RegExp(`^/events/${escapeRegExp(eventId)}/files/([^/]+)$`));
     if (!pathMatch?.[1]) return null;
-    return decodeURIComponent(pathMatch[1]);
+    const fileName = decodeURIComponent(pathMatch[1]);
+    return isSafeEventRuleFileName(fileName) ? fileName : null;
   } catch {
     return null;
   }

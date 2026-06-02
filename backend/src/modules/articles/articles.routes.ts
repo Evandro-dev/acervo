@@ -253,6 +253,7 @@ export async function articleRoutes(app: FastifyInstance) {
       }
 
       reply.header("Content-Type", "application/pdf");
+      reply.header("X-Content-Type-Options", "nosniff");
       reply.header(
         "Content-Disposition",
         `${download ? "attachment" : "inline"}; filename="${buildArticlePdfFileName(article.title)}"`,

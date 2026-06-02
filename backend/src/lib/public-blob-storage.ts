@@ -22,6 +22,7 @@ export type PublicBlobClient = {
 
 type PublicBlobDependencies = {
   client?: PublicBlobClient;
+  pathnamePrefix?: string;
   token?: string | null;
 };
 
@@ -39,7 +40,12 @@ export function isPublicBlobStorageConfigured(token = env.BLOB_READ_WRITE_TOKEN)
   return Boolean(token?.trim());
 }
 
-export function isManagedPublicBlobUrl(resourceUrl?: string | null) {
+function normalizeManagedBlobPathPrefix(pathnamePrefix = managedBlobPathPrefix) {
+  const trimmed = pathnamePrefix.trim() || managedBlobPathPrefix;
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+export function isManagedPublicBlobUrl(resourceUrl?: string | null, pathnamePrefix?: string) {
   if (!resourceUrl) return false;
 
   try {
@@ -47,7 +53,7 @@ export function isManagedPublicBlobUrl(resourceUrl?: string | null) {
     return (
       parsed.protocol === "https:" &&
       parsed.hostname.endsWith(publicBlobHostSuffix) &&
-      parsed.pathname.startsWith(managedBlobPathPrefix)
+      parsed.pathname.startsWith(normalizeManagedBlobPathPrefix(pathnamePrefix))
     );
   } catch {
     return false;
@@ -74,7 +80,7 @@ export async function uploadPublicBlob(
 }
 
 export async function removePublicBlob(resourceUrl?: string | null, dependencies: PublicBlobDependencies = {}) {
-  if (!isManagedPublicBlobUrl(resourceUrl)) return false;
+  if (!isManagedPublicBlobUrl(resourceUrl, dependencies.pathnamePrefix)) return false;
 
   const token = resolveBlobToken(dependencies);
   if (!token) return false;

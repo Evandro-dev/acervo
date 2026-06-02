@@ -72,10 +72,20 @@ test("recognizes and removes only managed public Blob URLs", async () => {
   const managedUrl = "https://store.public.blob.vercel-storage.com/acervo/articles/article-1/file.pdf";
 
   assert.equal(isManagedPublicBlobUrl(managedUrl), true);
+  assert.equal(isManagedPublicBlobUrl(managedUrl, "/acervo/articles/article-1/"), true);
+  assert.equal(isManagedPublicBlobUrl(managedUrl, "/acervo/articles/article-2/"), false);
   assert.equal(isManagedPublicBlobUrl("https://example.com/acervo/articles/article-1/file.pdf"), false);
   assert.equal(isManagedPublicBlobUrl("https://store.public.blob.vercel-storage.com/outro/file.pdf"), false);
 
   assert.equal(await removePublicBlob(managedUrl, { client, token: "token-de-teste" }), true);
+  assert.equal(
+    await removePublicBlob(managedUrl, {
+      client,
+      pathnamePrefix: "/acervo/events/event-1/rules/",
+      token: "token-de-teste",
+    }),
+    false,
+  );
   assert.equal(
     await removePublicBlob("https://example.com/acervo/articles/article-1/file.pdf", {
       client,

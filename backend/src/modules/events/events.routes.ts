@@ -26,6 +26,7 @@ import {
   createEventRuleReadStream,
   eventRuleFileExists,
   findReplacementEventRuleFile,
+  getEventRuleResourceKey,
   isSafeEventRuleFileName,
   removeEventRuleDirectory,
   removeEventRuleResource,
@@ -35,11 +36,13 @@ import {
   getEventRuleDocumentContentType,
   readValidatedEventRuleDocumentUpload,
 } from "../../lib/event-rule-documents.js";
+import { getRemovedEventRuleResources, parseStoredEventRules } from "../../lib/event-rules.js";
 import { requirePrivilegedUser } from "../../lib/permissions.js";
 import { prisma } from "../../lib/prisma.js";
 import { queryBooleanSchema } from "../../lib/query-boolean.js";
 import { serializeEvent } from "../../lib/serializers.js";
 import { slugify } from "../../lib/slug.js";
+import { isSafeStorageResourceId } from "../../lib/storage-path.js";
 import { resolveUpdatedEventCoverUrl } from "./event-cover.policy.js";
 
 const eventPayloadSchema = z.object({
@@ -71,6 +74,18 @@ const eventQuerySchema = z.object({
 const eventRuleFileQuerySchema = z.object({
   download: queryBooleanSchema,
 });
+
+const eventRuleUploadCleanupSchema = z.object({
+  fileUrl: z.string().trim().min(1).max(1_000),
+});
+
+function decodeRouteFileName(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
 
 async function resolveUniqueEventSlug(seed: string, currentId?: string) {
   const base = slugify(seed);
@@ -142,19 +157,6 @@ function getEventInclude(includeArticles: "published" | "all" | "none") {
   };
 }
 
-function parseStoredRules(value: unknown) {
-  const parsed = eventRulesSchema.safeParse(value ?? []);
-  return parsed.success ? parsed.data : [];
-}
-
-function getRemovedRuleResources(currentRules: unknown, nextRules: unknown) {
-  const nextFiles = new Set(parseStoredRules(nextRules).map((rule) => rule.file));
-
-  return parseStoredRules(currentRules)
-    .map((rule) => rule.file)
-    .filter((file) => !nextFiles.has(file));
-}
-
 function getRemovedCoverResource(currentCoverUrl: string | null, nextCoverUrl?: string | null) {
   if (!currentCoverUrl || currentCoverUrl === nextCoverUrl) return null;
   return currentCoverUrl;
@@ -204,9 +206,9 @@ export async function eventRoutes(app: FastifyInstance) {
 
   app.get("/:id/cover/:fileName", async (req, reply) => {
     const { id, fileName } = req.params as { id: string; fileName: string };
-    const decodedFileName = decodeURIComponent(fileName);
+    const decodedFileName = decodeRouteFileName(fileName);
 
-    if (!isSafeEventCoverImageFileName(decodedFileName)) {
+    if (!decodedFileName || !isSafeStorageResourceId(id) || !isSafeEventCoverImageFileName(decodedFileName)) {
       return reply.status(400).send({ error: "Nome de imagem inválido" });
     }
 
@@ -215,6 +217,7 @@ export async function eventRoutes(app: FastifyInstance) {
     }
 
     reply.header("Content-Type", getEventCoverImageContentType(decodedFileName));
+    reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Cache-Control", "public, max-age=31536000, immutable");
 
     return reply.send(createEventCoverImageReadStream(id, decodedFileName));
@@ -223,10 +226,14 @@ export async function eventRoutes(app: FastifyInstance) {
   app.get("/:id/files/:fileName", async (req, reply) => {
     const { id, fileName } = req.params as { id: string; fileName: string };
     const { download } = eventRuleFileQuerySchema.parse(req.query ?? {});
-    const decodedFileName = decodeURIComponent(fileName);
+    const decodedFileName = decodeRouteFileName(fileName);
+    if (!decodedFileName) {
+      return reply.status(400).send({ error: "Nome de arquivo inválido" });
+    }
+
     let readableFileName = decodedFileName;
 
-    if (!isSafeEventRuleFileName(decodedFileName)) {
+    if (!isSafeStorageResourceId(id) || !isSafeEventRuleFileName(decodedFileName)) {
       return reply.status(400).send({ error: "Nome de arquivo inválido" });
     }
 
@@ -242,6 +249,8 @@ export async function eventRoutes(app: FastifyInstance) {
 
     const contentType = getEventRuleDocumentContentType(readableFileName);
     reply.header("Content-Type", contentType);
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("Cache-Control", "public, max-age=31536000, immutable");
     reply.header(
       "Content-Disposition",
       `${download || contentType !== "application/pdf" ? "attachment" : "inline"}; filename="${readableFileName}"`,
@@ -356,6 +365,26 @@ export async function eventRoutes(app: FastifyInstance) {
     });
   });
 
+  app.delete("/:id/rules/upload", { preHandler: [app.requireRole("ADMIN", "COORDENADOR")] }, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const { fileUrl } = eventRuleUploadCleanupSchema.parse(req.body);
+    if (!isSafeStorageResourceId(id)) return reply.status(400).send({ error: "Identificador de evento inválido" });
+
+    const event = await prisma.event.findUnique({ where: { id }, select: { id: true, rules: true } });
+    if (!event) return reply.status(404).send({ error: "Evento não encontrado" });
+
+    const resourceKey = getEventRuleResourceKey(id, fileUrl);
+    if (!resourceKey) return reply.status(400).send({ error: "Arquivo de norma inválido" });
+
+    const isAttached = parseStoredEventRules(event.rules).some(
+      (rule) => getEventRuleResourceKey(id, rule.file) === resourceKey,
+    );
+    if (isAttached) return reply.status(409).send({ error: "A norma já está vinculada ao evento" });
+
+    await removeEventRuleResource(id, fileUrl);
+    return reply.status(204).send();
+  });
+
   app.put("/:id", { preHandler: [app.requireRole("ADMIN", "COORDENADOR")] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const payload = eventPayloadSchema.partial().parse(req.body);
@@ -379,7 +408,7 @@ export async function eventRoutes(app: FastifyInstance) {
       presentation: payload.presentation ?? current.presentation,
       themes: payload.themes ?? current.themes,
       committee: payload.committee ?? current.committee ?? [],
-      rules: payload.rules ?? current.rules ?? [],
+      rules: payload.rules ?? parseStoredEventRules(current.rules),
       previousEditions: payload.previousEditions ?? current.previousEditions ?? [],
       contact: {
         email: payload.contact?.email ?? current.contactEmail,
@@ -393,7 +422,11 @@ export async function eventRoutes(app: FastifyInstance) {
       },
     });
 
-    const removedRuleResources = getRemovedRuleResources(current.rules, merged.rules);
+    const removedRuleResources = getRemovedEventRuleResources(
+      current.rules,
+      merged.rules,
+      (resourceUrl) => getEventRuleResourceKey(current.id, resourceUrl),
+    );
     const removedCoverResource = getRemovedCoverResource(current.coverUrl, merged.coverUrl);
 
     const event = await prisma.event.update({
@@ -429,7 +462,7 @@ export async function eventRoutes(app: FastifyInstance) {
     await prisma.event.delete({ where: { id } });
     await removeResourcesBestEffort(req, "excluir arquivos do evento", [
       removeEventCoverResource(id, event.coverUrl),
-      ...parseStoredRules(event.rules).map((rule) => removeEventRuleResource(id, rule.file)),
+      ...parseStoredEventRules(event.rules).map((rule) => removeEventRuleResource(id, rule.file)),
       ...event.articles.map((article: { id: string; pdfUrl: string | null }) =>
         removeArticlePdf(article.id, article.pdfUrl),
       ),
