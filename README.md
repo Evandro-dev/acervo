@@ -86,6 +86,8 @@ Configuração recomendada na Vercel:
 - build: `npm run build`
 - saída: `dist`
 
+O fallback de SPA para rotas internas, como `/admin/importar`, já está versionado em `frontend/vercel.json`.
+
 Variáveis de ambiente:
 
 ```env

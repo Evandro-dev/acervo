@@ -222,8 +222,10 @@ export function useUploadArticlePdfMutation() {
   const invalidate = useInvalidateAcervoData();
 
   return useMutation({
-    mutationFn: ({ id, file }: { id: string; file: File }) => uploadArticlePdf(id, file),
-    onSuccess: invalidate,
+    mutationFn: ({ id, file }: { id: string; file: File; invalidateOnSuccess?: boolean }) => uploadArticlePdf(id, file),
+    onSuccess: async (_article, variables) => {
+      if (variables.invalidateOnSuccess !== false) await invalidate();
+    },
   });
 }
 
@@ -237,9 +239,18 @@ export function useImportArticlesMutation() {
   const invalidate = useInvalidateAcervoData();
 
   return useMutation({
-    mutationFn: (payload: { eventId: string; publishImmediately: boolean; items: ImportArticleInput[] }) =>
-      importArticles(payload),
-    onSuccess: invalidate,
+    mutationFn: ({
+      invalidateOnSuccess: _invalidateOnSuccess,
+      ...payload
+    }: {
+      eventId: string;
+      publishImmediately: boolean;
+      items: ImportArticleInput[];
+      invalidateOnSuccess?: boolean;
+    }) => importArticles(payload),
+    onSuccess: async (_result, variables) => {
+      if (variables.invalidateOnSuccess !== false) await invalidate();
+    },
   });
 }
 

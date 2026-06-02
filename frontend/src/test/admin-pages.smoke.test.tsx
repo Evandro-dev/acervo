@@ -234,6 +234,7 @@ describe("Admin pages", () => {
       expect(mutateAsync).toHaveBeenCalledWith({
         eventId: "event-1",
         publishImmediately: false,
+        invalidateOnSuccess: false,
         items: [
           expect.objectContaining({
             title: "Novo trabalho importado",
@@ -356,6 +357,7 @@ describe("Admin pages", () => {
       expect(importMutateAsync).toHaveBeenCalledWith({
         eventId: "event-1",
         publishImmediately: false,
+        invalidateOnSuccess: false,
         items: [
           expect.objectContaining({
             title: "Leucemia Infantil",
@@ -383,6 +385,7 @@ describe("Admin pages", () => {
       expect(uploadMutateAsync).toHaveBeenCalledWith({
         id: "article-2",
         file,
+        invalidateOnSuccess: false,
       }),
     );
 
@@ -390,6 +393,7 @@ describe("Admin pages", () => {
       expect(uploadMutateAsync).toHaveBeenCalledWith({
         id: "article-3",
         file: secondFile,
+        invalidateOnSuccess: false,
       }),
     );
   });
@@ -453,6 +457,8 @@ describe("Admin pages", () => {
     await waitFor(() => expect(importMutateAsync).toHaveBeenCalledTimes(2));
     expect(importMutateAsync.mock.calls[0][0].items).toHaveLength(25);
     expect(importMutateAsync.mock.calls[1][0].items).toHaveLength(1);
+    expect(importMutateAsync.mock.calls.every(([payload]) => payload.invalidateOnSuccess === false)).toBe(true);
     await waitFor(() => expect(uploadMutateAsync).toHaveBeenCalledTimes(26));
+    expect(uploadMutateAsync.mock.calls.every(([payload]) => payload.invalidateOnSuccess === false)).toBe(true);
   });
 });

@@ -12,6 +12,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { PdfFilePicker } from "@/components/admin/PdfFilePicker";
@@ -204,6 +205,7 @@ function getPdfStatusMeta(status: PdfQueueStatus) {
 
 export default function AdminImportar() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
   const { data: events = [], isLoading, isError } = useAdminEventsQuery(isAuthenticated);
   const { data: areas = [] } = useAreasQuery({ includeEmpty: true });
@@ -253,6 +255,8 @@ export default function AdminImportar() {
     [drafts],
   );
   const isImporting = importMutation.isPending || uploadPdfMutation.isPending || isBatchSaving;
+  const markAcervoDataAsStale = () =>
+    queryClient.invalidateQueries({ queryKey: ["acervo"], refetchType: "none" });
 
   useEffect(() => {
     const reviewJustBecameVisible = showActivePdfReview && !reviewWasVisibleRef.current;
@@ -306,12 +310,14 @@ export default function AdminImportar() {
         eventId: selectedEventId,
         publishImmediately: publishNow,
         items,
+        invalidateOnSuccess: false,
       });
 
       toast({
         title: `${result.count} ${result.count === 1 ? "trabalho importado" : "trabalhos importados"}`,
         description: publishNow ? "Já disponíveis no Acervo." : "Salvos como rascunho para revisão.",
       });
+      await markAcervoDataAsStale();
       navigate("/admin/publicacoes");
     } catch (error) {
       toast({ title: "Falha na importação", description: getApiErrorMessage(error), variant: "destructive" });
@@ -371,12 +377,14 @@ export default function AdminImportar() {
         eventId: selectedEventId,
         publishImmediately: publishNow,
         items,
+        invalidateOnSuccess: false,
       });
 
       toast({
         title: `${result.count} ${result.count === 1 ? "trabalho importado" : "trabalhos importados"}`,
-        description: publishNow ? "Já disponáveis no Acervo." : "Salvos como rascunho para revisão.",
+        description: publishNow ? "Já disponíveis no Acervo." : "Salvos como rascunho para revisão.",
       });
+      await markAcervoDataAsStale();
       navigate("/admin/publicacoes");
     } catch (error) {
       toast({ title: "Falha na importação", description: getApiErrorMessage(error), variant: "destructive" });
@@ -537,6 +545,7 @@ export default function AdminImportar() {
           eventId: selectedEventId,
           publishImmediately: publishNow,
           items: batch.map((item) => toPdfImportItem(item.draft)),
+          invalidateOnSuccess: false,
         });
         importedCount += result.count;
 
@@ -551,7 +560,11 @@ export default function AdminImportar() {
           }
 
           try {
-            await uploadPdfMutation.mutateAsync({ id: createdArticle.id, file: item.file });
+            await uploadPdfMutation.mutateAsync({
+              id: createdArticle.id,
+              file: item.file,
+              invalidateOnSuccess: false,
+            });
             savedIds.add(item.id);
           } catch (error) {
             partialIds.add(item.id);
@@ -597,6 +610,7 @@ export default function AdminImportar() {
         });
       }
 
+      await markAcervoDataAsStale();
       navigate("/admin/publicacoes");
     } catch (error) {
       setPdfItems((currentItems) =>
@@ -625,6 +639,9 @@ export default function AdminImportar() {
             : getApiErrorMessage(error),
         variant: "destructive",
       });
+      if (savedIds.size + partialIds.size > 0) {
+        await queryClient.invalidateQueries({ queryKey: ["acervo"] });
+      }
     } finally {
       setIsBatchSaving(false);
     }
