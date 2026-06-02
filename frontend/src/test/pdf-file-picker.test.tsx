@@ -33,6 +33,10 @@ describe("PdfFilePicker", () => {
     expect(screen.getByText("edital.pdf")).toBeInTheDocument();
     expect(screen.getByText("11 B")).toBeInTheDocument();
     expect(screen.getByText("Trocar PDF").closest("label")).toHaveClass("hover:bg-accent");
+    expect(screen.getByText("edital.pdf").parentElement?.previousElementSibling).toHaveClass(
+      "bg-brand-soft",
+      "text-primary-dark",
+    );
 
     const replacementFile = new File(["new-content"], "edital-atualizado.pdf", { type: "application/pdf" });
     fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [replacementFile] } });
