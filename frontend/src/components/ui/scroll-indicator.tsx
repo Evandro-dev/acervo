@@ -102,7 +102,7 @@ export function ScrollIndicator({ viewport, className }: ScrollIndicatorProps) {
   return (
     <div
       aria-hidden="true"
-      data-slot="select-scroll-indicator"
+      data-slot="dropdown-scroll-indicator"
       className={cn("absolute inset-y-1 right-1 z-10 w-2 rounded-full bg-muted/70", className)}
       onPointerDown={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -122,7 +122,7 @@ export function ScrollIndicator({ viewport, className }: ScrollIndicatorProps) {
       }}
     >
       <div
-        data-slot="select-scroll-thumb"
+        data-slot="dropdown-scroll-thumb"
         className="absolute left-0 right-0 cursor-grab rounded-full bg-muted-foreground/60 active:cursor-grabbing"
         style={{
           height: metrics.thumbHeight,

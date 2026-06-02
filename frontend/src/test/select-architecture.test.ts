@@ -37,18 +37,20 @@ describe("select architecture", () => {
     expect(directRadixImports).toEqual([]);
   });
 
-  it("uses the shared scrollbar style in every dropdown family", () => {
+  it("uses the shared scroll area in every dropdown family", () => {
     const simpleSelect = readFileSync(resolve("src/components/ui/select.tsx"), "utf8");
     const commandList = readFileSync(resolve("src/components/ui/command.tsx"), "utf8");
     const courseMultiCombobox = readFileSync(resolve("src/components/ui/course-multi-combobox.tsx"), "utf8");
+    const dropdownScrollArea = readFileSync(resolve("src/components/ui/dropdown-scroll-area.tsx"), "utf8");
     const scrollIndicator = readFileSync(resolve("src/components/ui/scroll-indicator.tsx"), "utf8");
 
-    expect(simpleSelect).toContain("acervo-dropdown-scrollbar");
-    expect(commandList).toContain("acervo-dropdown-scrollbar");
-    expect(courseMultiCombobox).toContain("acervo-dropdown-scrollbar");
-    expect(simpleSelect).toContain("<ScrollIndicator viewport={viewport} />");
-    expect(scrollIndicator).toContain('data-slot="select-scroll-indicator"');
-    expect(scrollIndicator).toContain('data-slot="select-scroll-thumb"');
+    expect(simpleSelect).toContain("<DropdownScrollArea");
+    expect(commandList).toContain("<DropdownScrollArea>");
+    expect(courseMultiCombobox).toContain("<DropdownScrollArea>");
+    expect(dropdownScrollArea).toContain("acervo-dropdown-scrollbar");
+    expect(dropdownScrollArea).toContain("<ScrollIndicator viewport={viewport} />");
+    expect(scrollIndicator).toContain('data-slot="dropdown-scroll-indicator"');
+    expect(scrollIndicator).toContain('data-slot="dropdown-scroll-thumb"');
     expect(simpleSelect).not.toMatch(/ScrollUpButton|ScrollDownButton/);
   });
 });

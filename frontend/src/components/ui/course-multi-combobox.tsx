@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownScrollArea } from "@/components/ui/dropdown-scroll-area";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import {
@@ -253,52 +254,54 @@ export function CourseMultiCombobox({
           }
         }}
       >
-        <div
-          id={listboxId}
-          role="listbox"
-          aria-label="Cursos relacionados"
-          aria-multiselectable="true"
-          className="acervo-dropdown-scrollbar max-h-[300px] overflow-y-auto overflow-x-hidden p-1"
-        >
-          {selectableOptions.length > 0 ? (
-            selectableOptions.map((option, index) => {
-              const isSelected =
-                !option.isCustom && normalizedSelectedCourses.has(normalize(option.value));
+        <DropdownScrollArea>
+          <div
+            id={listboxId}
+            role="listbox"
+            aria-label="Cursos relacionados"
+            aria-multiselectable="true"
+            className="max-h-[300px] p-1"
+          >
+            {selectableOptions.length > 0 ? (
+              selectableOptions.map((option, index) => {
+                const isSelected =
+                  !option.isCustom && normalizedSelectedCourses.has(normalize(option.value));
 
-              return (
-                <button
-                  key={`${option.isCustom ? "custom" : "course"}-${option.value}`}
-                  id={`${listboxId}-option-${index}`}
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected}
-                  className={cn(
-                    "flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
-                    activeOptionIndex === index && "bg-accent text-accent-foreground",
-                  )}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onMouseEnter={() => setActiveOptionIndex(index)}
-                  onClick={() => {
-                    if (option.isCustom) {
-                      addCourse(option.value);
-                    } else {
-                      toggleCourse(option.value);
-                    }
-                  }}
-                >
-                  {option.isCustom ? (
-                    <Plus className="mr-2 h-4 w-4" />
-                  ) : (
-                    <Check className={cn("mr-2 h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
-                  )}
-                  {option.isCustom ? `Adicionar "${option.value}"` : option.value}
-                </button>
-              );
-            })
-          ) : (
-            <div className="p-3 text-sm text-muted-foreground">{emptyMessage}</div>
-          )}
-        </div>
+                return (
+                  <button
+                    key={`${option.isCustom ? "custom" : "course"}-${option.value}`}
+                    id={`${listboxId}-option-${index}`}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    className={cn(
+                      "flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
+                      activeOptionIndex === index && "bg-accent text-accent-foreground",
+                    )}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setActiveOptionIndex(index)}
+                    onClick={() => {
+                      if (option.isCustom) {
+                        addCourse(option.value);
+                      } else {
+                        toggleCourse(option.value);
+                      }
+                    }}
+                  >
+                    {option.isCustom ? (
+                      <Plus className="mr-2 h-4 w-4" />
+                    ) : (
+                      <Check className={cn("mr-2 h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
+                    )}
+                    {option.isCustom ? `Adicionar "${option.value}"` : option.value}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="p-3 text-sm text-muted-foreground">{emptyMessage}</div>
+            )}
+          </div>
+        </DropdownScrollArea>
       </PopoverContent>
     </Popover>
   );

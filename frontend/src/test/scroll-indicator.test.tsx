@@ -18,7 +18,7 @@ describe("ScrollIndicator", () => {
     render(<ScrollIndicatorHarness />);
     const viewport = screen.getByTestId("scroll-viewport");
 
-    expect(document.querySelector('[data-slot="select-scroll-indicator"]')).not.toBeInTheDocument();
+    expect(document.querySelector('[data-slot="dropdown-scroll-indicator"]')).not.toBeInTheDocument();
 
     Object.defineProperties(viewport, {
       clientHeight: { configurable: true, value: 100 },
@@ -28,8 +28,8 @@ describe("ScrollIndicator", () => {
 
     fireEvent.scroll(viewport);
 
-    const indicator = document.querySelector('[data-slot="select-scroll-indicator"]');
-    const thumb = document.querySelector('[data-slot="select-scroll-thumb"]');
+    const indicator = document.querySelector('[data-slot="dropdown-scroll-indicator"]');
+    const thumb = document.querySelector('[data-slot="dropdown-scroll-thumb"]');
 
     expect(indicator).toBeInTheDocument();
     expect(thumb).toHaveStyle({ height: "24px", transform: "translateY(11.333333333333332px)" });

@@ -2,7 +2,7 @@ import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 
-import { ScrollIndicator } from "@/components/ui/scroll-indicator";
+import { DropdownScrollArea } from "@/components/ui/dropdown-scroll-area";
 import { cn } from "@/lib/utils";
 
 const Select = SelectPrimitive.Root;
@@ -35,8 +35,6 @@ const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(({ className, children, position = "popper", ...props }, ref) => {
-  const [viewport, setViewport] = React.useState<HTMLDivElement | null>(null);
-
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -50,18 +48,17 @@ const SelectContent = React.forwardRef<
         position={position}
         {...props}
       >
-        <SelectPrimitive.Viewport
-          ref={setViewport}
-          data-slot="select-scroll-viewport"
-          className={cn(
-            "acervo-dropdown-scrollbar max-h-80 overflow-y-auto p-1 pr-3",
-            position === "popper" &&
-              "w-full min-w-[var(--radix-select-trigger-width)]",
-          )}
-        >
-          {children}
-        </SelectPrimitive.Viewport>
-        <ScrollIndicator viewport={viewport} />
+        <DropdownScrollArea viewportSlot="select-scroll-viewport">
+          <SelectPrimitive.Viewport
+            className={cn(
+              "max-h-80 p-1",
+              position === "popper" &&
+                "w-full min-w-[var(--radix-select-trigger-width)]",
+            )}
+          >
+            {children}
+          </SelectPrimitive.Viewport>
+        </DropdownScrollArea>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );
