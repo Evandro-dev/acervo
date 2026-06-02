@@ -297,6 +297,7 @@ describe("Admin pages", () => {
     const { container } = renderAdminPage(<AdminImportar />);
 
     const pdfTab = screen.getByRole("tab", { name: /pdf/i });
+    expect(pdfTab).toHaveClass("hover:bg-background/70", "hover:text-foreground");
     fireEvent.mouseDown(pdfTab);
     fireEvent.click(pdfTab);
 

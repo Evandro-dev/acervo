@@ -55,7 +55,7 @@ export function EventCoverImagePicker({
       />
 
       {previewUrl ? (
-        <div className="group relative h-40 w-full overflow-hidden rounded-xl border border-border/60 bg-muted/30 shadow-card sm:h-48">
+        <div className="group relative h-40 w-full overflow-hidden rounded-xl border border-border/60 bg-muted shadow-card sm:h-48">
           <ProtectedImage src={previewUrl} alt="Preview da imagem do evento" className="h-full w-full object-contain" />
           <label
             htmlFor={inputId}

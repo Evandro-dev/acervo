@@ -25,7 +25,7 @@ describe("EventCoverImagePicker", () => {
     const preview = screen.getByRole("img", { name: "Preview da imagem do evento" });
     expect(preview).toHaveAttribute("src", "https://example.com/current.png");
     expect(preview).toHaveClass("h-full", "w-full", "object-contain");
-    expect(preview.parentElement).toHaveClass("h-40", "w-full", "sm:h-48");
+    expect(preview.parentElement).toHaveClass("h-40", "w-full", "bg-muted", "sm:h-48");
 
     const replaceLabel = screen.getByText("Trocar foto").closest("label");
     expect(replaceLabel).toHaveClass("sm:opacity-0", "sm:group-hover:opacity-100");

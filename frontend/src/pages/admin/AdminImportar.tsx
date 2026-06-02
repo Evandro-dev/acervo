@@ -661,10 +661,10 @@ export default function AdminImportar() {
 
           <Tabs defaultValue="manual" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="manual" className="text-xs">
+              <TabsTrigger value="manual" className="text-xs hover:bg-background/70 hover:text-foreground">
                 <Plus className="mr-1 h-3.5 w-3.5" /> Manual
               </TabsTrigger>
-              <TabsTrigger value="pdf" className="text-xs">
+              <TabsTrigger value="pdf" className="text-xs hover:bg-background/70 hover:text-foreground">
                 <Sparkles className="mr-1 h-3.5 w-3.5" /> PDF
               </TabsTrigger>
             </TabsList>
