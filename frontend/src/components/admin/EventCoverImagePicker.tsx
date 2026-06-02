@@ -14,6 +14,7 @@ type EventCoverImagePickerProps = {
 };
 
 const acceptedImageTypes = "image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif";
+const fallbackHint = "Caso não tenha uma imagem, será exibido um ícone de calendário para seu evento.";
 
 export function EventCoverImagePicker({
   currentCoverUrl,
@@ -63,9 +64,12 @@ export function EventCoverImagePicker({
               disabled && "pointer-events-none opacity-0",
             )}
           >
-            <span className="inline-flex items-center gap-2 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold shadow-sm sm:bg-transparent sm:text-sm sm:shadow-none">
-              <RefreshCw className="h-4 w-4" />
-              Trocar foto
+            <span className="flex max-w-xs flex-col items-center gap-1 rounded-xl bg-black/65 px-4 py-3 text-center shadow-sm sm:bg-transparent sm:shadow-none">
+              <span className="inline-flex items-center gap-2 text-xs font-semibold sm:text-sm">
+                <RefreshCw className="h-4 w-4" />
+                Trocar foto
+              </span>
+              <span className="text-[11px] font-normal leading-relaxed text-white/85">{fallbackHint}</span>
             </span>
           </label>
           <Button
@@ -92,6 +96,7 @@ export function EventCoverImagePicker({
           <div>
             <div className="font-semibold text-foreground">Selecionar imagem do evento</div>
             <div className="text-[11px]">Envie uma imagem JPG, PNG, WEBP ou GIF para destacar o evento.</div>
+            <div className="mt-1 text-[11px]">{fallbackHint}</div>
           </div>
         </label>
       )}

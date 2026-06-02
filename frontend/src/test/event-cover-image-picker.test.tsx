@@ -6,6 +6,7 @@ describe("EventCoverImagePicker", () => {
     render(<EventCoverImagePicker selectedFile={null} onChange={vi.fn()} onRemove={vi.fn()} />);
 
     expect(screen.getByText("Selecionar imagem do evento")).toBeInTheDocument();
+    expect(screen.getByText("Caso não tenha uma imagem, será exibido um ícone de calendário para seu evento.")).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "Preview da imagem do evento" })).not.toBeInTheDocument();
   });
 
@@ -27,6 +28,7 @@ describe("EventCoverImagePicker", () => {
 
     const replaceLabel = screen.getByText("Trocar foto").closest("label");
     expect(replaceLabel).toHaveClass("sm:opacity-0", "sm:group-hover:opacity-100");
+    expect(screen.getByText("Caso não tenha uma imagem, será exibido um ícone de calendário para seu evento.")).toBeInTheDocument();
 
     const removeButton = screen.getByRole("button", { name: "Remover imagem do evento" });
     expect(removeButton).toHaveClass("rounded-full", "bg-white", "text-destructive");

@@ -729,9 +729,6 @@ export default function AdminEventoForm() {
                   }))
                 }
               />
-              <p className="text-xs text-muted-foreground">
-                Caso não tenha uma imagem, será exibido um ícone de calendário para seu evento.
-              </p>
             </div>
 
             <div className="flex flex-col gap-2">
