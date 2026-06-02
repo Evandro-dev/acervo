@@ -258,7 +258,7 @@ export function CourseMultiCombobox({
           role="listbox"
           aria-label="Cursos relacionados"
           aria-multiselectable="true"
-          className="max-h-[300px] overflow-y-auto overflow-x-hidden p-1"
+          className="acervo-dropdown-scrollbar max-h-[300px] overflow-y-auto overflow-x-hidden p-1"
         >
           {selectableOptions.length > 0 ? (
             selectableOptions.map((option, index) => {

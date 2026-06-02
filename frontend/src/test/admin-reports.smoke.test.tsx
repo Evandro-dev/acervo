@@ -100,6 +100,10 @@ describe("AdminRelatorios", () => {
     fireEvent.click(screen.getByLabelText("Área"));
     fireEvent.click(screen.getByRole("option", { name: "Saúde" }));
     fireEvent.click(screen.getByLabelText("Curso"));
+    expect(document.querySelector('[data-slot="select-scroll-viewport"]')).toHaveClass(
+      "acervo-dropdown-scrollbar",
+      "overflow-y-auto",
+    );
     fireEvent.click(screen.getByRole("option", { name: "Enfermagem" }));
     fireEvent.click(screen.getByLabelText("Status"));
     fireEvent.click(screen.getByRole("option", { name: "Publicados" }));
