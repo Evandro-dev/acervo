@@ -54,32 +54,31 @@ export function EventCoverImagePicker({
       />
 
       {previewUrl ? (
-        <div className="relative overflow-hidden rounded-xl border border-border/60 bg-brand-soft shadow-card">
-          <ProtectedImage src={previewUrl} alt="Preview da imagem do evento" className="aspect-[16/7] w-full object-cover" />
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/60 p-2 text-white backdrop-blur-sm">
-            <label
-              htmlFor={inputId}
-              className={cn(
-                "inline-flex cursor-pointer items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors hover:bg-white/15",
-                disabled && "pointer-events-none opacity-50",
-              )}
-            >
+        <div className="group relative w-full max-w-xl overflow-hidden rounded-xl border border-border/60 bg-brand-soft shadow-card">
+          <ProtectedImage src={previewUrl} alt="Preview da imagem do evento" className="aspect-video w-full object-cover" />
+          <label
+            htmlFor={inputId}
+            className={cn(
+              "absolute inset-0 flex cursor-pointer items-center justify-center bg-black/0 text-white opacity-100 transition-all duration-200 sm:opacity-0 sm:group-hover:bg-black/45 sm:group-hover:opacity-100 sm:group-focus-within:bg-black/45 sm:group-focus-within:opacity-100",
+              disabled && "pointer-events-none opacity-0",
+            )}
+          >
+            <span className="inline-flex items-center gap-2 rounded-full bg-black/65 px-3 py-2 text-xs font-semibold shadow-sm sm:bg-transparent sm:text-sm sm:shadow-none">
               <RefreshCw className="h-4 w-4" />
               Trocar foto
-            </label>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              className="h-8 gap-1.5 px-3 text-xs text-white hover:bg-white/15 hover:text-white"
-              aria-label="Remover imagem do evento"
-              onClick={onRemove}
-            >
-              <Trash2 className="h-4 w-4" />
-              Remover
-            </Button>
-          </div>
+            </span>
+          </label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={disabled}
+            className="absolute right-2 top-2 z-10 h-9 w-9 rounded-full bg-white text-destructive shadow-md hover:bg-white/90 hover:text-destructive"
+            aria-label="Remover imagem do evento"
+            onClick={onRemove}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       ) : (
         <label

@@ -20,13 +20,19 @@ describe("EventCoverImagePicker", () => {
       />,
     );
 
-    expect(screen.getByRole("img", { name: "Preview da imagem do evento" })).toHaveAttribute(
-      "src",
-      "https://example.com/current.png",
-    );
-    expect(screen.getByText("Trocar foto")).toBeInTheDocument();
+    const preview = screen.getByRole("img", { name: "Preview da imagem do evento" });
+    expect(preview).toHaveAttribute("src", "https://example.com/current.png");
+    expect(preview).toHaveClass("aspect-video");
+    expect(preview.parentElement).toHaveClass("max-w-xl");
 
-    fireEvent.click(screen.getByRole("button", { name: "Remover imagem do evento" }));
+    const replaceLabel = screen.getByText("Trocar foto").closest("label");
+    expect(replaceLabel).toHaveClass("sm:opacity-0", "sm:group-hover:opacity-100");
+
+    const removeButton = screen.getByRole("button", { name: "Remover imagem do evento" });
+    expect(removeButton).toHaveClass("rounded-full", "bg-white", "text-destructive");
+    expect(removeButton).not.toHaveTextContent("Remover");
+
+    fireEvent.click(removeButton);
     expect(onRemove).toHaveBeenCalledOnce();
   });
 
