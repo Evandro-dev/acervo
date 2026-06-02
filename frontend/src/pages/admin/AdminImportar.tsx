@@ -38,6 +38,12 @@ import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
 import { formatFileSize } from "@/lib/file-size";
+import {
+  segmentedControlItemClassName,
+  segmentedControlListClassName,
+  segmentedTabsTriggerClassName,
+} from "@/lib/segmented-control";
+import { cn } from "@/lib/utils";
 import type { ExtractedArticlePdfMetadata, ImportArticleInput } from "@/types/acervo";
 
 const modalidades = ["Resumo Simples", "Resumo Expandido", "Artigo Científico"] as const;
@@ -657,14 +663,14 @@ export default function AdminImportar() {
 
           <Card className="border-border/60 p-3 shadow-card" data-testid="import-mode-card">
             <Tabs defaultValue="manual" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 gap-2">
-              <TabsTrigger value="manual" className="text-xs hover:bg-background/70 hover:text-foreground">
-                <Plus className="mr-1 h-3.5 w-3.5" /> Manual
-              </TabsTrigger>
-              <TabsTrigger value="pdf" className="text-xs hover:bg-background/70 hover:text-foreground">
-                <Sparkles className="mr-1 h-3.5 w-3.5" /> PDF
-              </TabsTrigger>
-            </TabsList>
+              <TabsList className={cn("grid w-full grid-cols-2", segmentedControlListClassName)}>
+                <TabsTrigger value="manual" className={cn(segmentedControlItemClassName, segmentedTabsTriggerClassName)}>
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Manual
+                </TabsTrigger>
+                <TabsTrigger value="pdf" className={cn(segmentedControlItemClassName, segmentedTabsTriggerClassName)}>
+                  <Sparkles className="mr-1 h-3.5 w-3.5" /> PDF
+                </TabsTrigger>
+              </TabsList>
 
             <TabsContent value="manual" className="mt-3 space-y-3">
               {drafts.map((draft, index) => (

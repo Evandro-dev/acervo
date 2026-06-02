@@ -7,6 +7,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SearchField } from "@/components/ui/search-field";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -158,23 +159,23 @@ export default function AdminPublicacoes() {
 
   return (
     <AdminShell title="Publicações">
-      <div className="mb-3 grid grid-cols-3 gap-2 rounded-md bg-muted p-1 text-xs font-medium">
-        {tabs.map((currentTab) => (
-          <button
-            key={currentTab.key}
-            type="button"
-            onClick={() => setTab(currentTab.key)}
-            className={`flex items-center justify-center gap-1 rounded px-2 py-1.5 transition-colors ${
-              tab === currentTab.key
-                ? "bg-background shadow-card"
-                : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
-            }`}
-          >
-            {currentTab.label}
-            <span className="rounded-full bg-muted-foreground/15 px-1.5 text-[10px]">{counts[currentTab.key]}</span>
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        ariaLabel="Status das publicações"
+        className="mb-3 grid-cols-3"
+        value={tab}
+        onValueChange={setTab}
+        options={tabs.map((currentTab) => ({
+          value: currentTab.key,
+          label: (
+            <>
+              {currentTab.label}
+              <span className="rounded-full bg-muted-foreground/15 px-1.5 text-[10px]">
+                {counts[currentTab.key]}
+              </span>
+            </>
+          ),
+        }))}
+      />
 
       <SearchField
         containerClassName="mb-3"

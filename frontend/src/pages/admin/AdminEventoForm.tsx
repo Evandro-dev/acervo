@@ -13,6 +13,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -94,6 +95,8 @@ type PreparedRuleRow = {
   pendingFile: File | null;
 };
 
+type RuleFileMode = "upload" | "external";
+
 let keySequence = 0;
 
 function createKey(prefix: string) {
@@ -154,6 +157,26 @@ function createRuleItem(value?: Partial<Omit<RuleFormItem, "key" | "pendingFile"
     fileUrl,
     pendingFile: null,
     useExternalLink: value?.useExternalLink ?? (fileUrl ? !isStoredEventRuleFileUrl(fileUrl) : false),
+  };
+}
+
+function getRuleFileMode(rule: RuleFormItem): RuleFileMode {
+  return rule.useExternalLink ? "external" : "upload";
+}
+
+function setRuleFileMode(rule: RuleFormItem, mode: RuleFileMode): Partial<RuleFormItem> {
+  if (mode === "external") {
+    return {
+      useExternalLink: true,
+      pendingFile: null,
+      fileUrl: !rule.fileUrl || isStoredEventRuleFileUrl(rule.fileUrl) ? "" : rule.fileUrl,
+    };
+  }
+
+  return {
+    useExternalLink: false,
+    pendingFile: null,
+    fileUrl: isStoredEventRuleFileUrl(rule.fileUrl) ? rule.fileUrl : "",
   };
 }
 
@@ -976,44 +999,35 @@ export default function AdminEventoForm() {
                       O fluxo principal é submeter o PDF no Acervo. Use link externo somente quando o arquivo já estiver hospedado fora.
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={rule.useExternalLink ? "outline" : "secondary"}
-                        className="gap-2"
-                        onClick={() =>
-                          setForm((current) => ({
-                            ...current,
-                            rules: replaceItemByKey(current.rules, rule.key, {
-                              useExternalLink: false,
-                              pendingFile: null,
-                              fileUrl: isStoredEventRuleFileUrl(rule.fileUrl) ? rule.fileUrl : "",
-                            }),
-                          }))
-                        }
-                      >
-                        <Upload className="h-4 w-4" /> Enviar PDF
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={rule.useExternalLink ? "secondary" : "outline"}
-                        className="gap-2"
-                        onClick={() =>
-                          setForm((current) => ({
-                            ...current,
-                            rules: replaceItemByKey(current.rules, rule.key, {
-                              useExternalLink: true,
-                              pendingFile: null,
-                              fileUrl: !rule.fileUrl || isStoredEventRuleFileUrl(rule.fileUrl) ? "" : rule.fileUrl,
-                            }),
-                          }))
-                        }
-                      >
-                        <ExternalLink className="h-4 w-4" /> Usar link externo
-                      </Button>
-                    </div>
+                    <SegmentedControl
+                      ariaLabel="Origem do PDF da norma"
+                      className="grid-cols-2"
+                      value={getRuleFileMode(rule)}
+                      onValueChange={(mode) =>
+                        setForm((current) => ({
+                          ...current,
+                          rules: replaceItemByKey(current.rules, rule.key, setRuleFileMode(rule, mode)),
+                        }))
+                      }
+                      options={[
+                        {
+                          value: "upload",
+                          label: (
+                            <>
+                              <Upload className="h-4 w-4" /> Enviar PDF
+                            </>
+                          ),
+                        },
+                        {
+                          value: "external",
+                          label: (
+                            <>
+                              <ExternalLink className="h-4 w-4" /> Usar link externo
+                            </>
+                          ),
+                        },
+                      ]}
+                    />
 
                     {rule.useExternalLink ? (
                       <div className="flex flex-col gap-2">

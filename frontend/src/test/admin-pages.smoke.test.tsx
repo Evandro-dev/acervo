@@ -185,6 +185,7 @@ describe("Admin pages", () => {
     const publishedTab = screen.getByRole("button", { name: /Publicados/ });
     expect(publishedTab).toHaveClass("hover:bg-background/70", "hover:text-foreground");
     expect(publishedTab.parentElement).toHaveClass("gap-2");
+    expect(publishedTab).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(screen.getByRole("button", { name: "Publicar" }));
 

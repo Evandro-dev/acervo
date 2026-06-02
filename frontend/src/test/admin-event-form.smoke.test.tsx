@@ -146,6 +146,13 @@ describe("AdminEventoForm", () => {
       target: { value: "Normas de submissão" },
     });
 
+    expect(screen.getByRole("group", { name: "Origem do PDF da norma" })).toHaveClass("gap-2", "bg-muted");
+    expect(screen.getByRole("button", { name: "Enviar PDF" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Usar link externo" })).toHaveClass(
+      "hover:bg-background/70",
+      "hover:text-foreground",
+    );
+
     const pdfInput = container.querySelector('input[type="file"][accept*=".pdf"]') as HTMLInputElement;
     const file = new File(["pdf-content"], "norma-submissao.pdf", { type: "application/pdf" });
     fireEvent.change(pdfInput, { target: { files: [file] } });
