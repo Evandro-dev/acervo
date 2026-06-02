@@ -46,5 +46,6 @@ describe("EventCoverImagePicker", () => {
     fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
 
     expect(onChange).toHaveBeenCalledWith(file);
+    expect(screen.queryByText(/Nova imagem selecionada/)).not.toBeInTheDocument();
   });
 });

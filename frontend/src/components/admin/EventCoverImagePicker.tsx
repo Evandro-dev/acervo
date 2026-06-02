@@ -101,11 +101,6 @@ export function EventCoverImagePicker({
         </label>
       )}
 
-      {selectedFile ? (
-        <p className="truncate text-xs text-muted-foreground">
-          Nova imagem selecionada: <strong>{selectedFile.name}</strong>
-        </p>
-      ) : null}
     </div>
   );
 }
