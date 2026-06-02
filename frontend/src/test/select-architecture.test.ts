@@ -41,10 +41,14 @@ describe("select architecture", () => {
     const simpleSelect = readFileSync(resolve("src/components/ui/select.tsx"), "utf8");
     const commandList = readFileSync(resolve("src/components/ui/command.tsx"), "utf8");
     const courseMultiCombobox = readFileSync(resolve("src/components/ui/course-multi-combobox.tsx"), "utf8");
+    const globalStyles = readFileSync(resolve("src/index.css"), "utf8");
 
     expect(simpleSelect).toContain("acervo-dropdown-scrollbar");
     expect(commandList).toContain("acervo-dropdown-scrollbar");
     expect(courseMultiCombobox).toContain("acervo-dropdown-scrollbar");
+    expect(globalStyles).toContain(".acervo-dropdown-scrollbar[data-radix-select-viewport]");
+    expect(globalStyles).toContain(".acervo-dropdown-scrollbar[data-radix-select-viewport]::-webkit-scrollbar");
+    expect(globalStyles).toContain("display: block");
     expect(simpleSelect).not.toMatch(/ScrollUpButton|ScrollDownButton/);
   });
 });
