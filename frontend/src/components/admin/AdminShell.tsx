@@ -24,7 +24,7 @@ export function AdminShell({ children, title }: { children: ReactNode; title: st
 
   if (isLoading) {
     return (
-      <AppShell hideBottomNav>
+      <AppShell>
         <section className="bg-brand text-primary-foreground">
           <SiteContainer className="pb-5 pt-3 md:pb-7 md:pt-6">
             <div className="mb-2 flex items-center gap-2">
@@ -47,7 +47,7 @@ export function AdminShell({ children, title }: { children: ReactNode; title: st
   if (user?.role !== "ADMIN" && user?.role !== "COORDENADOR") return <Navigate to="/" replace />;
 
   return (
-    <AppShell hideBottomNav>
+    <AppShell>
       <section className="bg-brand text-primary-foreground">
         <SiteContainer className="pb-5 pt-3 md:pb-7 md:pt-6">
           <div className="mb-2 flex items-center gap-2">

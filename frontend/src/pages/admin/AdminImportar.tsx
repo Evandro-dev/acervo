@@ -250,9 +250,9 @@ export default function AdminImportar() {
       currentItems.map((item) =>
         item.id === activePdfItem.id
           ? {
-              ...item,
-              draft: { ...item.draft, ...patch },
-            }
+            ...item,
+            draft: { ...item.draft, ...patch },
+          }
           : item,
       ),
     );
@@ -301,9 +301,9 @@ export default function AdminImportar() {
         const authors = Array.isArray(row.authors)
           ? row.authors
           : String(row.authors)
-              .split(",")
-              .map((author: string) => author.trim())
-              .filter(Boolean);
+            .split(",")
+            .map((author: string) => author.trim())
+            .filter(Boolean);
 
         const modalidade = (modalidades as readonly string[]).includes(row.modalidade)
           ? (row.modalidade as Modalidade)
@@ -425,10 +425,10 @@ export default function AdminImportar() {
           currentItems.map((currentItem) =>
             currentItem.id === item.id
               ? {
-                  ...currentItem,
-                  status: "reading",
-                  error: null,
-                }
+                ...currentItem,
+                status: "reading",
+                error: null,
+              }
               : currentItem,
           ),
         );
@@ -441,12 +441,12 @@ export default function AdminImportar() {
             currentItems.map((currentItem) =>
               currentItem.id === item.id
                 ? {
-                    ...currentItem,
-                    metadata,
-                    draft: applyMetadataToPdfDraft(currentItem.draft, metadata),
-                    status: "ready",
-                    error: null,
-                  }
+                  ...currentItem,
+                  metadata,
+                  draft: applyMetadataToPdfDraft(currentItem.draft, metadata),
+                  status: "ready",
+                  error: null,
+                }
                 : currentItem,
             ),
           );
@@ -456,10 +456,10 @@ export default function AdminImportar() {
             currentItems.map((currentItem) =>
               currentItem.id === item.id
                 ? {
-                    ...currentItem,
-                    status: "failed",
-                    error: getApiErrorMessage(error, "Não foi possível ler este PDF."),
-                  }
+                  ...currentItem,
+                  status: "failed",
+                  error: getApiErrorMessage(error, "Não foi possível ler este PDF."),
+                }
                 : currentItem,
             ),
           );
@@ -494,10 +494,10 @@ export default function AdminImportar() {
       currentItems.map((item) =>
         importableIds.has(item.id)
           ? {
-              ...item,
-              status: "saving",
-              error: null,
-            }
+            ...item,
+            status: "saving",
+            error: null,
+          }
           : item,
       ),
     );
@@ -582,16 +582,16 @@ export default function AdminImportar() {
             ? { ...item, status: "saved", error: null }
             : partialIds.has(item.id)
               ? {
-                  ...item,
-                  status: "partial",
-                  error: partialMessages.get(item.id) ?? "O PDF não foi anexado automaticamente.",
-                }
-              : pendingIds.has(item.id)
-            ? {
                 ...item,
-                status: previousStatuses.get(item.id) ?? "ready",
+                status: "partial",
+                error: partialMessages.get(item.id) ?? "O PDF não foi anexado automaticamente.",
               }
-            : item,
+              : pendingIds.has(item.id)
+                ? {
+                  ...item,
+                  status: previousStatuses.get(item.id) ?? "ready",
+                }
+                : item,
         ),
       );
       toast({
@@ -670,147 +670,138 @@ export default function AdminImportar() {
                 </TabsTrigger>
               </TabsList>
 
-            <TabsContent value="manual" className="mt-3 space-y-3">
-              {drafts.map((draft, index) => (
-                <Card key={index} className="border-border/60 p-3 shadow-card">
-                  <div className="mb-2 flex items-center justify-between">
-                    <Badge variant="secondary" className="text-[10px]">
-                      Trabalho {index + 1}
-                    </Badge>
-                    {drafts.length > 1 && (
-                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => removeDraft(index)}>
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <div>
-                      <Label className="text-xs">Título *</Label>
-                      <Input value={draft.title} onChange={(event) => updateDraft(index, { title: event.target.value })} />
+              <TabsContent value="manual" className="mt-3 space-y-3">
+                {drafts.map((draft, index) => (
+                  <Card key={index} className="border-border/60 p-3 shadow-card">
+                    <div className="mb-2 flex items-center justify-between">
+                      <Badge variant="secondary" className="text-[10px]">
+                        Trabalho {index + 1}
+                      </Badge>
+                      {drafts.length > 1 && (
+                        <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => removeDraft(index)}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
-                    <div>
-                      <Label className="text-xs">Autores * (separados por virgula)</Label>
-                      <Input
-                        value={draft.authors}
-                        onChange={(event) => updateDraft(index, { authors: event.target.value })}
-                        placeholder="Ana Silva, Carlos Lima"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-2">
                       <div>
-                        <Label className="text-xs">Área</Label>
-                        <AreaCombobox
-                          value={draft.area}
-                          options={areaSuggestions}
-                          onValueChange={(area) => updateDraft(index, { area })}
+                        <Label className="text-xs">Título *</Label>
+                        <Input value={draft.title} onChange={(event) => updateDraft(index, { title: event.target.value })} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Autores * (separados por virgula)</Label>
+                        <Input
+                          value={draft.authors}
+                          onChange={(event) => updateDraft(index, { authors: event.target.value })}
+                          placeholder="Ana Silva, Carlos Lima"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Área</Label>
+                          <AreaCombobox
+                            value={draft.area}
+                            options={areaSuggestions}
+                            onValueChange={(area) => updateDraft(index, { area })}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Modalidade</Label>
+                          <Select
+                            value={draft.modalidade}
+                            onValueChange={(value) => updateDraft(index, { modalidade: value as Modalidade })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {modalidades.map((modalidade) => (
+                                <SelectItem key={modalidade} value={modalidade}>
+                                  {modalidade}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor={`manual-related-courses-${index}`} className="text-xs">
+                          Cursos relacionados (separados por vírgula)
+                        </Label>
+                        <CourseMultiCombobox
+                          id={`manual-related-courses-${index}`}
+                          value={draft.courses}
+                          options={courseSuggestions}
+                          onValueChange={(courses) => updateDraft(index, { courses })}
+                          placeholder="Ex.: Direito, Administração"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">Modalidade</Label>
-                        <Select
-                          value={draft.modalidade}
-                          onValueChange={(value) => updateDraft(index, { modalidade: value as Modalidade })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {modalidades.map((modalidade) => (
-                              <SelectItem key={modalidade} value={modalidade}>
-                                {modalidade}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label className="text-xs">Resumo</Label>
+                        <Textarea
+                          rows={3}
+                          value={draft.abstract}
+                          onChange={(event) => updateDraft(index, { abstract: event.target.value })}
+                        />
                       </div>
                     </div>
-                    <div>
-                      <Label htmlFor={`manual-related-courses-${index}`} className="text-xs">
-                        Cursos relacionados (separados por vírgula)
-                      </Label>
-                      <CourseMultiCombobox
-                        id={`manual-related-courses-${index}`}
-                        value={draft.courses}
-                        options={courseSuggestions}
-                        onValueChange={(courses) => updateDraft(index, { courses })}
-                        placeholder="Ex.: Direito, Administração"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Resumo</Label>
-                      <Textarea
-                        rows={3}
-                        value={draft.abstract}
-                        onChange={(event) => updateDraft(index, { abstract: event.target.value })}
-                      />
-                    </div>
+                  </Card>
+                ))}
+
+                <Button variant="outline" className="w-full gap-1.5" onClick={addDraft}>
+                  <Plus className="h-4 w-4" /> Adicionar outro trabalho
+                </Button>
+
+                <Button
+                  className="w-full gap-2 bg-brand text-primary-foreground hover:opacity-90"
+                  disabled={validManual === 0 || !selectedEventId || importMutation.isPending}
+                  onClick={importManual}
+                >
+                  <DownloadCloud className="h-4 w-4" />
+                  {importMutation.isPending
+                    ? "Importando..."
+                    : `Importar ${validManual} ${validManual === 1 ? "trabalho" : "trabalhos"}`}
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="file" className="mt-3 space-y-3">
+                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/30 px-3 py-10 text-center text-sm text-muted-foreground hover:bg-muted/50">
+                  <Upload className="h-6 w-6" />
+                  <div>
+                    <div className="font-semibold text-foreground">Selecionar arquivo .json</div>
+                    <div className="text-[11px]">Exportado do OJS, formulário ou planilha</div>
                   </div>
-                </Card>
-              ))}
-
-              <Button variant="outline" className="w-full gap-1.5" onClick={addDraft}>
-                <Plus className="h-4 w-4" /> Adicionar outro trabalho
-              </Button>
-
-              <Button
-                className="w-full gap-2 bg-brand text-primary-foreground hover:opacity-90"
-                disabled={validManual === 0 || !selectedEventId || importMutation.isPending}
-                onClick={importManual}
-              >
-                <DownloadCloud className="h-4 w-4" />
-                {importMutation.isPending
-                  ? "Importando..."
-                  : `Importar ${validManual} ${validManual === 1 ? "trabalho" : "trabalhos"}`}
-              </Button>
-            </TabsContent>
-
-            <TabsContent value="file" className="mt-3 space-y-3">
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/30 px-3 py-10 text-center text-sm text-muted-foreground hover:bg-muted/50">
-                <Upload className="h-6 w-6" />
-                <div>
-                  <div className="font-semibold text-foreground">Selecionar arquivo .json</div>
-                  <div className="text-[11px]">Exportado do OJS, formulário ou planilha</div>
-                </div>
-                <input
-                  type="file"
-                  accept="application/json,.json"
-                  className="hidden"
-                  onChange={(event) => event.target.files?.[0] && onJsonFile(event.target.files[0])}
-                />
-              </label>
-              {jsonText && (
-                <Card className="border-border/60 p-3 shadow-card">
-                  <Label className="text-xs">Conteúdo carregado</Label>
-                  <Textarea
-                    rows={6}
-                    value={jsonText}
-                    onChange={(event) => setJsonText(event.target.value)}
-                    className="mt-1 font-mono text-xs"
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    onChange={(event) => event.target.files?.[0] && onJsonFile(event.target.files[0])}
                   />
-                  {jsonError && (
-                    <div className="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">{jsonError}</div>
-                  )}
-                </Card>
-              )}
-              <Button
-                className="w-full gap-2 bg-brand text-primary-foreground hover:opacity-90"
-                disabled={!jsonText.trim() || !selectedEventId || importMutation.isPending}
-                onClick={importFile}
-              >
-                <DownloadCloud className="h-4 w-4" /> {importMutation.isPending ? "Importando..." : "Importar arquivo"}
-              </Button>
-            </TabsContent>
+                </label>
+                {jsonText && (
+                  <Card className="border-border/60 p-3 shadow-card">
+                    <Label className="text-xs">Conteúdo carregado</Label>
+                    <Textarea
+                      rows={6}
+                      value={jsonText}
+                      onChange={(event) => setJsonText(event.target.value)}
+                      className="mt-1 font-mono text-xs"
+                    />
+                    {jsonError && (
+                      <div className="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">{jsonError}</div>
+                    )}
+                  </Card>
+                )}
+                <Button
+                  className="w-full gap-2 bg-brand text-primary-foreground hover:opacity-90"
+                  disabled={!jsonText.trim() || !selectedEventId || importMutation.isPending}
+                  onClick={importFile}
+                >
+                  <DownloadCloud className="h-4 w-4" /> {importMutation.isPending ? "Importando..." : "Importar arquivo"}
+                </Button>
+              </TabsContent>
 
-            <TabsContent value="pdf" className="mt-3 space-y-3">
-              <Card className="border-border/60 p-3 shadow-card">
-                <div className="mb-3 flex items-start gap-2 text-xs text-muted-foreground">
-                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                  <p>
-                    Selecione vários PDFs, mande o sistema ler todos de uma vez e revise o arquivo atual com as setas.
-                    O contador mostra sua posição na fila e você pode salvar o lote inteiro depois.
-                  </p>
-                </div>
-
+              <TabsContent value="pdf" className="mt-3 space-y-3">
                 {!pdfItems.length ? (
                   <PdfFilePicker
                     title="Selecionar arquivos .pdf"
@@ -820,36 +811,76 @@ export default function AdminImportar() {
                   />
                 ) : (
                   <div className="rounded-lg border border-border bg-muted/20 p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            aria-label="Arquivo anterior"
-                            className="size-8 rounded-full"
-                            disabled={isFirstPdfItem}
-                            onClick={goToPreviousPdf}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <Badge variant="secondary" className="min-w-20 justify-center">
-                            {activePdfIndex + 1} de {pdfItems.length}
-                          </Badge>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            aria-label="Próximo arquivo"
-                            className="size-8 rounded-full"
-                            disabled={isLastPdfItem}
-                            onClick={goToNextPdf}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                          <label className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-brand/90">
-                            <Upload className="h-3.5 w-3.5" /> Adicionar PDFs
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+                        <div className="flex w-full items-center justify-between gap-2 md:w-auto md:justify-start">
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              aria-label="Arquivo anterior"
+                              className="size-8 rounded-full"
+                              disabled={isFirstPdfItem}
+                              onClick={goToPreviousPdf}
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </Button>
+
+                            <Badge variant="secondary" className="min-w-16 justify-center px-2 text-[11px]">
+                              {activePdfIndex + 1} de {pdfItems.length}
+                            </Badge>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              aria-label="Próximo arquivo"
+                              className="size-8 rounded-full"
+                              disabled={isLastPdfItem}
+                              onClick={goToNextPdf}
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          <div className="flex flex-wrap justify-end gap-1 md:hidden">
+                            <Badge variant="outline" className="px-1.5 text-[9px]">
+                              {pendingPdfCount} pendentes
+                            </Badge>
+
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "px-1.5 text-[9px]",
+                                hasStartedPdfProcessing
+                                  ? "border-emerald-200 bg-emerald-500/10 text-emerald-700"
+                                  : "border-dashed border-border bg-muted/40 text-muted-foreground",
+                              )}
+                            >
+                              {readyPdfCount} prontos
+                            </Badge>
+
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "px-1.5 text-[9px]",
+                                hasStartedPdfProcessing
+                                  ? "border-amber-200 bg-amber-500/10 text-amber-700"
+                                  : "border-dashed border-border bg-muted/40 text-muted-foreground",
+                              )}
+                            >
+                              {failedPdfCount} com falha
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="grid w-full grid-cols-3 gap-1 md:w-auto md:grid-cols-none md:flex md:flex-wrap md:items-center md:gap-2">
+                          <label className="inline-flex h-8 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-brand px-1 text-[9px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-brand/90 md:px-3 md:text-xs">
+                            <Upload className="h-3.5 w-3.5 shrink-0" />
+
+                            <span className="truncate">Adicionar PDFs</span>
+
                             <input
                               type="file"
                               accept="application/pdf,.pdf"
@@ -861,342 +892,382 @@ export default function AdminImportar() {
                               }}
                             />
                           </label>
+
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-8 rounded-full border-brand/20 px-3 text-xs font-semibold text-brand hover:bg-brand/10 hover:text-brand"
+                            className="h-8 min-w-0 rounded-full border-border bg-background px-1 text-[9px] font-semibold text-destructive hover:bg-muted/50 hover:text-destructive [&_svg]:stroke-current md:px-3 md:text-xs"
                             onClick={removeActivePdfItem}
                           >
-                            <X className="h-3.5 w-3.5 shrink-0 text-brand" /> Remover atual
+                            <X className="h-3.5 w-3.5 shrink-0" />
+
+                            <span className="truncate">Remover atual</span>
                           </Button>
+
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-8 rounded-full border-brand/20 px-3 text-xs font-semibold text-brand hover:bg-brand/10 hover:text-brand"
+                            className="h-8 min-w-0 rounded-full border-border bg-background px-1 text-[9px] font-semibold text-destructive hover:bg-muted/50 hover:text-destructive [&_svg]:stroke-current md:px-3 md:text-xs"
                             onClick={clearPdfQueue}
                           >
-                            <Trash2 className="h-3.5 w-3.5 shrink-0 text-brand" />
-                            Limpar fila
+                            <Trash2 className="h-3.5 w-3.5 shrink-0" />
+
+                            <span className="truncate">Limpar fila</span>
                           </Button>
                         </div>
-                        <div className="font-semibold text-foreground">{activePdfItem?.file.name}</div>
-                        <div className="text-xs text-muted-foreground">{formatFileSize(activePdfItem?.file.size ?? 0)}</div>
+                      </div>
+
+                      <div className="hidden flex-wrap justify-end gap-2 md:flex">
+                        <Badge variant="outline">{pendingPdfCount} pendentes</Badge>
+
+                        <Badge
+                          variant="outline"
+                          className={
+                            hasStartedPdfProcessing
+                              ? "border-emerald-200 bg-emerald-500/10 text-emerald-700"
+                              : "border-dashed border-border bg-muted/40 text-muted-foreground"
+                          }
+                        >
+                          {readyPdfCount} prontos
+                        </Badge>
+
+                        <Badge
+                          variant="outline"
+                          className={
+                            hasStartedPdfProcessing
+                              ? "border-amber-200 bg-amber-500/10 text-amber-700"
+                              : "border-dashed border-border bg-muted/40 text-muted-foreground"
+                          }
+                        >
+                          {failedPdfCount} com falha
+                        </Badge>
                       </div>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="outline">{pendingPdfCount} pendentes</Badge>
-                      <Badge
-                        variant="outline"
-                        className={
-                          hasStartedPdfProcessing
-                            ? "border-emerald-200 bg-emerald-500/10 text-emerald-700"
-                            : "border-dashed border-border bg-muted/40 text-muted-foreground"
-                        }
-                      >
-                        {readyPdfCount} prontos
-                      </Badge>
-                      <Badge
-                        variant="outline"
-                        className={
-                          hasStartedPdfProcessing
-                            ? "border-amber-200 bg-amber-500/10 text-amber-700"
-                            : "border-dashed border-border bg-muted/40 text-muted-foreground"
-                        }
-                      >
-                        {failedPdfCount} com falha
-                      </Badge>
+                    <div className="mt-4 w-full min-w-0 overflow-hidden rounded-lg border border-border/60 bg-background/70">
+                      <div className="flex min-w-0">
+                        <div className="min-w-0 flex-1 overflow-hidden px-3 py-2">
+                          <div className="pdf-file-marquee-track">
+                            <span className="shrink-0 whitespace-nowrap pr-8 text-[11px] font-semibold leading-snug text-foreground sm:whitespace-normal sm:wrap-break-word sm:pr-0 sm:text-sm">
+                              {activePdfItem?.file.name}
+                            </span>
+
+                            <span
+                              aria-hidden="true"
+                              className="shrink-0 whitespace-nowrap pr-8 text-[11px] font-semibold leading-snug text-foreground sm:hidden"
+                            >
+                              {activePdfItem?.file.name}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center border-l border-border/60 bg-muted px-2.5 text-[10px] font-semibold text-muted-foreground sm:text-xs">
+                          {formatFileSize(activePdfItem?.file.size ?? 0)}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="mt-3 flex justify-center">
+                    <div className="mt-4 flex justify-center">
                       <Button
                         type="button"
-                        className="gap-2 bg-brand text-primary-foreground hover:bg-brand/90"
+                        className="w-full max-w-72 gap-2 bg-brand text-primary-foreground hover:bg-brand/90 md:w-auto"
                         disabled={isBatchReading}
                         onClick={readAllPdfMetadata}
                       >
                         <Sparkles className="h-4 w-4" />
                         {isBatchReading
                           ? "Lendo PDFs da fila..."
-                          : `Ler ${
-                              pendingPdfCount + failedPdfCount || pdfItems.length
-                            } ${pendingPdfCount + failedPdfCount === 1 ? "PDF pendente" : "PDFs pendentes"}`}
+                          : `Ler ${pendingPdfCount + failedPdfCount || pdfItems.length
+                          } ${pendingPdfCount + failedPdfCount === 1 ? "PDF pendente" : "PDFs pendentes"}`}
                       </Button>
                     </div>
                   </div>
                 )}
-              </Card>
 
-              {activePdfItem?.error ? (
-                <Card className="border-amber-200 bg-amber-500/10 p-3 shadow-card">
-                  <div className="flex gap-2 text-xs text-amber-700">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <div>
-                      <div className="font-semibold">Falha na leitura deste PDF</div>
-                      <div>{activePdfItem.error}</div>
-                    </div>
-                  </div>
-                </Card>
-              ) : null}
-
-              {showActivePdfReview ? (
-                <Card ref={reviewCardRef} className="border-border/60 p-3 shadow-card">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold">Revisão do arquivo atual</div>
-                      <div className="text-xs text-muted-foreground">
-                        Corrija os campos deste PDF antes de salvar.
+                {activePdfItem?.error ? (
+                  <Card className="border-amber-200 bg-amber-500/10 p-3 shadow-card">
+                    <div className="flex gap-2 text-xs text-amber-700">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div>
+                        <div className="font-semibold">Falha na leitura deste PDF</div>
+                        <div>{activePdfItem.error}</div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          aria-label="Arquivo anterior na revisão"
-                          className="size-8 rounded-full"
-                          disabled={isFirstPdfItem}
-                          onClick={goToPreviousPdf}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Badge variant="secondary" className="min-w-20 justify-center">
-                          {activePdfIndex + 1} de {pdfItems.length}
-                        </Badge>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          aria-label="Próximo arquivo na revisão"
-                          className="size-8 rounded-full"
-                          disabled={isLastPdfItem}
-                          onClick={goToNextPdf}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      {activePdfItem.status === "saved" ? (
-                        <Badge variant="outline" className="border-emerald-200 bg-emerald-500/10 text-emerald-700">
-                          <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Importado
-                        </Badge>
-                      ) : null}
-                    </div>
-                  </div>
+                  </Card>
+                ) : null}
 
-                  {activePdfItem?.metadata ? (
-                    <div className="mb-4 flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary">{activePdfItem.metadata.pageCount} páginas</Badge>
-                        <Badge variant="outline">{activePdfItem.metadata.authors.length} autores sugeridos</Badge>
-                        <Badge variant="outline">{activePdfItem.metadata.emails.length} e-mails encontrados</Badge>
-                      </div>
-
-                      {activePdfItem.metadata.emails.length > 0 && (
+                {showActivePdfReview ? (
+                  <Card ref={reviewCardRef} className="border-border/60 p-3 shadow-card">
+                    <div className="mb-4 flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold">Revisão do arquivo atual</div>
                         <div className="text-xs text-muted-foreground">
-                          <strong className="text-foreground">E-mails:</strong> {activePdfItem.metadata.emails.join(", ")}
+                          Corrija os campos deste PDF antes de salvar.
                         </div>
-                      )}
-
-                      {activePdfItem.metadata.areaSuggestions.length > 0 && (
-                        <div>
-                          <div className="mb-1 text-xs text-muted-foreground">
-                            <strong className="text-foreground">Área sugerida:</strong>{" "}
-                            {activePdfItem.metadata.suggestedArea ?? "Sem sugestão forte"}
-                            {activePdfItem.metadata.areaSuggestionConfidence
-                              ? ` (${activePdfItem.metadata.areaSuggestionConfidence})`
-                              : ""}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {activePdfItem.metadata.areaSuggestions.map((suggestion) => (
-                              <Button
-                                key={`${activePdfItem.id}-${suggestion.name}`}
-                                type="button"
-                                size="sm"
-                                variant={activePdfItem.draft.area === suggestion.name ? "default" : "outline"}
-                                className="h-7 px-2 text-[11px]"
-                                onClick={() => updateActivePdfDraft({ area: suggestion.name })}
-                              >
-                                {suggestion.name}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {(activePdfItem.metadata.courseSuggestions?.length ?? 0) > 0 && (
-                        <div>
-                          <div className="mb-1 text-xs text-muted-foreground">
-                            <strong className="text-foreground">Cursos sugeridos:</strong>{" "}
-                            confirme os cursos relacionados antes de salvar
-                            {activePdfItem.metadata.courseSuggestionConfidence
-                              ? ` (${activePdfItem.metadata.courseSuggestionConfidence})`
-                              : ""}.
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {activePdfItem.metadata.courseSuggestions?.map((suggestion) => (
-                              <Button
-                                key={`${activePdfItem.id}-${suggestion.name}`}
-                                type="button"
-                                size="sm"
-                                variant={
-                                  splitCommaSeparatedValues(activePdfItem.draft.courses).includes(suggestion.name)
-                                    ? "default"
-                                    : "outline"
-                                }
-                                className="h-7 px-2 text-[11px]"
-                                onClick={() =>
-                                  updateActivePdfDraft({
-                                    courses: addCommaSeparatedValue(activePdfItem.draft.courses, suggestion.name),
-                                  })
-                                }
-                              >
-                                {suggestion.name}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {activePdfItem.metadata.warnings.length > 0 && (
-                        <div className="rounded-md bg-amber-500/10 p-3 text-xs text-amber-700">
-                          {activePdfItem.metadata.warnings.map((warning) => (
-                            <div key={warning}>{warning}</div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-col gap-2">
-                    <div>
-                      <Label className="text-xs">Título *</Label>
-                      <Input
-                        value={activePdfItem!.draft.title}
-                        onChange={(event) => updateActivePdfDraft({ title: event.target.value })}
-                        placeholder="Preenchido automaticamente quando possível"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Autores * (separados por virgula)</Label>
-                      <Input
-                        value={activePdfItem!.draft.authors}
-                        onChange={(event) => updateActivePdfDraft({ authors: event.target.value })}
-                        placeholder="Ana Silva, Carlos Lima"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <div>
-                        <Label className="text-xs">Área do artigo</Label>
-                        <AreaCombobox
-                          value={activePdfItem!.draft.area}
-                          options={areaSuggestions}
-                          onValueChange={(area) => updateActivePdfDraft({ area })}
-                        />
                       </div>
-                      <div>
-                        <Label className="text-xs">Modalidade</Label>
-                        <Select
-                          value={activePdfItem!.draft.modalidade}
-                          onValueChange={(value) => updateActivePdfDraft({ modalidade: value as Modalidade })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {modalidades.map((modalidade) => (
-                              <SelectItem key={modalidade} value={modalidade}>
-                                {modalidade}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Arquivo anterior na revisão"
+                            className="size-8 rounded-full"
+                            disabled={isFirstPdfItem}
+                            onClick={goToPreviousPdf}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+
+                          <Badge variant="secondary" className="min-w-20 justify-center">
+                            {activePdfIndex + 1} de {pdfItems.length}
+                          </Badge>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Próximo arquivo na revisão"
+                            className="size-8 rounded-full"
+                            disabled={isLastPdfItem}
+                            onClick={goToNextPdf}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {activePdfItem.status === "saved" ? (
+                          <Badge variant="outline" className="border-emerald-200 bg-emerald-500/10 text-emerald-700">
+                            <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Importado
+                          </Badge>
+                        ) : null}
                       </div>
+                    </div>
+
+                    {activePdfItem?.metadata ? (
+                      <div className="mb-4 flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="secondary">{activePdfItem.metadata.pageCount} páginas</Badge>
+                          <Badge variant="outline">{activePdfItem.metadata.authors.length} autores sugeridos</Badge>
+                          <Badge variant="outline">{activePdfItem.metadata.emails.length} e-mails encontrados</Badge>
+                        </div>
+
+                        {activePdfItem.metadata.emails.length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            <strong className="text-foreground">E-mails:</strong>{" "}
+                            {activePdfItem.metadata.emails.join(", ")}
+                          </div>
+                        )}
+
+                        {activePdfItem.metadata.areaSuggestions.length > 0 && (
+                          <div>
+                            <div className="mb-1 text-xs text-muted-foreground">
+                              <strong className="text-foreground">Área sugerida:</strong>{" "}
+                              {activePdfItem.metadata.suggestedArea ?? "Sem sugestão forte"}
+                              {activePdfItem.metadata.areaSuggestionConfidence
+                                ? ` (${activePdfItem.metadata.areaSuggestionConfidence})`
+                                : ""}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {activePdfItem.metadata.areaSuggestions.map((suggestion) => (
+                                <Button
+                                  key={`${activePdfItem.id}-${suggestion.name}`}
+                                  type="button"
+                                  size="sm"
+                                  variant={activePdfItem.draft.area === suggestion.name ? "default" : "outline"}
+                                  className="h-7 px-2 text-[11px]"
+                                  onClick={() => updateActivePdfDraft({ area: suggestion.name })}
+                                >
+                                  {suggestion.name}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {(activePdfItem.metadata.courseSuggestions?.length ?? 0) > 0 && (
+                          <div>
+                            <div className="mb-1 text-xs text-muted-foreground">
+                              <strong className="text-foreground">Cursos sugeridos:</strong>{" "}
+                              confirme os cursos relacionados antes de salvar
+                              {activePdfItem.metadata.courseSuggestionConfidence
+                                ? ` (${activePdfItem.metadata.courseSuggestionConfidence})`
+                                : ""}.
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {activePdfItem.metadata.courseSuggestions?.map((suggestion) => (
+                                <Button
+                                  key={`${activePdfItem.id}-${suggestion.name}`}
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    splitCommaSeparatedValues(activePdfItem.draft.courses).includes(suggestion.name)
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  className="h-7 px-2 text-[11px]"
+                                  onClick={() =>
+                                    updateActivePdfDraft({
+                                      courses: addCommaSeparatedValue(activePdfItem.draft.courses, suggestion.name),
+                                    })
+                                  }
+                                >
+                                  {suggestion.name}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {activePdfItem.metadata.warnings.length > 0 && (
+                          <div className="rounded-md bg-amber-500/10 p-3 text-xs text-amber-700">
+                            {activePdfItem.metadata.warnings.map((warning) => (
+                              <div key={warning}>{warning}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+
+                    <div className="flex flex-col gap-2">
                       <div>
-                        <Label className="text-xs">Páginas</Label>
+                        <Label className="text-xs">Título *</Label>
                         <Input
-                          value={activePdfItem!.draft.pages}
-                          onChange={(event) => updateActivePdfDraft({ pages: event.target.value })}
-                          placeholder="Ex.: 15-28"
+                          value={activePdfItem!.draft.title}
+                          onChange={(event) => updateActivePdfDraft({ title: event.target.value })}
+                          placeholder="Preenchido automaticamente quando possível"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs">Autores * (separados por virgula)</Label>
+                        <Input
+                          value={activePdfItem!.draft.authors}
+                          onChange={(event) => updateActivePdfDraft({ authors: event.target.value })}
+                          placeholder="Ana Silva, Carlos Lima"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <div>
+                          <Label className="text-xs">Área do artigo</Label>
+                          <AreaCombobox
+                            value={activePdfItem!.draft.area}
+                            options={areaSuggestions}
+                            onValueChange={(area) => updateActivePdfDraft({ area })}
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-xs">Modalidade</Label>
+                          <Select
+                            value={activePdfItem!.draft.modalidade}
+                            onValueChange={(value) => updateActivePdfDraft({ modalidade: value as Modalidade })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {modalidades.map((modalidade) => (
+                                <SelectItem key={modalidade} value={modalidade}>
+                                  {modalidade}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs">Páginas</Label>
+                          <Input
+                            value={activePdfItem!.draft.pages}
+                            onChange={(event) => updateActivePdfDraft({ pages: event.target.value })}
+                            placeholder="Ex.: 15-28"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="pdf-related-courses" className="text-xs">
+                          Cursos relacionados (separados por vírgula)
+                        </Label>
+                        <CourseMultiCombobox
+                          id="pdf-related-courses"
+                          value={activePdfItem!.draft.courses}
+                          options={courseSuggestions}
+                          onValueChange={(courses) => updateActivePdfDraft({ courses })}
+                          placeholder="Ex.: Enfermagem, Biomedicina"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs">Resumo</Label>
+                        <Textarea
+                          rows={6}
+                          value={activePdfItem!.draft.abstract}
+                          onChange={(event) => updateActivePdfDraft({ abstract: event.target.value })}
+                          placeholder="Preenchido automaticamente quando possível"
                         />
                       </div>
                     </div>
-                    <div>
-                      <Label htmlFor="pdf-related-courses" className="text-xs">
-                        Cursos relacionados (separados por vírgula)
-                      </Label>
-                      <CourseMultiCombobox
-                        id="pdf-related-courses"
-                        value={activePdfItem!.draft.courses}
-                        options={courseSuggestions}
-                        onValueChange={(courses) => updateActivePdfDraft({ courses })}
-                        placeholder="Ex.: Enfermagem, Biomedicina"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Resumo</Label>
-                      <Textarea
-                        rows={6}
-                        value={activePdfItem!.draft.abstract}
-                        onChange={(event) => updateActivePdfDraft({ abstract: event.target.value })}
-                        placeholder="Preenchido automaticamente quando possível"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="mt-4 flex items-center justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label="Arquivo anterior na revisão"
-                      className="size-8 rounded-full"
-                      disabled={isFirstPdfItem}
-                      onClick={goToPreviousPdf}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Badge variant="secondary" className="min-w-20 justify-center">
-                      {activePdfIndex + 1} de {pdfItems.length}
-                    </Badge>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label="Próximo arquivo na revisão"
-                      className="size-8 rounded-full"
-                      disabled={isLastPdfItem}
-                      onClick={goToNextPdf}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                    <div className="mt-4 flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="Arquivo anterior na revisão"
+                        className="size-8 rounded-full"
+                        disabled={isFirstPdfItem}
+                        onClick={goToPreviousPdf}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
 
-                  <div className="mt-4 flex justify-center">
-                    <Button
-                      className="gap-2 bg-brand text-primary-foreground hover:bg-brand/90"
-                      disabled={importablePdfItems.length === 0 || !selectedEventId || isImporting || isBatchReading}
-                      onClick={importPdfBatch}
-                    >
-                      <DownloadCloud className="h-4 w-4" />
-                      {isImporting
-                        ? "Salvando lote..."
-                        : importablePdfItems.length > 0
-                          ? `Salvar ${importablePdfItems.length} ${
-                              importablePdfItems.length === 1 ? "trabalho" : "trabalhos"
+                      <Badge variant="secondary" className="min-w-20 justify-center">
+                        {activePdfIndex + 1} de {pdfItems.length}
+                      </Badge>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label="Próximo arquivo na revisão"
+                        className="size-8 rounded-full"
+                        disabled={isLastPdfItem}
+                        onClick={goToNextPdf}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        className="gap-2 bg-brand text-primary-foreground hover:bg-brand/90"
+                        disabled={importablePdfItems.length === 0 || !selectedEventId || isImporting || isBatchReading}
+                        onClick={importPdfBatch}
+                      >
+                        <DownloadCloud className="h-4 w-4" />
+                        {isImporting
+                          ? "Salvando lote..."
+                          : importablePdfItems.length > 0
+                            ? `Salvar ${importablePdfItems.length} ${importablePdfItems.length === 1 ? "trabalho" : "trabalhos"
                             } e anexar PDFs`
-                          : "Salvar trabalhos e anexar PDFs"}
-                    </Button>
-                  </div>
-                </Card>
-              ) : null}
+                            : "Salvar trabalhos e anexar PDFs"}
+                      </Button>
+                    </div>
+                  </Card>
+                ) : null}
               </TabsContent>
             </Tabs>
           </Card>
         </>
       </QueryState>
-    </AdminShell>
+    </AdminShell >
   );
 }

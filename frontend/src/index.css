@@ -249,3 +249,38 @@
     display: none;
   }
 }
+
+@keyframes pdf-file-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.pdf-file-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: pdf-file-marquee 32s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.pdf-file-marquee-track > span {
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+@media (min-width: 640px) {
+  .pdf-file-marquee-track {
+    width: auto;
+    animation: none;
+    transform: none;
+    will-change: auto;
+  }
+}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Eye, FileText, Plus, Pencil, FileEdit, Trash2 } from "lucide-react";
+import { Barcode, Eye, FileText, Plus, Pencil, FileEdit, Trash2 } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { EventCoverThumb } from "@/components/events/EventCoverThumb";
 import { Card } from "@/components/ui/card";
@@ -62,58 +62,81 @@ export default function AdminEventos() {
         emptyMessage="Nenhum evento encontrado."
       >
         <div className="space-y-3">
-          {events.map((event) => (
-            <Card key={event.id} className="border-border/60 p-3 shadow-card">
-              <div className="flex items-start gap-3">
-                <EventCoverThumb cover={event.cover} title={event.title} className="h-12 w-12" iconClassName="h-5 w-5" />
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-bold leading-tight">{event.title}</h3>
-                  <p className="text-[11px] text-muted-foreground">{event.date}</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                      {event.type}
-                    </Badge>
-                    <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px]">
-                      <Eye className="h-2.5 w-2.5" /> {event.viewCount ?? 0} visualizações
-                    </Badge>
-                    <Badge className="h-5 border-0 bg-success/15 px-1.5 text-[10px] text-success">
-                      <FileText className="mr-1 h-2.5 w-2.5" /> {event.publishedCount} publicados
-                    </Badge>
-                    {event.draftCount > 0 && (
-                      <Badge className="h-5 border-0 bg-warning/15 px-1.5 text-[10px] text-warning">
-                        <FileEdit className="mr-1 h-2.5 w-2.5" /> {event.draftCount} rascunhos
+          {events.map((event) => {
+            const isbn = event.catalog?.isbn?.trim();
+
+            return (
+              <Card key={event.id} className="border-border/60 p-3 shadow-card">
+                <div className="flex items-start gap-3">
+                  <EventCoverThumb
+                    cover={event.cover}
+                    title={event.title}
+                    className="h-12 w-12"
+                    iconClassName="h-5 w-5"
+                  />
+
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold leading-tight">{event.title}</h3>
+                    <p className="text-[11px] text-muted-foreground">{event.date}</p>
+
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                        {event.type}
                       </Badge>
-                    )}
+
+                      {isbn && isbn !== "—" && (
+                        <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px]">
+                          <Barcode className="h-2.5 w-2.5" />
+                          ISBN {isbn}
+                        </Badge>
+                      )}
+
+                      <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px]">
+                        <Eye className="h-2.5 w-2.5" /> {event.viewCount ?? 0} visualizações
+                      </Badge>
+
+                      <Badge className="h-5 border-0 bg-success/15 px-1.5 text-[10px] text-success">
+                        <FileText className="mr-1 h-2.5 w-2.5" /> {event.publishedCount} publicados
+                      </Badge>
+
+                      {event.draftCount > 0 && (
+                        <Badge className="h-5 border-0 bg-warning/15 px-1.5 text-[10px] text-warning">
+                          <FileEdit className="mr-1 h-2.5 w-2.5" /> {event.draftCount} rascunhos
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <Button asChild variant="outline" size="sm" className="flex-1 gap-1.5">
-                  <Link to={`/admin/eventos/${event.id}`}>
-                    <Pencil className="h-3.5 w-3.5" /> Editar
-                  </Link>
-                </Button>
-                {isAdmin && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() =>
-                      setConfirmDelete({
-                        eventId: event.id,
-                        title: event.title,
-                        articleCount: event.articleCount,
-                      })
-                    }
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Excluir
+
+                <div className="mt-3 flex gap-2">
+                  <Button asChild variant="outline" size="sm" className="flex-1 gap-1.5">
+                    <Link to={`/admin/eventos/${event.id}`}>
+                      <Pencil className="h-3.5 w-3.5" /> Editar
+                    </Link>
                   </Button>
-                )}
-              </div>
-            </Card>
-          ))}
+
+                  {isAdmin && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() =>
+                        setConfirmDelete({
+                          eventId: event.id,
+                          title: event.title,
+                          articleCount: event.articleCount,
+                        })
+                      }
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       </QueryState>
 
@@ -125,9 +148,11 @@ export default function AdminEventos() {
               "{confirmDelete?.title}" será excluído do Acervo
               {confirmDelete?.articleCount
                 ? ` junto com ${confirmDelete.articleCount} trabalho(s) vinculado(s)`
-                : ""}. Esta ação não pode ser desfeita.
+                : ""}
+              . Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
