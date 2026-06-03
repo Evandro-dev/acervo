@@ -23,6 +23,7 @@ describe("PublicCoordinatorRegistrationForm", () => {
         name: "Maria Clara",
         email: "maria@ulife.com.br",
         role: "COORDENADOR",
+        isActive: true,
         jobTitle: "Coordenadora de Pesquisa",
       },
     });

@@ -72,7 +72,7 @@ describe("Home", () => {
     } as ReturnType<typeof usePublicEventsQuery>);
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <Home />
       </MemoryRouter>,
     );

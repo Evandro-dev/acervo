@@ -70,7 +70,7 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
   title="Área restrita"
   className="flex h-10 w-10 items-center justify-center transition-transform duration-200 hover:scale-[1.03] focus-visible:outline-none"
 >
-  <Lock className="h-[20px] w-[20px] text-white" />
+  <Lock className="h-5 w-5 text-white" />
 </Link>
     );
   }
@@ -113,7 +113,7 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
           aria-hidden={!open}
           className={cn(
             "flex min-w-0 flex-1 items-center justify-end gap-1 overflow-hidden transition-all duration-200 ease-out",
-            open ? "max-w-[142px] pl-3 pr-2 opacity-100" : "max-w-0 pl-0 pr-0 opacity-0",
+            open ? "max-w-35.5 pl-3 pr-2 opacity-100" : "max-w-0 pl-0 pr-0 opacity-0",
           )}
         >
           {actions.map((action) =>

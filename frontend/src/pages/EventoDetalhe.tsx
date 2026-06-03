@@ -150,7 +150,7 @@ export default function EventoDetalhe() {
       </section>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="sticky top-[57px] z-20 border-b bg-background">
+        <div className="sticky top-14.25 z-20 border-b bg-background">
           <SiteContainer>
             <TabsList className="h-auto w-full justify-start gap-1 rounded-none bg-transparent px-0 py-1.5">
               {[
@@ -280,7 +280,7 @@ export default function EventoDetalhe() {
                       {event.themes.map((theme) => (
                         <div
                           key={theme}
-                          className="w-full rounded-lg border border-border/60 bg-brand-soft p-3 text-sm font-medium text-primary-dark break-words whitespace-normal"
+                          className="w-full rounded-lg border border-border/60 bg-brand-soft p-3 text-sm font-medium text-primary-dark wrap-break-word whitespace-normal"
                         >
                           {theme}
                         </div>

@@ -58,7 +58,7 @@ export function AdminShell({ children, title }: { children: ReactNode; title: st
         </SiteContainer>
       </section>
 
-      <nav className="sticky top-[57px] z-20 border-b bg-background">
+      <nav className="sticky top-14.25 z-20 border-b bg-background">
         <SiteContainer>
           <ul className="flex gap-1 overflow-x-auto py-1.5">
             {tabs.filter((tab) => !tab.adminOnly || user?.role === "ADMIN").map((t) => (

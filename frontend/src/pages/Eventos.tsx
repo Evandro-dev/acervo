@@ -135,7 +135,7 @@ export default function Eventos() {
                   </Button>
 
                   <Button
-                    className="h-12 rounded-xl bg-gradient-to-r from-[#E30613] to-[#B00010] text-base font-semibold text-white hover:opacity-90"
+                    className="h-12 rounded-xl bg-linear-to-r from-[#E30613] to-[#B00010] text-base font-semibold text-white hover:opacity-90"
                     onClick={() => setOpen(false)}
                   >
                     Aplicar filtros
@@ -171,7 +171,7 @@ export default function Eventos() {
 
 function EventCard({ ev }: { ev: Event }) {
   return (
-    <Card className="flex h-full min-h-[164px] flex-col overflow-hidden border-border/60 shadow-card">
+    <Card className="flex h-full min-h-41 flex-col overflow-hidden border-border/60 shadow-card">
       <div className="flex flex-1 gap-3 p-3">
         <EventCoverThumb cover={ev.cover} title={ev.title} className="h-16 w-16" />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -183,7 +183,7 @@ function EventCard({ ev }: { ev: Event }) {
             </Badge>
             <Badge
               variant="outline"
-              className="h-auto min-h-5 max-w-full min-w-0 whitespace-normal break-words px-1.5 py-0.5 text-left text-[10px] leading-tight"
+              className="h-auto min-h-5 max-w-full min-w-0 whitespace-normal wrap-break-word px-1.5 py-0.5 text-left text-[10px] leading-tight"
             >
               {ev.area}
             </Badge>

@@ -504,7 +504,7 @@ export async function articleRoutes(app: FastifyInstance) {
   app.delete("/:id", { preHandler: [app.requireRole("ADMIN", "COORDENADOR")] }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const article = await prisma.article.findUnique({ where: { id }, select: { id: true, pdfUrl: true } });
-    if (!article) return reply.status(404).send({ error: "Artigo nÃ£o encontrado" });
+    if (!article) return reply.status(404).send({ error: "Artigo não encontrado" });
 
     await prisma.article.delete({ where: { id } });
     await removeArticlePdfBestEffort(req, id, article.pdfUrl);

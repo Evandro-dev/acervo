@@ -11,7 +11,7 @@ const mockedUseAuth = vi.mocked(useAuth);
 
 function renderScreen(initialEntry = "/admin/login") {
   return render(
-    <MemoryRouter initialEntries={[initialEntry]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <AdminLogin />
     </MemoryRouter>,
   );
@@ -36,6 +36,7 @@ describe("AdminLogin", () => {
       name: "Admin",
       email: "admin@acervo.edu",
       role: "ADMIN",
+      isActive: true,
     });
 
     mockedUseAuth.mockReturnValue({

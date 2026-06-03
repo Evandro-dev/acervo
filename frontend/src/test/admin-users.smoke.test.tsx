@@ -44,7 +44,7 @@ const adminSession = {
 
 function renderUsersPage() {
   return render(
-    <MemoryRouter initialEntries={["/admin/usuarios"]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter initialEntries={["/admin/usuarios"]}>
       <Routes>
         <Route path="/admin/usuarios" element={<AdminUsuarios />} />
         <Route path="/admin" element={<div>Dashboard administrativo</div>} />

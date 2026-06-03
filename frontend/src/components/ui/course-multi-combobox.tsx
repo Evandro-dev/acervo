@@ -260,7 +260,7 @@ export function CourseMultiCombobox({
             role="listbox"
             aria-label="Cursos relacionados"
             aria-multiselectable="true"
-            className="max-h-[300px] p-1"
+            className="max-h-75 p-1"
           >
             {selectableOptions.length > 0 ? (
               selectableOptions.map((option, index) => {

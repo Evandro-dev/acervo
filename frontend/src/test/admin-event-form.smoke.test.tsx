@@ -50,6 +50,7 @@ const adminSession = {
     name: "Admin",
     email: "admin@acervo.edu",
     role: "ADMIN" as const,
+    isActive: true,
   },
   token: "token-1",
   isAuthenticated: true,
@@ -118,7 +119,7 @@ describe("AdminEventoForm", () => {
     } as never);
 
     const { container } = render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <AdminEventoForm />
       </MemoryRouter>,
     );
@@ -268,7 +269,6 @@ describe("AdminEventoForm", () => {
     render(
       <MemoryRouter
         initialEntries={["/admin/eventos/event-1"]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <Routes>
           <Route path="/admin/eventos/:id" element={<AdminEventoForm />} />
@@ -314,7 +314,7 @@ describe("AdminEventoForm", () => {
     } as never);
 
     const { container } = render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <AdminEventoForm />
       </MemoryRouter>,
     );

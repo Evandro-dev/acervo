@@ -22,6 +22,7 @@ const user = {
   name: "Admin",
   email: "admin@acervo.edu",
   role: "ADMIN" as const,
+  isActive: true,
 };
 
 function AuthProbe() {

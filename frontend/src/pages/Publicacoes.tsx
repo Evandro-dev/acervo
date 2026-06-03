@@ -277,7 +277,7 @@ export default function Publicacoes() {
                   </Button>
 
                   <Button
-                    className="h-12 rounded-xl bg-gradient-to-r from-[#E30613] to-[#B00010] text-base font-semibold text-white hover:opacity-90"
+                    className="h-12 rounded-xl bg-linear-to-r from-[#E30613] to-[#B00010] text-base font-semibold text-white hover:opacity-90"
                     onClick={() => setOpen(false)}
                   >
                     Aplicar filtros
@@ -324,7 +324,7 @@ export default function Publicacoes() {
                         <div className="mt-1.5 flex min-w-0 flex-wrap items-start gap-2">
                           <Badge
                             variant="secondary"
-                            className="h-auto min-h-5 max-w-full min-w-0 whitespace-normal break-words px-1.5 py-0.5 text-left text-[10px] leading-tight"
+                            className="h-auto min-h-5 max-w-full min-w-0 whitespace-normal wrap-break-word px-1.5 py-0.5 text-left text-[10px] leading-tight"
                           >
                             {article.area}
                           </Badge>

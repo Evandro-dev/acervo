@@ -25,7 +25,7 @@ export function DropdownScrollArea({
         ref={setViewport}
         data-slot={viewportSlot}
         className={cn(
-          "acervo-dropdown-scrollbar max-h-[300px] overflow-y-auto overflow-x-hidden pr-3",
+          "acervo-dropdown-scrollbar max-h-75 overflow-y-auto overflow-x-hidden pr-3",
           viewportClassName,
         )}
       >

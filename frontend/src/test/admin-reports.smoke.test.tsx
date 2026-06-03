@@ -60,6 +60,7 @@ describe("AdminRelatorios", () => {
         name: "Admin",
         email: "admin@example.com",
         role: "ADMIN",
+        isActive: true,
       },
       token: "token-1",
       isAuthenticated: true,
@@ -87,7 +88,7 @@ describe("AdminRelatorios", () => {
 
   it("downloads an XLSX report using the selected filters", async () => {
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <AdminRelatorios />
       </MemoryRouter>,
     );
@@ -131,7 +132,7 @@ describe("AdminRelatorios", () => {
     } as never);
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <AdminRelatorios />
       </MemoryRouter>,
     );

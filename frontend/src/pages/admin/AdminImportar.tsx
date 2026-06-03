@@ -166,43 +166,6 @@ function canImportPdfItem(item: PdfQueueItem) {
   return Boolean(item.draft.title.trim() && item.draft.authors.trim());
 }
 
-function getPdfStatusMeta(status: PdfQueueStatus) {
-  switch (status) {
-    case "pending":
-      return { label: "Pendente", variant: "outline" as const, className: "border-dashed" };
-    case "reading":
-      return { label: "Lendo", variant: "secondary" as const, className: "" };
-    case "ready":
-      return {
-        label: "Pronto para revisar",
-        variant: "outline" as const,
-        className: "border-emerald-200 bg-emerald-500/10 text-emerald-700",
-      };
-    case "failed":
-      return {
-        label: "Leitura falhou",
-        variant: "outline" as const,
-        className: "border-amber-200 bg-amber-500/10 text-amber-700",
-      };
-    case "saving":
-      return { label: "Salvando", variant: "secondary" as const, className: "" };
-    case "saved":
-      return {
-        label: "Salvo com PDF",
-        variant: "outline" as const,
-        className: "border-emerald-200 bg-emerald-600/10 text-emerald-700",
-      };
-    case "partial":
-      return {
-        label: "Salvo sem PDF",
-        variant: "outline" as const,
-        className: "border-amber-200 bg-amber-500/10 text-amber-700",
-      };
-    default:
-      return { label: "Pendente", variant: "outline" as const, className: "" };
-  }
-}
-
 export default function AdminImportar() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -242,7 +205,6 @@ export default function AdminImportar() {
   const pendingPdfCount = pdfItems.filter((item) => item.status === "pending").length;
   const failedPdfCount = pdfItems.filter((item) => item.status === "failed").length;
   const readyPdfCount = pdfItems.filter((item) => item.status === "ready").length;
-  const savedPdfCount = pdfItems.filter((item) => item.status === "saved").length;
   const importablePdfItems = pdfItems.filter(
     (item) => canImportPdfItem(item) && item.status !== "saved" && item.status !== "partial",
   );
@@ -858,8 +820,8 @@ export default function AdminImportar() {
                 ) : (
                   <div className="rounded-lg border border-border bg-muted/20 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             type="button"
                             variant="outline"
@@ -885,40 +847,41 @@ export default function AdminImportar() {
                           >
                             <ChevronRight className="h-4 w-4" />
                           </Button>
+                          <label className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-brand/90">
+                            <Upload className="h-3.5 w-3.5" /> Adicionar PDFs
+                            <input
+                              type="file"
+                              accept="application/pdf,.pdf"
+                              multiple
+                              className="hidden"
+                              onChange={(event) => {
+                                onPdfFiles(event.target.files);
+                                event.target.value = "";
+                              }}
+                            />
+                          </label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 rounded-full border-brand/20 px-3 text-xs font-semibold text-brand hover:bg-brand/10 hover:text-brand"
+                            onClick={removeActivePdfItem}
+                          >
+                            <X className="h-3.5 w-3.5" /> Remover atual
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 rounded-full border-brand/20 px-3 text-xs font-semibold text-brand hover:bg-brand/10 hover:text-brand"
+                            onClick={clearPdfQueue}
+                          >
+                            Limpar fila
+                          </Button>
                         </div>
                         <div className="font-semibold text-foreground">{activePdfItem?.file.name}</div>
                         <div className="text-xs text-muted-foreground">{formatFileSize(activePdfItem?.file.size ?? 0)}</div>
                       </div>
-                      {activePdfItem ? (
-                        <Badge
-                          variant={getPdfStatusMeta(activePdfItem.status).variant}
-                          className={getPdfStatusMeta(activePdfItem.status).className}
-                        >
-                          {getPdfStatusMeta(activePdfItem.status).label}
-                        </Badge>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
-                        <Upload className="h-4 w-4" /> Adicionar PDFs
-                        <input
-                          type="file"
-                          accept="application/pdf,.pdf"
-                          multiple
-                          className="hidden"
-                          onChange={(event) => {
-                            onPdfFiles(event.target.files);
-                            event.target.value = "";
-                          }}
-                        />
-                      </label>
-                      <Button type="button" variant="ghost" size="sm" className="gap-2" onClick={removeActivePdfItem}>
-                        <X className="h-4 w-4" /> Remover atual
-                      </Button>
-                      <Button type="button" variant="ghost" size="sm" className="gap-2" onClick={clearPdfQueue}>
-                        Limpar fila
-                      </Button>
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -943,32 +906,24 @@ export default function AdminImportar() {
                       >
                         {failedPdfCount} com falha
                       </Badge>
-                      <Badge
-                        variant="outline"
-                        className={
-                          hasStartedPdfProcessing
-                            ? "border-sky-200 bg-sky-500/10 text-sky-700"
-                            : "border-dashed border-border bg-muted/40 text-muted-foreground"
-                        }
-                      >
-                        {savedPdfCount} salvos
-                      </Badge>
                     </div>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="mt-3 w-full gap-2"
-                      disabled={isBatchReading}
-                      onClick={readAllPdfMetadata}
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      {isBatchReading
-                        ? "Lendo PDFs da fila..."
-                        : `Ler ${
-                            pendingPdfCount + failedPdfCount || pdfItems.length
-                          } ${pendingPdfCount + failedPdfCount === 1 ? "PDF pendente" : "PDFs pendentes"}`}
-                    </Button>
+                    <div className="mt-3 flex justify-start">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="gap-2"
+                        disabled={isBatchReading}
+                        onClick={readAllPdfMetadata}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        {isBatchReading
+                          ? "Lendo PDFs da fila..."
+                          : `Ler ${
+                              pendingPdfCount + failedPdfCount || pdfItems.length
+                            } ${pendingPdfCount + failedPdfCount === 1 ? "PDF pendente" : "PDFs pendentes"}`}
+                      </Button>
+                    </div>
                     <p className="mt-2 text-xs text-muted-foreground">
                       O botão acima processa todos os PDFs pendentes ou com falha da fila de uma vez.
                     </p>
@@ -1223,32 +1178,22 @@ export default function AdminImportar() {
                 </Card>
               ) : null}
 
-              {pdfItems.length > 0 ? (
-                <Card className="border-border/60 p-3 shadow-card">
-                  <div className="flex flex-col gap-2">
-                    <div className="text-sm font-semibold">
-                      {importablePdfItems.length}{" "}
-                      {importablePdfItems.length === 1 ? "trabalho pronto para salvar" : "trabalhos prontos para salvar"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Os itens sem título ou autores ficam na fila até você revisar.
-                    </div>
-                  </div>
-                </Card>
-              ) : null}
-
-              <Button
-                className="w-full gap-2 bg-brand text-primary-foreground hover:opacity-90"
-                disabled={importablePdfItems.length === 0 || !selectedEventId || isImporting || isBatchReading}
-                onClick={importPdfBatch}
-              >
-                <DownloadCloud className="h-4 w-4" />
-                {isImporting
-                  ? "Salvando lote..."
-                  : `Salvar ${importablePdfItems.length} ${
-                      importablePdfItems.length === 1 ? "trabalho" : "trabalhos"
-                    } e anexar PDFs`}
-              </Button>
+              <div className="flex justify-end">
+                <Button
+                  className="gap-2 bg-brand text-primary-foreground hover:opacity-90"
+                  disabled={importablePdfItems.length === 0 || !selectedEventId || isImporting || isBatchReading}
+                  onClick={importPdfBatch}
+                >
+                  <DownloadCloud className="h-4 w-4" />
+                  {isImporting
+                    ? "Salvando lote..."
+                    : importablePdfItems.length > 0
+                      ? `Salvar ${importablePdfItems.length} ${
+                          importablePdfItems.length === 1 ? "trabalho" : "trabalhos"
+                        } e anexar PDFs`
+                      : "Salvar trabalhos e anexar PDFs"}
+                </Button>
+              </div>
               </TabsContent>
             </Tabs>
           </Card>

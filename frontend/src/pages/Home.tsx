@@ -115,7 +115,7 @@ export default function Home() {
           >
             <div className="grid auto-rows-fr gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {recent.map((ev) => (
-                <Card key={ev.id} className="flex h-full min-h-[164px] flex-col overflow-hidden border-border/60 shadow-card">
+                <Card key={ev.id} className="flex h-full min-h-41 flex-col overflow-hidden border-border/60 shadow-card">
                   <div className="flex flex-1 gap-3 p-3">
                     <EventCoverThumb cover={ev.cover} title={ev.title} className="h-16 w-16" />
                     <div className="flex min-w-0 flex-1 flex-col">
@@ -127,7 +127,7 @@ export default function Home() {
                         </Badge>
                         <Badge
                           variant="outline"
-                          className="h-auto min-h-5 max-w-full min-w-0 whitespace-normal break-words px-1.5 py-0.5 text-left text-[10px] leading-tight"
+                          className="h-auto min-h-5 max-w-full min-w-0 whitespace-normal wrap-break-word px-1.5 py-0.5 text-left text-[10px] leading-tight"
                         >
                           {ev.area}
                         </Badge>

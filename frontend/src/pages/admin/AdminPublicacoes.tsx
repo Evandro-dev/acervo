@@ -159,7 +159,7 @@ export default function AdminPublicacoes() {
 
   return (
     <AdminShell title="Publicações">
-      <SegmentedControl
+      <SegmentedControl<ArticleStatus>
         ariaLabel="Status das publicações"
         className="mb-3 grid-cols-3"
         value={tab}

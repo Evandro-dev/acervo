@@ -65,7 +65,7 @@ function renderAdminPage(ui: ReactNode) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{ui}</MemoryRouter>
+      <MemoryRouter>{ui}</MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -76,6 +76,7 @@ const adminSession = {
     name: "Admin",
     email: "admin@acervo.edu",
     role: "ADMIN" as const,
+    isActive: true,
   },
   token: "token-1",
   isAuthenticated: true,
