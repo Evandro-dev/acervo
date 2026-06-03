@@ -9,6 +9,7 @@ import {
   Info,
   Plus,
   Sparkles,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -867,7 +868,7 @@ export default function AdminImportar() {
                             className="h-8 rounded-full border-brand/20 px-3 text-xs font-semibold text-brand hover:bg-brand/10 hover:text-brand"
                             onClick={removeActivePdfItem}
                           >
-                            <X className="h-3.5 w-3.5" /> Remover atual
+                            <X className="h-3.5 w-3.5 shrink-0 text-brand" /> Remover atual
                           </Button>
                           <Button
                             type="button"
@@ -876,6 +877,7 @@ export default function AdminImportar() {
                             className="h-8 rounded-full border-brand/20 px-3 text-xs font-semibold text-brand hover:bg-brand/10 hover:text-brand"
                             onClick={clearPdfQueue}
                           >
+                            <Trash2 className="h-3.5 w-3.5 shrink-0 text-brand" />
                             Limpar fila
                           </Button>
                         </div>
@@ -908,11 +910,10 @@ export default function AdminImportar() {
                       </Badge>
                     </div>
 
-                    <div className="mt-3 flex justify-start">
+                    <div className="mt-3 flex justify-center">
                       <Button
                         type="button"
-                        variant="outline"
-                        className="gap-2"
+                        className="gap-2 bg-brand text-primary-foreground hover:bg-brand/90"
                         disabled={isBatchReading}
                         onClick={readAllPdfMetadata}
                       >
@@ -924,9 +925,6 @@ export default function AdminImportar() {
                             } ${pendingPdfCount + failedPdfCount === 1 ? "PDF pendente" : "PDFs pendentes"}`}
                       </Button>
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      O botão acima processa todos os PDFs pendentes ou com falha da fila de uma vez.
-                    </p>
                   </div>
                 )}
               </Card>
@@ -1175,25 +1173,25 @@ export default function AdminImportar() {
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
+
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      className="gap-2 bg-brand text-primary-foreground hover:bg-brand/90"
+                      disabled={importablePdfItems.length === 0 || !selectedEventId || isImporting || isBatchReading}
+                      onClick={importPdfBatch}
+                    >
+                      <DownloadCloud className="h-4 w-4" />
+                      {isImporting
+                        ? "Salvando lote..."
+                        : importablePdfItems.length > 0
+                          ? `Salvar ${importablePdfItems.length} ${
+                              importablePdfItems.length === 1 ? "trabalho" : "trabalhos"
+                            } e anexar PDFs`
+                          : "Salvar trabalhos e anexar PDFs"}
+                    </Button>
+                  </div>
                 </Card>
               ) : null}
-
-              <div className="flex justify-end">
-                <Button
-                  className="gap-2 bg-brand text-primary-foreground hover:opacity-90"
-                  disabled={importablePdfItems.length === 0 || !selectedEventId || isImporting || isBatchReading}
-                  onClick={importPdfBatch}
-                >
-                  <DownloadCloud className="h-4 w-4" />
-                  {isImporting
-                    ? "Salvando lote..."
-                    : importablePdfItems.length > 0
-                      ? `Salvar ${importablePdfItems.length} ${
-                          importablePdfItems.length === 1 ? "trabalho" : "trabalhos"
-                        } e anexar PDFs`
-                      : "Salvar trabalhos e anexar PDFs"}
-                </Button>
-              </div>
               </TabsContent>
             </Tabs>
           </Card>
