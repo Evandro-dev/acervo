@@ -44,8 +44,10 @@ export function EventCoverImagePicker({
     <div className="space-y-2">
       <input
         id={inputId}
+        name={inputId}
         type="file"
         accept={acceptedImageTypes}
+        aria-label="Selecionar imagem do evento"
         className="hidden"
         disabled={disabled}
         onChange={(event) => {

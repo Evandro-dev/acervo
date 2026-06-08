@@ -48,6 +48,7 @@ test("uploads public files with an explicit token and stable pathname", async ()
       options: {
         access: "public",
         addRandomSuffix: false,
+        cacheControlMaxAge: 31536000,
         contentType: "image/png",
         token: "token-de-teste",
       },

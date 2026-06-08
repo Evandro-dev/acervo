@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 type CourseMultiComboboxProps = {
   id?: string;
+  name?: string;
   value: string;
   options: string[];
   onValueChange: (value: string) => void;
@@ -32,6 +33,7 @@ function normalize(value: string) {
 
 export function CourseMultiCombobox({
   id,
+  name,
   value,
   options,
   onValueChange,
@@ -159,6 +161,7 @@ export function CourseMultiCombobox({
           ))}
           <Input
             id={id}
+            name={name ?? id}
             ref={inputRef}
             value={filter}
             onChange={(event) => {

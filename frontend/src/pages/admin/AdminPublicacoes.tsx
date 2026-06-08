@@ -59,6 +59,7 @@ import {
 import { getApiErrorMessage } from "@/lib/api";
 import { splitCommaSeparatedValues } from "@/lib/comma-separated-values";
 import { isUsableResourceUrl } from "@/lib/file-links";
+import { cn } from "@/lib/utils";
 import type { Article, ArticleStatus, ExtractedArticlePdfMetadata } from "@/types/acervo";
 
 const tabs: { key: ArticleStatus; label: string }[] = [
@@ -316,6 +317,7 @@ export default function AdminPublicacoes() {
   const managingHasPdf = hasAttachedPdf(managingItem);
   const isSavingEdit = updateArticleMutation.isPending;
   const isSavingPdfReview = uploadPdfMutation.isPending || updateArticleMutation.isPending;
+  const managingPdfInputId = managingItem ? `manage-pdf-${managingItem.id}` : "manage-pdf";
 
   return (
     <AdminShell title="Publicações">
@@ -338,6 +340,7 @@ export default function AdminPublicacoes() {
       />
 
       <SearchField
+        aria-label="Buscar publicacoes"
         containerClassName="mb-3"
         value={q}
         onChange={(event) => setQ(event.target.value)}
@@ -422,6 +425,8 @@ export default function AdminPublicacoes() {
                 )}
 
                 <Button
+                  aria-label={`Remover ${article.title}`}
+                  title={`Remover ${article.title}`}
                   size="sm"
                   variant="ghost"
                   className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -496,21 +501,25 @@ export default function AdminPublicacoes() {
                   </Button>
                 </div>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="relative w-full gap-1 overflow-hidden"
+                <input
+                  id={managingPdfInputId}
+                  name={managingPdfInputId}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  aria-label={managingHasPdf ? "Substituir PDF" : "Enviar PDF"}
+                  className="peer sr-only"
+                  onChange={(event) => preparePdfReview(event, managingItem)}
                   disabled={isUploadingManagingPdf}
-                >
-                  <Upload className="h-4 w-4" />
-                  {isUploadingManagingPdf ? "Lendo PDF..." : managingHasPdf ? "Substituir PDF" : "Enviar PDF"}
-                  <input
-                    type="file"
-                    accept="application/pdf,.pdf"
-                    className="absolute inset-0 cursor-pointer opacity-0"
-                    onChange={(event) => preparePdfReview(event, managingItem)}
-                    disabled={isUploadingManagingPdf}
-                  />
+                />
+                <Button asChild variant="outline" className="w-full gap-1 peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2">
+                  <label
+                    htmlFor={managingPdfInputId}
+                    aria-disabled={isUploadingManagingPdf}
+                    className={cn(isUploadingManagingPdf && "pointer-events-none opacity-50")}
+                  >
+                    <Upload className="h-4 w-4" />
+                    {isUploadingManagingPdf ? "Lendo PDF..." : managingHasPdf ? "Substituir PDF" : "Enviar PDF"}
+                  </label>
                 </Button>
 
                 <div className="flex gap-2">

@@ -686,8 +686,9 @@ export default function AdminEventoForm() {
             description="Dados principais do evento e da página pública."
           >
             <div className="flex flex-col gap-2">
-              <Label>Título</Label>
+              <Label htmlFor="event-title">Título</Label>
               <Input
+                id="event-title"
                 value={form.title}
                 onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
                 required
@@ -696,20 +697,22 @@ export default function AdminEventoForm() {
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label>Edição</Label>
+                <Label htmlFor="event-edition">Edição</Label>
                 <Input
+                  id="event-edition"
                   value={form.edition}
                   onChange={(event) => setForm((current) => ({ ...current, edition: event.target.value }))}
                   placeholder="2ª Edição"
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label>Tipo</Label>
+                <Label htmlFor="event-type">Tipo</Label>
                 <Select
+                  name="event-type"
                   value={form.type}
                   onValueChange={(value) => setForm((current) => ({ ...current, type: value as EventType }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="event-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -737,8 +740,9 @@ export default function AdminEventoForm() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label>Tema principal</Label>
+              <Label htmlFor="event-area">Tema principal</Label>
               <AreaCombobox
+                id="event-area"
                 value={form.area}
                 options={areas.map((area) => area.name)}
                 onValueChange={(area) => setForm((current) => ({ ...current, area }))}
@@ -746,7 +750,7 @@ export default function AdminEventoForm() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label>Imagem do evento</Label>
+              <div className="text-sm font-medium leading-none">Imagem do evento</div>
               <EventCoverImagePicker
                 currentCoverUrl={form.coverUrl || undefined}
                 disabled={isSubmitting}
@@ -770,8 +774,9 @@ export default function AdminEventoForm() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label>Apresentação</Label>
+              <Label htmlFor="event-presentation">Apresentação</Label>
               <Textarea
+                id="event-presentation"
                 rows={5}
                 value={form.presentation}
                 onChange={(event) => setForm((current) => ({ ...current, presentation: event.target.value }))}
@@ -787,8 +792,9 @@ export default function AdminEventoForm() {
           >
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label>E-mail</Label>
+                <Label htmlFor="event-contact-email">E-mail</Label>
                 <Input
+                  id="event-contact-email"
                   type="email"
                   value={form.contactEmail}
                   onChange={(event) => setForm((current) => ({ ...current, contactEmail: event.target.value }))}
@@ -796,8 +802,9 @@ export default function AdminEventoForm() {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label>Telefone</Label>
+                <Label htmlFor="event-contact-phone">Telefone</Label>
                 <Input
+                  id="event-contact-phone"
                   value={form.contactPhone}
                   onChange={(event) => setForm((current) => ({ ...current, contactPhone: event.target.value }))}
                   placeholder="(31) 3000-0000"
@@ -813,22 +820,25 @@ export default function AdminEventoForm() {
           >
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label>ISBN</Label>
+                <Label htmlFor="event-catalog-isbn">ISBN</Label>
                 <Input
+                  id="event-catalog-isbn"
                   value={form.catalogIsbn}
                   onChange={(event) => setForm((current) => ({ ...current, catalogIsbn: event.target.value }))}
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label>Editora</Label>
+                <Label htmlFor="event-catalog-publisher">Editora</Label>
                 <Input
+                  id="event-catalog-publisher"
                   value={form.catalogPublisher}
                   onChange={(event) => setForm((current) => ({ ...current, catalogPublisher: event.target.value }))}
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label>Endereço</Label>
+                <Label htmlFor="event-catalog-address">Endereço</Label>
                 <Input
+                  id="event-catalog-address"
                   value={form.catalogAddress}
                   onChange={(event) => setForm((current) => ({ ...current, catalogAddress: event.target.value }))}
                 />
@@ -845,6 +855,8 @@ export default function AdminEventoForm() {
               {form.themes.map((theme, index) => (
                 <div key={theme.key} className="flex items-center gap-2">
                   <Input
+                    id={`event-theme-${theme.key}`}
+                    aria-label={`Área temática ${index + 1}`}
                     value={theme.value}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -859,6 +871,8 @@ export default function AdminEventoForm() {
                     variant="outline"
                     size="icon"
                     className="shrink-0"
+                    aria-label={`Remover área temática ${index + 1}`}
+                    title={`Remover área temática ${index + 1}`}
                     onClick={() =>
                       setForm((current) => ({
                         ...current,
@@ -890,12 +904,13 @@ export default function AdminEventoForm() {
             description="Nome e tipo dos responsáveis pelo evento."
           >
             <div className="flex flex-col gap-3">
-              {form.committee.map((member) => (
+              {form.committee.map((member, index) => (
                 <Card key={member.key} className="border-border/60 p-3">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_180px_auto]">
                     <div className="flex flex-col gap-2">
-                      <Label>Nome</Label>
+                      <Label htmlFor={`event-committee-name-${member.key}`}>Nome</Label>
                       <Input
+                        id={`event-committee-name-${member.key}`}
                         value={member.name}
                         onChange={(event) =>
                           setForm((current) => ({
@@ -907,8 +922,9 @@ export default function AdminEventoForm() {
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label>Tipo</Label>
+                      <Label htmlFor={`event-committee-role-${member.key}`}>Tipo</Label>
                       <Select
+                        name={`event-committee-role-${member.key}`}
                         value={normalizeCommitteeType(member.role)}
                         onValueChange={(value) =>
                           setForm((current) => ({
@@ -917,7 +933,7 @@ export default function AdminEventoForm() {
                           }))
                         }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id={`event-committee-role-${member.key}`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -935,6 +951,8 @@ export default function AdminEventoForm() {
                         variant="outline"
                         size="icon"
                         className="w-full sm:w-10"
+                        aria-label={`Remover membro ${index + 1} da comissão`}
+                        title={`Remover membro ${index + 1} da comissão`}
                         onClick={() =>
                           setForm((current) => ({
                             ...current,
@@ -974,13 +992,14 @@ export default function AdminEventoForm() {
           >
             {form.rules.length === 0 ? <EmptyHint>Nenhuma norma cadastrada.</EmptyHint> : null}
             <div className="flex flex-col gap-3">
-              {form.rules.map((rule) => (
+              {form.rules.map((rule, index) => (
                 <Card key={rule.key} className="border-border/60 p-3">
                   <div className="flex flex-col gap-3">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
                       <div className="flex flex-col gap-2">
-                        <Label>Título da norma</Label>
+                        <Label htmlFor={`event-rule-title-${rule.key}`}>Título da norma</Label>
                         <Input
+                          id={`event-rule-title-${rule.key}`}
                           value={rule.title}
                           onChange={(event) =>
                             setForm((current) => ({
@@ -997,6 +1016,8 @@ export default function AdminEventoForm() {
                           variant="outline"
                           size="icon"
                           className="w-full sm:w-10"
+                          aria-label={`Remover norma ${index + 1}`}
+                          title={`Remover norma ${index + 1}`}
                           onClick={() =>
                             setForm((current) => ({
                               ...current,
@@ -1049,8 +1070,9 @@ export default function AdminEventoForm() {
 
                     {rule.useExternalLink ? (
                       <div className="flex flex-col gap-2">
-                        <Label>Link externo do arquivo</Label>
+                        <Label htmlFor={`event-rule-external-url-${rule.key}`}>Link externo do arquivo</Label>
                         <Input
+                          id={`event-rule-external-url-${rule.key}`}
                           value={rule.fileUrl}
                           onChange={(event) =>
                             setForm((current) => ({
@@ -1077,7 +1099,7 @@ export default function AdminEventoForm() {
                       </div>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        <Label>Arquivo da norma</Label>
+                        <div className="text-sm font-medium leading-none">Arquivo da norma</div>
                         <DocumentFilePicker
                           accept={eventRuleDocumentAccept}
                           title={
@@ -1155,12 +1177,13 @@ export default function AdminEventoForm() {
           >
             {form.previousEditions.length === 0 ? <EmptyHint>Esta pode ser a primeira edição.</EmptyHint> : null}
             <div className="flex flex-col gap-3">
-              {form.previousEditions.map((edition) => (
+              {form.previousEditions.map((edition, index) => (
                 <Card key={edition.key} className="border-border/60 p-3">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_160px_auto]">
                     <div className="flex flex-col gap-2">
-                      <Label>Nome</Label>
+                      <Label htmlFor={`event-previous-edition-label-${edition.key}`}>Nome</Label>
                       <Input
+                        id={`event-previous-edition-label-${edition.key}`}
                         value={edition.label}
                         onChange={(event) =>
                           setForm((current) => ({
@@ -1174,8 +1197,9 @@ export default function AdminEventoForm() {
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label>Ano</Label>
+                      <Label htmlFor={`event-previous-edition-year-${edition.key}`}>Ano</Label>
                       <Input
+                        id={`event-previous-edition-year-${edition.key}`}
                         type="number"
                         value={edition.year}
                         onChange={(event) =>
@@ -1194,6 +1218,8 @@ export default function AdminEventoForm() {
                         variant="outline"
                         size="icon"
                         className="w-full sm:w-10"
+                        aria-label={`Remover edição anterior ${index + 1}`}
+                        title={`Remover edição anterior ${index + 1}`}
                         onClick={() =>
                           setForm((current) => ({
                             ...current,
@@ -1207,8 +1233,9 @@ export default function AdminEventoForm() {
                   </div>
                   <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[180px_1fr]">
                     <div className="flex flex-col gap-2">
-                      <Label>Destino da seta</Label>
+                      <Label htmlFor={`event-previous-edition-link-mode-${edition.key}`}>Destino da seta</Label>
                       <Select
+                        name={`event-previous-edition-link-mode-${edition.key}`}
                         value={edition.linkMode}
                         onValueChange={(value) =>
                           setForm((current) => ({
@@ -1221,7 +1248,7 @@ export default function AdminEventoForm() {
                           }))
                         }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id={`event-previous-edition-link-mode-${edition.key}`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1234,9 +1261,10 @@ export default function AdminEventoForm() {
 
                     {edition.linkMode === "internal" ? (
                       <div className="flex flex-col gap-2">
-                        <Label>Evento vinculado</Label>
+                        <Label htmlFor={`event-previous-edition-event-${edition.key}`}>Evento vinculado</Label>
                         {previousEditionEventOptions.length ? (
                           <Select
+                            name={`event-previous-edition-event-${edition.key}`}
                             value={edition.eventId || undefined}
                             onValueChange={(eventId) => {
                               const selectedEvent = previousEditionEventOptions.find((event) => event.id === eventId);
@@ -1251,7 +1279,7 @@ export default function AdminEventoForm() {
                               }));
                             }}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger id={`event-previous-edition-event-${edition.key}`}>
                               <SelectValue placeholder="Selecione o evento da edição" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1270,8 +1298,9 @@ export default function AdminEventoForm() {
 
                     {edition.linkMode === "external" ? (
                       <div className="flex flex-col gap-2">
-                        <Label>Link externo da edição</Label>
+                        <Label htmlFor={`event-previous-edition-external-url-${edition.key}`}>Link externo da edição</Label>
                         <Input
+                          id={`event-previous-edition-external-url-${edition.key}`}
                           value={edition.externalUrl}
                           onChange={(event) =>
                             setForm((current) => ({

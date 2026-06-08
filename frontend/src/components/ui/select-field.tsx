@@ -9,6 +9,7 @@ export type SelectFieldOption = {
 
 type SelectFieldProps = {
   id: string;
+  name?: string;
   label: string;
   value: string;
   options: SelectFieldOption[];
@@ -20,6 +21,7 @@ type SelectFieldProps = {
 
 export function SelectField({
   id,
+  name,
   label,
   value,
   options,
@@ -31,7 +33,7 @@ export function SelectField({
   return (
     <div className={cn("space-y-2", className)}>
       <Label htmlFor={id}>{label}</Label>
-      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+      <Select name={name ?? id} value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger id={id}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>

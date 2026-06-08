@@ -654,9 +654,9 @@ export default function AdminImportar() {
           <Card className="mb-3 border-border/60 p-3 shadow-card">
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <Label>Evento de destino</Label>
-                <Select value={selectedEventId} onValueChange={setEventId}>
-                  <SelectTrigger>
+                <Label htmlFor="import-event">Evento de destino</Label>
+                <Select name="import-event" value={selectedEventId} onValueChange={setEventId}>
+                  <SelectTrigger id="import-event">
                     <SelectValue placeholder="Selecione um evento" />
                   </SelectTrigger>
                   <SelectContent>
@@ -699,19 +699,31 @@ export default function AdminImportar() {
                         Trabalho {index + 1}
                       </Badge>
                       {drafts.length > 1 && (
-                        <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => removeDraft(index)}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2"
+                          aria-label={`Remover trabalho ${index + 1}`}
+                          title={`Remover trabalho ${index + 1}`}
+                          onClick={() => removeDraft(index)}
+                        >
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       )}
                     </div>
                     <div className="flex flex-col gap-2">
                       <div>
-                        <Label className="text-xs">Título *</Label>
-                        <Input value={draft.title} onChange={(event) => updateDraft(index, { title: event.target.value })} />
+                        <Label htmlFor={`manual-title-${index}`} className="text-xs">Título *</Label>
+                        <Input
+                          id={`manual-title-${index}`}
+                          value={draft.title}
+                          onChange={(event) => updateDraft(index, { title: event.target.value })}
+                        />
                       </div>
                       <div>
-                        <Label className="text-xs">Autores * (separados por virgula)</Label>
+                        <Label htmlFor={`manual-authors-${index}`} className="text-xs">Autores * (separados por virgula)</Label>
                         <Input
+                          id={`manual-authors-${index}`}
                           value={draft.authors}
                           onChange={(event) => updateDraft(index, { authors: event.target.value })}
                           placeholder="Ana Silva, Carlos Lima"
@@ -719,20 +731,22 @@ export default function AdminImportar() {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <Label className="text-xs">Área</Label>
+                          <Label htmlFor={`manual-area-${index}`} className="text-xs">Área</Label>
                           <AreaCombobox
+                            id={`manual-area-${index}`}
                             value={draft.area}
                             options={areaSuggestions}
                             onValueChange={(area) => updateDraft(index, { area })}
                           />
                         </div>
                         <div>
-                          <Label className="text-xs">Modalidade</Label>
+                          <Label htmlFor={`manual-modality-${index}`} className="text-xs">Modalidade</Label>
                           <Select
+                            name={`manual-modality-${index}`}
                             value={draft.modalidade}
                             onValueChange={(value) => updateDraft(index, { modalidade: value as Modalidade })}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger id={`manual-modality-${index}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -758,8 +772,9 @@ export default function AdminImportar() {
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">Resumo</Label>
+                        <Label htmlFor={`manual-abstract-${index}`} className="text-xs">Resumo</Label>
                         <Textarea
+                          id={`manual-abstract-${index}`}
                           rows={3}
                           value={draft.abstract}
                           onChange={(event) => updateDraft(index, { abstract: event.target.value })}
@@ -791,16 +806,20 @@ export default function AdminImportar() {
                     <div className="text-[11px]">Exportado do OJS, formulário ou planilha</div>
                   </div>
                   <input
+                    id="json-import-file"
+                    name="json-import-file"
                     type="file"
                     accept="application/json,.json"
+                    aria-label="Selecionar arquivo JSON"
                     className="hidden"
                     onChange={(event) => event.target.files?.[0] && onJsonFile(event.target.files[0])}
                   />
                 </label>
                 {jsonText && (
                   <Card className="border-border/60 p-3 shadow-card">
-                    <Label className="text-xs">Conteúdo carregado</Label>
+                    <Label htmlFor="json-import-content" className="text-xs">Conteúdo carregado</Label>
                     <Textarea
+                      id="json-import-content"
                       rows={6}
                       value={jsonText}
                       onChange={(event) => setJsonText(event.target.value)}
@@ -902,8 +921,11 @@ export default function AdminImportar() {
                             <span className="truncate">Adicionar PDFs</span>
 
                             <input
+                              id="pdf-queue-files"
+                              name="pdf-queue-files"
                               type="file"
                               accept="application/pdf,.pdf"
+                              aria-label="Adicionar PDFs"
                               multiple
                               className="hidden"
                               onChange={(event) => {

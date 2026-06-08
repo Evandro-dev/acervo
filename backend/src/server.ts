@@ -4,6 +4,7 @@ import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import { ZodError } from "zod";
 import { getPublicErrorMessage } from "./lib/public-error-message.js";
+import { applyDefaultResponseHeaders } from "./lib/response-headers.js";
 import { FILE_UPLOAD_LIMIT_BYTES } from "./lib/upload-limits.js";
 import { env } from "./env.js";
 import { authPlugin } from "./plugins/auth.js";
@@ -50,6 +51,11 @@ await app.register(cors, {
 await app.register(jwt, { secret: env.JWT_SECRET });
 await app.register(multipart, { limits: { fileSize: FILE_UPLOAD_LIMIT_BYTES, files: 1 } });
 await app.register(authPlugin);
+
+app.addHook("onSend", async (req, reply, payload) => {
+  applyDefaultResponseHeaders(req, reply);
+  return payload;
+});
 
 function isZodError(error: unknown): error is ZodError {
   return (

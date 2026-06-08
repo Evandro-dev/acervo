@@ -7,6 +7,8 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { cn } from "@/lib/utils";
 
 type AreaComboboxProps = {
+  id?: string;
+  name?: string;
   value: string;
   options: string[];
   onValueChange: (value: string) => void;
@@ -25,6 +27,8 @@ function normalize(value: string) {
 }
 
 export function AreaCombobox({
+  id,
+  name,
   value,
   options,
   onValueChange,
@@ -89,6 +93,8 @@ export function AreaCombobox({
       <PopoverAnchor asChild>
         <div ref={anchorRef} className="relative">
           <Input
+            id={id}
+            name={name ?? id}
             ref={inputRef}
             value={value}
             onChange={(event) => {

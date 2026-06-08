@@ -54,6 +54,7 @@ export default function Eventos() {
     setValues(values.includes(value) ? values.filter((item) => item !== value) : [...values, value]);
 
   const activeCount = (year ? 1 : 0) + types.length + areas.length;
+  const toFilterId = (prefix: string, value: string) => `${prefix}-${encodeURIComponent(value)}`;
 
   return (
     <AppShell>
@@ -71,7 +72,12 @@ export default function Eventos() {
             />
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="secondary" size="icon" className="relative shrink-0 bg-white text-primary-dark hover:bg-white/90">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="relative shrink-0 bg-white text-primary-dark hover:bg-white/90"
+                  aria-label="Abrir filtros de eventos"
+                >
                   <Filter className="h-4 w-4" />
                   {activeCount > 0 && (
                     <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-dark px-1 text-[10px] font-bold text-primary-foreground">
@@ -93,31 +99,51 @@ export default function Eventos() {
                 </SheetHeader>
 
                 <div className="mb-6">
-                  <Label className="mb-2 block text-sm font-semibold text-black">Data</Label>
-                  <Input type="date" className="h-11 rounded-xl border-zinc-300 bg-white text-sm shadow-none" />
+                  <Label htmlFor="event-date-filter" className="mb-2 block text-sm font-semibold text-black">Data</Label>
+                  <Input
+                    id="event-date-filter"
+                    type="date"
+                    className="h-11 rounded-xl border-zinc-300 bg-white text-sm shadow-none"
+                  />
                 </div>
 
                 <div className="mb-7">
-                  <Label className="mb-4 block text-sm font-semibold text-black">Tipo de Evento</Label>
+                  <div className="mb-4 block text-sm font-semibold text-black">Tipo de Evento</div>
                   <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:grid-cols-3">
-                    {eventTypes.map((type) => (
-                      <label key={type} className="flex items-center gap-2 text-sm">
-                        <Checkbox checked={types.includes(type)} onCheckedChange={() => toggle(types, type, setTypes)} />
+                    {eventTypes.map((type) => {
+                      const id = toFilterId("event-type", type);
+
+                      return (
+                      <label key={type} htmlFor={id} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          id={id}
+                          checked={types.includes(type)}
+                          onCheckedChange={() => toggle(types, type, setTypes)}
+                        />
                         <span>{type}</span>
                       </label>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div className="mb-8">
-                  <Label className="mb-4 block text-sm font-semibold text-black">Área</Label>
+                  <div className="mb-4 block text-sm font-semibold text-black">Área</div>
                   <div className="grid gap-3">
-                    {allAreas.map((area) => (
-                      <label key={area} className="flex items-center gap-2 text-sm">
-                        <Checkbox checked={areas.includes(area)} onCheckedChange={() => toggle(areas, area, setAreas)} />
+                    {allAreas.map((area) => {
+                      const id = toFilterId("event-area", area);
+
+                      return (
+                      <label key={area} htmlFor={id} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          id={id}
+                          checked={areas.includes(area)}
+                          onCheckedChange={() => toggle(areas, area, setAreas)}
+                        />
                         <span>{area}</span>
                       </label>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { QueryState } from "@/components/ui/query-state";
 import { SearchField } from "@/components/ui/search-field";
 import {
@@ -38,6 +37,10 @@ function getArticleYear(article: Article) {
 
 function toggleValue(values: string[], value: string) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function toFilterId(prefix: string, value: string) {
+  return `${prefix}-${encodeURIComponent(value)}`;
 }
 
 export default function Publicacoes() {
@@ -193,12 +196,20 @@ export default function Publicacoes() {
                   <FilterGroup title="Área">
                     {areaOptions.length > 0 ? (
                       <div className="grid gap-3 md:grid-cols-2">
-                        {areaOptions.map((area) => (
-                          <label key={area} className="flex items-start gap-2 text-sm">
-                            <Checkbox checked={activeAreas.includes(area)} onCheckedChange={() => toggleArea(area)} />
+                        {areaOptions.map((area) => {
+                          const id = toFilterId("publication-area", area);
+
+                          return (
+                          <label key={area} htmlFor={id} className="flex items-start gap-2 text-sm">
+                            <Checkbox
+                              id={id}
+                              checked={activeAreas.includes(area)}
+                              onCheckedChange={() => toggleArea(area)}
+                            />
                             <span className="leading-tight">{area}</span>
                           </label>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">Nenhuma Área disponí­vel.</p>
@@ -208,15 +219,24 @@ export default function Publicacoes() {
                   <FilterGroup title="Evento">
                     {eventOptions.length > 0 ? (
                       <div className="grid gap-3">
-                        {eventOptions.map((event) => (
-                          <label key={event.value} className="flex items-start gap-2 text-sm">
+                        {eventOptions.map((event) => {
+                          const id = toFilterId("publication-event", event.value);
+
+                          return (
+                          <label
+                            key={event.value}
+                            htmlFor={id}
+                            className="flex items-start gap-2 text-sm"
+                          >
                             <Checkbox
+                              id={id}
                               checked={selectedEvents.includes(event.value)}
                               onCheckedChange={() => setSelectedEvents((current) => toggleValue(current, event.value))}
                             />
                             <span className="leading-tight">{event.label}</span>
                           </label>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">Nenhum evento disponí­vel.</p>
@@ -226,15 +246,24 @@ export default function Publicacoes() {
                   <FilterGroup title="Modalidade">
                     {modalityOptions.length > 0 ? (
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                        {modalityOptions.map((modality) => (
-                          <label key={modality} className="flex items-center gap-2 text-sm">
+                        {modalityOptions.map((modality) => {
+                          const id = toFilterId("publication-modality", modality);
+
+                          return (
+                          <label
+                            key={modality}
+                            htmlFor={id}
+                            className="flex items-center gap-2 text-sm"
+                          >
                             <Checkbox
+                              id={id}
                               checked={selectedModalities.includes(modality)}
                               onCheckedChange={() => setSelectedModalities((current) => toggleValue(current, modality))}
                             />
                             <span>{modality}</span>
                           </label>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">Nenhuma modalidade disponí­vel.</p>
@@ -245,8 +274,9 @@ export default function Publicacoes() {
                     {yearOptions.length > 0 ? (
                       <div className="grid grid-cols-3 gap-3 md:grid-cols-5">
                         {yearOptions.map((year) => (
-                          <label key={year} className="flex items-center gap-2 text-sm">
+                          <label key={year} htmlFor={`publication-year-${year}`} className="flex items-center gap-2 text-sm">
                             <Checkbox
+                              id={`publication-year-${year}`}
                               checked={selectedYears.includes(year)}
                               onCheckedChange={() => setSelectedYears((current) => toggleValue(current, year))}
                             />
@@ -260,8 +290,12 @@ export default function Publicacoes() {
                   </FilterGroup>
 
                   <FilterGroup title="Arquivo">
-                    <label className="flex items-center gap-2 text-sm">
-                      <Checkbox checked={onlyWithPdf} onCheckedChange={(checked) => setOnlyWithPdf(checked === true)} />
+                    <label htmlFor="publication-only-with-pdf" className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        id="publication-only-with-pdf"
+                        checked={onlyWithPdf}
+                        onCheckedChange={(checked) => setOnlyWithPdf(checked === true)}
+                      />
                       <span>Somente publicações com PDF</span>
                     </label>
                   </FilterGroup>
@@ -351,7 +385,7 @@ export default function Publicacoes() {
 function FilterGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <Label className="mb-4 block text-sm font-semibold text-black">{title}</Label>
+      <div className="mb-4 block text-sm font-semibold text-black">{title}</div>
       {children}
     </section>
   );

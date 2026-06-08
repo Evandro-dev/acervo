@@ -43,6 +43,8 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
           {/* BOTÃO VOLTAR MOBILE */}
           {showBack && (
             <button
+              type="button"
+              aria-label="Voltar para a página anterior"
               onClick={() => navigate(-1)}
               className="-ml-1 flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10 lg:hidden"
             >

@@ -63,6 +63,7 @@ export function ArticleEditorForm({
             Área
           </Label>
           <AreaCombobox
+            id={`${idPrefix}-area`}
             value={value.area}
             options={areaOptions}
             onValueChange={(area) => onChange({ area })}
@@ -76,6 +77,7 @@ export function ArticleEditorForm({
             Modalidade
           </Label>
           <Select
+            name={`${idPrefix}-modality`}
             value={value.modalidade}
             onValueChange={(modalidade) => onChange({ modalidade: modalidade as ArticleModality })}
             disabled={disabled}

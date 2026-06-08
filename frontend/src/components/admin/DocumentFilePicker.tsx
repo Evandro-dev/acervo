@@ -35,8 +35,10 @@ export function DocumentFilePicker({
     <div>
       <input
         id={inputId}
+        name={inputId}
         type="file"
         accept={accept}
+        aria-label={title}
         multiple={multiple}
         className="hidden"
         disabled={disabled}

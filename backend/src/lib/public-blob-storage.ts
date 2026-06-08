@@ -3,6 +3,7 @@ import { env } from "../env.js";
 
 const managedBlobPathPrefix = "/acervo/";
 const publicBlobHostSuffix = ".public.blob.vercel-storage.com";
+const publicBlobCacheControlMaxAge = 31_536_000;
 
 type BlobUploadBody = Parameters<typeof put>[1];
 
@@ -13,6 +14,7 @@ export type PublicBlobClient = {
     options: {
       access: "public";
       addRandomSuffix: false;
+      cacheControlMaxAge: number;
       contentType: string;
       token: string;
     },
@@ -72,6 +74,7 @@ export async function uploadPublicBlob(
   const blob = await (dependencies.client ?? vercelBlobClient).put(pathname, body, {
     access: "public",
     addRandomSuffix: false,
+    cacheControlMaxAge: publicBlobCacheControlMaxAge,
     contentType,
     token,
   });
