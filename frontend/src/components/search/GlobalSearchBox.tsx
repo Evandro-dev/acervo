@@ -14,7 +14,11 @@ import {
 import { EventCoverThumb } from "@/components/events/EventCoverThumb";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { useGlobalSearchQuery } from "@/features/acervo/hooks";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { normalizeSearch } from "@/lib/search";
@@ -33,12 +37,43 @@ const RESULT_GROUPS: Array<{
     label: "Publicações",
     icon: Library,
     href: "/publicacoes",
-    keywords: ["publicacao", "publicacoes", "artigo", "artigos", "trabalho", "trabalhos"],
+    keywords: [
+      "publicacao",
+      "publicacoes",
+      "artigo",
+      "artigos",
+      "trabalho",
+      "trabalhos",
+    ],
   },
-  { type: "event", label: "Eventos", icon: CalendarDays, href: "/eventos", keywords: ["evento", "eventos"] },
-  { type: "author", label: "Autores", icon: UserRound, href: "/autores", keywords: ["autor", "autores"] },
-  { type: "area", label: "Áreas", icon: Tag, href: "/areas", keywords: ["area", "areas"] },
-  { type: "course", label: "Cursos", icon: GraduationCap, href: "/publicacoes", keywords: ["curso", "cursos"] },
+  {
+    type: "event",
+    label: "Eventos",
+    icon: CalendarDays,
+    href: "/eventos",
+    keywords: ["evento", "eventos"],
+  },
+  {
+    type: "author",
+    label: "Autores",
+    icon: UserRound,
+    href: "/autores",
+    keywords: ["autor", "autores"],
+  },
+  {
+    type: "area",
+    label: "Áreas",
+    icon: Tag,
+    href: "/areas",
+    keywords: ["area", "areas"],
+  },
+  {
+    type: "course",
+    label: "Cursos",
+    icon: GraduationCap,
+    href: "/publicacoes",
+    keywords: ["curso", "cursos"],
+  },
 ];
 
 type ResultGroup = (typeof RESULT_GROUPS)[number] & {
@@ -88,8 +123,13 @@ function getIntentScore(group: (typeof RESULT_GROUPS)[number], query: string) {
   if (!normalizedQuery) return 100;
 
   const normalizedLabel = normalizeSearch(group.label);
-  if (group.keywords.includes(normalizedQuery) || normalizedLabel === normalizedQuery) return 0;
-  if (group.keywords.some((keyword) => keyword.startsWith(normalizedQuery))) return 1;
+  if (
+    group.keywords.includes(normalizedQuery) ||
+    normalizedLabel === normalizedQuery
+  )
+    return 0;
+  if (group.keywords.some((keyword) => keyword.startsWith(normalizedQuery)))
+    return 1;
   if (normalizedLabel.includes(normalizedQuery)) return 2;
   return 100;
 }
@@ -116,20 +156,27 @@ function getShortcutActions(query: string): SearchItem[] {
   const normalizedQuery = normalizeSearch(query);
   if (normalizedQuery.length < 2) return [];
 
-  return RESULT_GROUPS.filter((group) => getIntentScore(group, query) <= 2).map((group) => ({
-    kind: "shortcut",
-    id: `shortcut-${group.type}`,
-    title: group.label,
-    subtitle: "Abrir seção do Acervo",
-    href: group.href,
-    icon: group.icon,
-  }));
+  return RESULT_GROUPS.filter((group) => getIntentScore(group, query) <= 2).map(
+    (group) => ({
+      kind: "shortcut",
+      id: `shortcut-${group.type}`,
+      title: group.label,
+      subtitle: "Abrir seção do Acervo",
+      href: group.href,
+      icon: group.icon,
+    }),
+  );
 }
 
-function getOrderedGroups(groups: Record<GlobalSearchType, GlobalSearchResult[]>, query: string): ResultGroup[] {
+function getOrderedGroups(
+  groups: Record<GlobalSearchType, GlobalSearchResult[]>,
+  query: string,
+): ResultGroup[] {
   return RESULT_GROUPS.map((group, originalIndex) => {
     const results = groups[group.type] ?? [];
-    const resultScore = results.length ? Math.min(...results.map((result) => getResultScore(result, query))) : 50;
+    const resultScore = results.length
+      ? Math.min(...results.map((result) => getResultScore(result, query)))
+      : 50;
     const intentScore = getIntentScore(group, query);
 
     return {
@@ -142,10 +189,15 @@ function getOrderedGroups(groups: Record<GlobalSearchType, GlobalSearchResult[]>
     .sort((left, right) => left.score - right.score);
 }
 
-function flattenSearchItems(shortcuts: SearchItem[], groups: ResultGroup[]): SearchItem[] {
+function flattenSearchItems(
+  shortcuts: SearchItem[],
+  groups: ResultGroup[],
+): SearchItem[] {
   return [
     ...shortcuts,
-    ...groups.flatMap((group) => group.results.map((result) => ({ kind: "result" as const, result }))),
+    ...groups.flatMap((group) =>
+      group.results.map((result) => ({ kind: "result" as const, result })),
+    ),
   ];
 }
 
@@ -201,12 +253,21 @@ export function GlobalSearchBox({
   const search = debouncedValue.trim();
   const { data, isFetching, isError } = useGlobalSearchQuery(search, { limit });
   const shortcuts = useMemo(() => getShortcutActions(search), [search]);
-  const orderedGroups = useMemo(() => (data ? getOrderedGroups(data.groups, search) : []), [data, search]);
-  const searchItems = useMemo(() => flattenSearchItems(shortcuts, orderedGroups), [orderedGroups, shortcuts]);
+  const orderedGroups = useMemo(
+    () => (data ? getOrderedGroups(data.groups, search) : []),
+    [data, search],
+  );
+  const searchItems = useMemo(
+    () => flattenSearchItems(shortcuts, orderedGroups),
+    [orderedGroups, shortcuts],
+  );
   const shouldShowPanel = open && value.trim().length > 0;
   const hasEnoughText = value.trim().length >= 2;
   const listboxId = `${generatedId}-results`;
-  const activeIndex = Math.min(requestedActiveIndex, Math.max(searchItems.length - 1, 0));
+  const activeIndex = Math.min(
+    requestedActiveIndex,
+    Math.max(searchItems.length - 1, 0),
+  );
 
   const updateValue = (nextValue: string) => {
     if (controlledValue === undefined) {
@@ -235,6 +296,7 @@ export function GlobalSearchBox({
       <PopoverAnchor asChild>
         <div
           className={cn(
+            "w-full",
             trailingAction
               ? "flex items-center gap-2 rounded-xl border border-border/70 bg-background p-1 shadow-card"
               : "relative",
@@ -249,6 +311,7 @@ export function GlobalSearchBox({
                 iconClassName,
               )}
             />
+
             <Input
               ref={inputRef}
               id={generatedId}
@@ -267,17 +330,25 @@ export function GlobalSearchBox({
                 if (event.key === "ArrowDown") {
                   event.preventDefault();
                   setOpen(true);
-                  setRequestedActiveIndex((current) => Math.min(current + 1, Math.max(searchItems.length - 1, 0)));
+                  setRequestedActiveIndex((current) =>
+                    Math.min(current + 1, Math.max(searchItems.length - 1, 0)),
+                  );
                 }
 
                 if (event.key === "ArrowUp") {
                   event.preventDefault();
-                  setRequestedActiveIndex((current) => Math.max(current - 1, 0));
+                  setRequestedActiveIndex((current) =>
+                    Math.max(current - 1, 0),
+                  );
                 }
 
                 if (event.key === "Enter" && activeItem) {
                   event.preventDefault();
-                  goToHref(activeItem.kind === "shortcut" ? activeItem.href : activeItem.result.href);
+                  goToHref(
+                    activeItem.kind === "shortcut"
+                      ? activeItem.href
+                      : activeItem.result.href,
+                  );
                 }
 
                 if (event.key === "Escape") {
@@ -289,55 +360,76 @@ export function GlobalSearchBox({
               placeholder={placeholder}
               autoComplete="off"
               className={cn(
-                "pl-9",
-                trailingAction && "border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                "w-full pl-9",
+                trailingAction &&
+                  "border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0",
                 className,
               )}
             />
           </div>
-          {trailingAction ? <div className="shrink-0">{trailingAction}</div> : null}
+
+          {trailingAction ? (
+            <div className="shrink-0">{trailingAction}</div>
+          ) : null}
         </div>
       </PopoverAnchor>
 
       <PopoverContent
         align="start"
         sideOffset={8}
-        className="w-[min(calc(100vw-2rem),42rem)] overflow-hidden rounded-2xl border-border/70 p-0 shadow-2xl"
+        className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border-border/70 p-0 shadow-2xl"
         onOpenAutoFocus={(event) => event.preventDefault()}
         onFocusOutside={(event) => {
-          if (event.target instanceof Node && inputRef.current?.contains(event.target)) {
+          if (
+            event.target instanceof Node &&
+            inputRef.current?.contains(event.target)
+          ) {
             event.preventDefault();
           }
         }}
       >
-        <div className="border-b border-border/60 bg-gradient-to-r from-brand-soft to-background px-4 py-3">
-          <div className="text-sm font-bold text-foreground">Busca geral do Acervo</div>
+        <div className="border-b border-border/60 bg-linear-to-r from-brand-soft to-background px-4 py-3">
+          <div className="text-sm font-bold text-foreground">
+            Busca geral do Acervo
+          </div>
           <div className="text-xs text-muted-foreground">
             Pesquise publicações, eventos, autores, áreas e cursos.
           </div>
         </div>
 
         {!hasEnoughText ? (
-          <div className="p-4 text-sm text-muted-foreground">Digite pelo menos 2 caracteres para buscar.</div>
+          <div className="p-4 text-sm text-muted-foreground">
+            Digite pelo menos 2 caracteres para buscar.
+          </div>
         ) : isFetching && !data ? (
           <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Buscando no Acervo...
           </div>
         ) : isError ? (
-          <div className="p-4 text-sm text-destructive">Não foi possível carregar os resultados agora.</div>
+          <div className="p-4 text-sm text-destructive">
+            Não foi possível carregar os resultados agora.
+          </div>
         ) : searchItems.length === 0 ? (
-          <div className="p-4 text-sm text-muted-foreground">Nenhum resultado encontrado para “{search}”.</div>
+          <div className="p-4 text-sm text-muted-foreground">
+            Nenhum resultado encontrado para “{search}”.
+          </div>
         ) : (
-          <div id={listboxId} role="listbox" className="max-h-[70vh] overflow-y-auto p-2">
+          <div
+            id={listboxId}
+            role="listbox"
+            className="max-h-[70vh] overflow-y-auto p-2"
+          >
             {shortcuts.length ? (
               <section className="py-1">
                 <div className="flex items-center gap-2 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   <Search className="h-3.5 w-3.5" />
                   Atalhos
                 </div>
+
                 <div className="space-y-1">
                   {shortcuts.map((item, index) => {
                     if (item.kind !== "shortcut") return null;
+
                     const Icon = item.icon;
                     const isActive = index === activeIndex;
 
@@ -352,20 +444,29 @@ export function GlobalSearchBox({
                         onClick={() => setOpen(false)}
                         className={cn(
                           "flex gap-3 rounded-xl px-3 py-2.5 text-left transition",
-                          isActive ? "bg-brand-soft text-primary-dark" : "hover:bg-muted/70",
+                          isActive
+                            ? "bg-brand-soft text-primary-dark"
+                            : "hover:bg-muted/70",
                         )}
                       >
                         <span
                           className={cn(
                             "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                            isActive ? "bg-white text-primary-dark" : "bg-muted text-muted-foreground",
+                            isActive
+                              ? "bg-white text-primary-dark"
+                              : "bg-muted text-muted-foreground",
                           )}
                         >
                           <Icon className="h-4 w-4" />
                         </span>
+
                         <span className="min-w-0 flex-1">
-                          <span className="line-clamp-1 text-sm font-bold leading-snug">{item.title}</span>
-                          <span className="mt-0.5 block text-xs text-muted-foreground">{item.subtitle}</span>
+                          <span className="line-clamp-1 text-sm font-bold leading-snug">
+                            {item.title}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {item.subtitle}
+                          </span>
                         </span>
                       </Link>
                     );
@@ -387,11 +488,16 @@ export function GlobalSearchBox({
                   <div className="space-y-1">
                     {group.results.map((result) => {
                       const flatIndex = searchItems.findIndex(
-                        (item) => item.kind === "result" && item.result.type === result.type && item.result.id === result.id,
+                        (item) =>
+                          item.kind === "result" &&
+                          item.result.type === result.type &&
+                          item.result.id === result.id,
                       );
+
                       const isActive = flatIndex === activeIndex;
                       const Icon = getResultIcon(result.type);
-                      const showEventCover = result.type === "event" && Boolean(result.cover);
+                      const showEventCover =
+                        result.type === "event" && Boolean(result.cover);
 
                       return (
                         <Link
@@ -400,46 +506,75 @@ export function GlobalSearchBox({
                           aria-selected={isActive}
                           key={`${result.type}-${result.id}`}
                           to={result.href}
-                          onMouseEnter={() => setRequestedActiveIndex(flatIndex)}
+                          onMouseEnter={() =>
+                            setRequestedActiveIndex(flatIndex)
+                          }
                           onClick={() => setOpen(false)}
                           className={cn(
                             "flex gap-3 rounded-xl px-3 py-2.5 text-left transition",
-                            isActive ? "bg-brand-soft text-primary-dark" : "hover:bg-muted/70",
+                            isActive
+                              ? "bg-brand-soft text-primary-dark"
+                              : "hover:bg-muted/70",
                           )}
                         >
                           {showEventCover ? (
-                            <EventCoverThumb cover={result.cover} title={result.title} className="mt-0.5 h-12 w-12" />
+                            <EventCoverThumb
+                              cover={result.cover}
+                              title={result.title}
+                              className="mt-0.5 h-12 w-12"
+                            />
                           ) : (
                             <span
                               className={cn(
                                 "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                                isActive ? "bg-white text-primary-dark" : "bg-muted text-muted-foreground",
+                                isActive
+                                  ? "bg-white text-primary-dark"
+                                  : "bg-muted text-muted-foreground",
                               )}
                             >
                               <Icon className="h-4 w-4" />
                             </span>
                           )}
+
                           <span className="min-w-0 flex-1">
                             <span className="line-clamp-2 text-sm font-bold leading-snug">
-                              <HighlightedText text={result.title} query={search} />
+                              <HighlightedText
+                                text={result.title}
+                                query={search}
+                              />
                             </span>
+
                             {result.subtitle ? (
                               <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                                <HighlightedText text={result.subtitle} query={search} />
+                                <HighlightedText
+                                  text={result.subtitle}
+                                  query={search}
+                                />
                               </span>
                             ) : null}
+
                             {result.description ? (
                               <span className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                                <HighlightedText text={trimDescription(result.description)} query={search} />
+                                <HighlightedText
+                                  text={trimDescription(result.description)}
+                                  query={search}
+                                />
                               </span>
                             ) : null}
+
                             {result.matchedFields.length ? (
                               <span className="mt-2 flex flex-wrap gap-1">
-                                {result.matchedFields.slice(0, 3).map((field) => (
-                                  <Badge key={field} variant="outline" className="h-5 rounded-full px-1.5 text-[10px]">
-                                    {field}
-                                  </Badge>
-                                ))}
+                                {result.matchedFields
+                                  .slice(0, 3)
+                                  .map((field) => (
+                                    <Badge
+                                      key={field}
+                                      variant="outline"
+                                      className="h-5 rounded-full px-1.5 text-[10px]"
+                                    >
+                                      {field}
+                                    </Badge>
+                                  ))}
                               </span>
                             ) : null}
                           </span>
@@ -453,7 +588,8 @@ export function GlobalSearchBox({
 
             {isFetching ? (
               <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Atualizando resultados...
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Atualizando
+                resultados...
               </div>
             ) : null}
           </div>
