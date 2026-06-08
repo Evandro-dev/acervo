@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   BookOpen,
@@ -68,6 +68,7 @@ type GlobalSearchBoxProps = {
   defaultValue?: string;
   onValueChange?: (value: string) => void;
   limit?: number;
+  trailingAction?: ReactNode;
 };
 
 function getResultIcon(type: GlobalSearchType) {
@@ -186,6 +187,7 @@ export function GlobalSearchBox({
   defaultValue = "",
   onValueChange,
   limit = 5,
+  trailingAction,
 }: GlobalSearchBoxProps) {
   const navigate = useNavigate();
   const generatedId = useId();
@@ -230,55 +232,69 @@ export function GlobalSearchBox({
   return (
     <Popover open={shouldShowPanel} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
-        <div className={cn("relative", containerClassName)}>
-          <Search
-            aria-hidden="true"
-            className={cn(
-              "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
-              iconClassName,
-            )}
-          />
-          <Input
-            ref={inputRef}
-            id={generatedId}
-            name={generatedId}
-            type="search"
-            role="combobox"
-            aria-label="Buscar no Acervo"
-            aria-autocomplete="list"
-            aria-expanded={shouldShowPanel}
-            aria-controls={listboxId}
-            aria-activedescendant={activeItemId}
-            value={value}
-            onChange={(event) => updateValue(event.target.value)}
-            onFocus={() => setOpen(true)}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
-                setOpen(true);
-                setRequestedActiveIndex((current) => Math.min(current + 1, Math.max(searchItems.length - 1, 0)));
-              }
+        <div
+          className={cn(
+            trailingAction
+              ? "flex items-center gap-2 rounded-xl border border-border/70 bg-background p-1 shadow-card"
+              : "relative",
+            containerClassName,
+          )}
+        >
+          <div className="relative min-w-0 flex-1">
+            <Search
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
+                iconClassName,
+              )}
+            />
+            <Input
+              ref={inputRef}
+              id={generatedId}
+              name={generatedId}
+              type="search"
+              role="combobox"
+              aria-label="Buscar no Acervo"
+              aria-autocomplete="list"
+              aria-expanded={shouldShowPanel}
+              aria-controls={listboxId}
+              aria-activedescendant={activeItemId}
+              value={value}
+              onChange={(event) => updateValue(event.target.value)}
+              onFocus={() => setOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setOpen(true);
+                  setRequestedActiveIndex((current) => Math.min(current + 1, Math.max(searchItems.length - 1, 0)));
+                }
 
-              if (event.key === "ArrowUp") {
-                event.preventDefault();
-                setRequestedActiveIndex((current) => Math.max(current - 1, 0));
-              }
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setRequestedActiveIndex((current) => Math.max(current - 1, 0));
+                }
 
-              if (event.key === "Enter" && activeItem) {
-                event.preventDefault();
-                goToHref(activeItem.kind === "shortcut" ? activeItem.href : activeItem.result.href);
-              }
+                if (event.key === "Enter" && activeItem) {
+                  event.preventDefault();
+                  goToHref(activeItem.kind === "shortcut" ? activeItem.href : activeItem.result.href);
+                }
 
-              if (event.key === "Escape") {
-                event.preventDefault();
-                setOpen(false);
-                inputRef.current?.blur();
-              }
-            }}
-            placeholder={placeholder}
-            autoComplete="off"
-            className={cn("pl-9", className)}
-          />
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setOpen(false);
+                  inputRef.current?.blur();
+                }
+              }}
+              placeholder={placeholder}
+              autoComplete="off"
+              className={cn(
+                "pl-9",
+                trailingAction && "border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                className,
+              )}
+            />
+          </div>
+          {trailingAction ? <div className="shrink-0">{trailingAction}</div> : null}
         </div>
       </PopoverAnchor>
 

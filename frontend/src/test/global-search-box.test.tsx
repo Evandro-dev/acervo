@@ -204,4 +204,15 @@ describe("GlobalSearchBox", () => {
 
     expect((await screen.findByText("Autores")).closest("a")).toHaveAttribute("href", "/autores");
   });
+
+  it("renders a trailing action inside the search control", () => {
+    render(
+      <MemoryRouter>
+        <GlobalSearchBox placeholder="Pesquisar" trailingAction={<button type="button">Filtros</button>} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("combobox", { name: "Buscar no Acervo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filtros" })).toBeInTheDocument();
+  });
 });

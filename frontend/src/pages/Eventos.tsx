@@ -72,30 +72,31 @@ export default function Eventos() {
         <SiteContainer className="pb-5 pt-3">
           <h1 className="text-xl font-bold">Eventos</h1>
           <p className="text-xs opacity-90">{isLoading ? "Carregando..." : `${filtered.length} resultados`}</p>
-          <div className="mt-3 flex gap-2">
+          <Sheet open={open} onOpenChange={setOpen}>
             <GlobalSearchBox
-              containerClassName="flex-1"
+              containerClassName="mt-3"
               value={query}
               onValueChange={setQuery}
               placeholder="Buscar no Acervo..."
-              className="border-0 bg-background text-foreground shadow-card"
+              className="text-foreground"
+              trailingAction={
+                <SheetTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="relative h-9 w-9 shrink-0 rounded-lg bg-brand-soft text-primary-dark hover:bg-brand-soft/80"
+                    aria-label="Abrir filtros de eventos"
+                  >
+                    <Filter className="h-4 w-4" />
+                    {activeCount > 0 && (
+                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-dark px-1 text-[10px] font-bold text-primary-foreground">
+                        {activeCount}
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+              }
             />
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="relative shrink-0 bg-white text-primary-dark hover:bg-white/90"
-                  aria-label="Abrir filtros de eventos"
-                >
-                  <Filter className="h-4 w-4" />
-                  {activeCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-dark px-1 text-[10px] font-bold text-primary-foreground">
-                      {activeCount}
-                    </span>
-                  )}
-                </Button>
-              </SheetTrigger>
 
               <SheetContent
                 side="bottom"
@@ -185,7 +186,6 @@ export default function Eventos() {
                 </SheetFooter>
               </SheetContent>
             </Sheet>
-          </div>
         </SiteContainer>
       </section>
 
