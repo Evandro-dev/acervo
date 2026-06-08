@@ -248,6 +248,7 @@ export type GlobalSearchResult = {
   title: string;
   subtitle?: string;
   description?: string;
+  cover?: string;
   href: string;
   matchedFields: string[];
 };

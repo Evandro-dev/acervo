@@ -11,6 +11,7 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
+import { EventCoverThumb } from "@/components/events/EventCoverThumb";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
@@ -388,8 +389,9 @@ export function GlobalSearchBox({
                       const flatIndex = searchItems.findIndex(
                         (item) => item.kind === "result" && item.result.type === result.type && item.result.id === result.id,
                       );
-                      const Icon = getResultIcon(result.type);
                       const isActive = flatIndex === activeIndex;
+                      const Icon = getResultIcon(result.type);
+                      const showEventCover = result.type === "event" && Boolean(result.cover);
 
                       return (
                         <Link
@@ -405,14 +407,18 @@ export function GlobalSearchBox({
                             isActive ? "bg-brand-soft text-primary-dark" : "hover:bg-muted/70",
                           )}
                         >
-                          <span
-                            className={cn(
-                              "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                              isActive ? "bg-white text-primary-dark" : "bg-muted text-muted-foreground",
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </span>
+                          {showEventCover ? (
+                            <EventCoverThumb cover={result.cover} title={result.title} className="mt-0.5 h-12 w-12" />
+                          ) : (
+                            <span
+                              className={cn(
+                                "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                                isActive ? "bg-white text-primary-dark" : "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              <Icon className="h-4 w-4" />
+                            </span>
+                          )}
                           <span className="min-w-0 flex-1">
                             <span className="line-clamp-2 text-sm font-bold leading-snug">
                               <HighlightedText text={result.title} query={search} />

@@ -67,7 +67,7 @@ function createDatabase() {
               area: "Saúde",
               type: "Expo",
               viewCount: 0,
-              coverUrl: null,
+              coverUrl: "https://cdn.acervo.test/event-cover.png",
               presentation: "Mostra acadêmica da UNA.",
               themes: ["Saúde"],
               committee: [],
@@ -127,6 +127,7 @@ test("builds grouped global search results with public destinations", async () =
   assert.equal(result.groups.article[0].type, "article");
   assert.ok(result.groups.article[0].matchedFields.includes("Título"));
   assert.equal(result.groups.event[0].href, "/eventos/expo-una-2025-2");
+  assert.equal(result.groups.event[0].cover, "https://cdn.acervo.test/event-cover.png");
   assert.equal(result.groups.author[0].href, "/autores/maria-clara");
   assert.equal(result.groups.area[0].href, "/publicacoes?area=Sa%C3%BAde");
   assert.equal(result.groups.course[0].href, "/publicacoes?course=Biomedicina");

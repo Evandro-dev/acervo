@@ -48,6 +48,7 @@ describe("GlobalSearchBox", () => {
                     id: "event-1",
                     type: "event",
                     title: "EXPO UNA 2025",
+                    cover: "https://cdn.acervo.test/event-cover.png",
                     href: "/eventos/expo-una-2025",
                     matchedFields: ["Título"],
                   },
@@ -85,6 +86,10 @@ describe("GlobalSearchBox", () => {
     expect(screen.getByText("Publicações")).toBeInTheDocument();
     expect(screen.getByText("Eventos")).toBeInTheDocument();
     expect(screen.getByText("Cursos")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Imagem do evento EXPO UNA 2025" })).toHaveAttribute(
+      "src",
+      "https://cdn.acervo.test/event-cover.png",
+    );
     expect(screen.getByRole("option", { name: /Anemia ferropriva em crianças/i })).toHaveAttribute(
       "href",
       "/eventos/expo-una-2025/artigos/article-1",

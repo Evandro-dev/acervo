@@ -10,6 +10,7 @@ export type GlobalSearchResult = {
   title: string;
   subtitle?: string;
   description?: string;
+  cover?: string;
   href: string;
   matchedFields: string[];
 };
@@ -176,6 +177,7 @@ function mapEventResult(event: any, query: string): GlobalSearchResult {
     title: serialized.title,
     subtitle: [serialized.date, serialized.type].filter(Boolean).join(" · "),
     description: serialized.presentation,
+    cover: serialized.cover,
     href: `/eventos/${serialized.slug}`,
     matchedFields: compactMatchedFields(
       [
