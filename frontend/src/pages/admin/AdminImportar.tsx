@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { ArticleEditorForm } from "@/components/admin/ArticleEditorForm";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { PdfFilePicker } from "@/components/admin/PdfFilePicker";
 import { AreaCombobox } from "@/components/ui/area-combobox";
@@ -44,6 +45,14 @@ import { chunkItems } from "@/lib/chunk-items";
 import { addCommaSeparatedValue, splitCommaSeparatedValues } from "@/lib/comma-separated-values";
 import { formatFileSize } from "@/lib/file-size";
 import {
+  ARTICLE_MODALITIES,
+  applyExtractedMetadataToArticleForm,
+  emptyArticleFormValue,
+  splitArticleAuthors,
+  type ArticleFormValue,
+  type ArticleModality,
+} from "@/lib/article-form";
+import {
   segmentedControlItemClassName,
   segmentedControlListClassName,
   segmentedTabsTriggerClassName,
@@ -51,9 +60,9 @@ import {
 import { cn } from "@/lib/utils";
 import type { ExtractedArticlePdfMetadata, ImportArticleInput } from "@/types/acervo";
 
-const modalidades = ["Resumo Simples", "Resumo Expandido", "Artigo Científico"] as const;
+const modalidades = ARTICLE_MODALITIES;
 const ARTICLE_IMPORT_BATCH_SIZE = 25;
-type Modalidade = (typeof modalidades)[number];
+type Modalidade = ArticleModality;
 type PdfQueueStatus = "pending" | "reading" | "ready" | "failed" | "saving" | "saved" | "partial";
 
 type Draft = {
@@ -65,9 +74,7 @@ type Draft = {
   modalidade: Modalidade;
 };
 
-type PdfDraft = Draft & {
-  pages: string;
-};
+type PdfDraft = ArticleFormValue;
 
 type PdfQueueItem = {
   id: string;
@@ -88,16 +95,12 @@ const emptyDraft = (): Draft => ({
 });
 
 const emptyPdfDraft = (): PdfDraft => ({
-  ...emptyDraft(),
-  pages: "",
+  ...emptyArticleFormValue(),
 });
 
 const toImportItem = (draft: Draft): ImportArticleInput => ({
   title: draft.title,
-  authors: draft.authors
-    .split(",")
-    .map((author) => author.trim())
-    .filter(Boolean),
+  authors: splitArticleAuthors(draft.authors),
   area: draft.area || "Geral",
   courses: splitCommaSeparatedValues(draft.courses),
   abstract: draft.abstract,
@@ -108,10 +111,7 @@ const toImportItem = (draft: Draft): ImportArticleInput => ({
 
 const toPdfImportItem = (draft: PdfDraft): ImportArticleInput => ({
   title: draft.title,
-  authors: draft.authors
-    .split(",")
-    .map((author) => author.trim())
-    .filter(Boolean),
+  authors: splitArticleAuthors(draft.authors),
   area: draft.area || "Geral",
   courses: splitCommaSeparatedValues(draft.courses),
   abstract: draft.abstract,
@@ -123,18 +123,6 @@ const toPdfImportItem = (draft: PdfDraft): ImportArticleInput => ({
 
 function isPdfFile(file: File) {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-}
-
-function inferModalidadeFromPageCount(pageCount: number): Modalidade {
-  if (!Number.isFinite(pageCount) || pageCount <= 1) return modalidades[0];
-  if (pageCount <= 5) return modalidades[1];
-  return modalidades[2];
-}
-
-function formatPageRangeFromPageCount(pageCount: number) {
-  if (!Number.isFinite(pageCount) || pageCount <= 0) return "";
-  if (pageCount === 1) return "1";
-  return `1-${pageCount}`;
 }
 
 function createPdfQueueItem(file: File): PdfQueueItem {
@@ -149,22 +137,66 @@ function createPdfQueueItem(file: File): PdfQueueItem {
 }
 
 function applyMetadataToPdfDraft(draft: PdfDraft, metadata: ExtractedArticlePdfMetadata): PdfDraft {
-  return {
-    ...draft,
-    title: draft.title || metadata.title || draft.title,
-    authors: draft.authors || (metadata.authors.length ? metadata.authors.join(", ") : draft.authors),
-    abstract: draft.abstract || metadata.abstract || draft.abstract,
-    area: draft.area || metadata.suggestedArea || draft.area,
-    courses:
-      draft.courses ||
-      (metadata.suggestedCourses?.length ? metadata.suggestedCourses.join(", ") : draft.courses),
-    pages: draft.pages || formatPageRangeFromPageCount(metadata.pageCount),
-    modalidade: inferModalidadeFromPageCount(metadata.pageCount),
-  };
+  return applyExtractedMetadataToArticleForm(draft, metadata);
 }
 
 function canImportPdfItem(item: PdfQueueItem) {
   return Boolean(item.draft.title.trim() && item.draft.authors.trim());
+}
+
+function pluralize(count: number, singular: string, plural: string) {
+  return count === 1 ? singular : plural;
+}
+
+function getImportSuccessTitle(count: number, publishImmediately: boolean) {
+  if (publishImmediately) {
+    return `${count} ${pluralize(count, "trabalho publicado", "trabalhos publicados")}`;
+  }
+
+  return `${count} ${pluralize(count, "rascunho salvo", "rascunhos salvos")}`;
+}
+
+function getManualImportButtonLabel(count: number, publishImmediately: boolean, isPending: boolean) {
+  if (isPending) {
+    return publishImmediately ? "Publicando..." : "Salvando rascunhos...";
+  }
+
+  if (count <= 0) {
+    return publishImmediately ? "Publicar trabalhos" : "Salvar trabalhos como rascunho";
+  }
+
+  if (publishImmediately) {
+    return `Publicar ${count} ${pluralize(count, "trabalho", "trabalhos")}`;
+  }
+
+  return `Salvar ${count} ${pluralize(count, "trabalho", "trabalhos")} como rascunho`;
+}
+
+function getJsonImportButtonLabel(publishImmediately: boolean, isPending: boolean) {
+  if (isPending) {
+    return publishImmediately ? "Publicando arquivo..." : "Salvando arquivo como rascunho...";
+  }
+
+  return publishImmediately ? "Importar e publicar arquivo" : "Importar arquivo como rascunho";
+}
+
+function getPdfImportButtonLabel(count: number, publishImmediately: boolean, isPending: boolean) {
+  if (isPending) {
+    return publishImmediately ? "Publicando lote..." : "Salvando rascunhos...";
+  }
+
+  if (count <= 0) {
+    return publishImmediately
+      ? "Publicar trabalhos e anexar PDFs"
+      : "Salvar trabalhos como rascunho e anexar PDFs";
+  }
+
+  const workLabel = `${count} ${pluralize(count, "trabalho", "trabalhos")}`;
+  const pdfLabel = pluralize(count, "PDF", "PDFs");
+
+  return publishImmediately
+    ? `Publicar ${workLabel} e anexar ${pdfLabel}`
+    : `Salvar ${workLabel} como rascunho e anexar ${pdfLabel}`;
 }
 
 export default function AdminImportar() {
@@ -277,7 +309,7 @@ export default function AdminImportar() {
       });
 
       toast({
-        title: `${result.count} ${result.count === 1 ? "trabalho importado" : "trabalhos importados"}`,
+        title: getImportSuccessTitle(result.count, publishNow),
         description: publishNow ? "Já disponíveis no Acervo." : "Salvos como rascunho para revisão.",
       });
       await markAcervoDataAsStale();
@@ -344,7 +376,7 @@ export default function AdminImportar() {
       });
 
       toast({
-        title: `${result.count} ${result.count === 1 ? "trabalho importado" : "trabalhos importados"}`,
+        title: getImportSuccessTitle(result.count, publishNow),
         description: publishNow ? "Já disponíveis no Acervo." : "Salvos como rascunho para revisão.",
       });
       await markAcervoDataAsStale();
@@ -568,7 +600,7 @@ export default function AdminImportar() {
         });
       } else {
         toast({
-          title: `${importedCount} ${importedCount === 1 ? "trabalho importado" : "trabalhos importados"}`,
+          title: getImportSuccessTitle(importedCount, publishNow),
           description: publishNow ? "Já disponíveis no Acervo." : "Salvos como rascunho para revisão.",
         });
       }
@@ -758,9 +790,7 @@ export default function AdminImportar() {
                   onClick={importManual}
                 >
                   <DownloadCloud className="h-4 w-4" />
-                  {importMutation.isPending
-                    ? "Importando..."
-                    : `Importar ${validManual} ${validManual === 1 ? "trabalho" : "trabalhos"}`}
+                  {getManualImportButtonLabel(validManual, publishNow, importMutation.isPending)}
                 </Button>
               </TabsContent>
 
@@ -797,7 +827,8 @@ export default function AdminImportar() {
                   disabled={!jsonText.trim() || !selectedEventId || importMutation.isPending}
                   onClick={importFile}
                 >
-                  <DownloadCloud className="h-4 w-4" /> {importMutation.isPending ? "Importando..." : "Importar arquivo"}
+                  <DownloadCloud className="h-4 w-4" />
+                  {getJsonImportButtonLabel(publishNow, importMutation.isPending)}
                 </Button>
               </TabsContent>
 
@@ -1134,87 +1165,13 @@ export default function AdminImportar() {
                       </div>
                     ) : null}
 
-                    <div className="flex flex-col gap-2">
-                      <div>
-                        <Label className="text-xs">Título *</Label>
-                        <Input
-                          value={activePdfItem!.draft.title}
-                          onChange={(event) => updateActivePdfDraft({ title: event.target.value })}
-                          placeholder="Preenchido automaticamente quando possível"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="text-xs">Autores * (separados por virgula)</Label>
-                        <Input
-                          value={activePdfItem!.draft.authors}
-                          onChange={(event) => updateActivePdfDraft({ authors: event.target.value })}
-                          placeholder="Ana Silva, Carlos Lima"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <div>
-                          <Label className="text-xs">Área do artigo</Label>
-                          <AreaCombobox
-                            value={activePdfItem!.draft.area}
-                            options={areaSuggestions}
-                            onValueChange={(area) => updateActivePdfDraft({ area })}
-                          />
-                        </div>
-
-                        <div>
-                          <Label className="text-xs">Modalidade</Label>
-                          <Select
-                            value={activePdfItem!.draft.modalidade}
-                            onValueChange={(value) => updateActivePdfDraft({ modalidade: value as Modalidade })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {modalidades.map((modalidade) => (
-                                <SelectItem key={modalidade} value={modalidade}>
-                                  {modalidade}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label className="text-xs">Páginas</Label>
-                          <Input
-                            value={activePdfItem!.draft.pages}
-                            onChange={(event) => updateActivePdfDraft({ pages: event.target.value })}
-                            placeholder="Ex.: 15-28"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="pdf-related-courses" className="text-xs">
-                          Cursos relacionados (separados por vírgula)
-                        </Label>
-                        <CourseMultiCombobox
-                          id="pdf-related-courses"
-                          value={activePdfItem!.draft.courses}
-                          options={courseSuggestions}
-                          onValueChange={(courses) => updateActivePdfDraft({ courses })}
-                          placeholder="Ex.: Enfermagem, Biomedicina"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="text-xs">Resumo</Label>
-                        <Textarea
-                          rows={6}
-                          value={activePdfItem!.draft.abstract}
-                          onChange={(event) => updateActivePdfDraft({ abstract: event.target.value })}
-                          placeholder="Preenchido automaticamente quando possível"
-                        />
-                      </div>
-                    </div>
+                    <ArticleEditorForm
+                      idPrefix="pdf-review"
+                      value={activePdfItem!.draft}
+                      onChange={updateActivePdfDraft}
+                      areaOptions={areaSuggestions}
+                      courseOptions={courseSuggestions}
+                    />
 
                     <div className="mt-4 flex items-center justify-end gap-2">
                       <Button
@@ -1253,12 +1210,7 @@ export default function AdminImportar() {
                         onClick={importPdfBatch}
                       >
                         <DownloadCloud className="h-4 w-4" />
-                        {isImporting
-                          ? "Salvando lote..."
-                          : importablePdfItems.length > 0
-                            ? `Salvar ${importablePdfItems.length} ${importablePdfItems.length === 1 ? "trabalho" : "trabalhos"
-                            } e anexar PDFs`
-                            : "Salvar trabalhos e anexar PDFs"}
+                        {getPdfImportButtonLabel(importablePdfItems.length, publishNow, isImporting)}
                       </Button>
                     </div>
                   </Card>

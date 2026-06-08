@@ -1,6 +1,20 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Eye, Send, Archive, Trash2, FileText, ExternalLink, ArchiveRestore, Upload, FileDown } from "lucide-react";
+import {
+  AlertCircle,
+  Archive,
+  ArchiveRestore,
+  ExternalLink,
+  FileDown,
+  FileText,
+  Pencil,
+  Save,
+  Send,
+  Settings2,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { ArticleEditorForm } from "@/components/admin/ArticleEditorForm";
 import { PublicationMetaRow } from "@/components/publications/PublicationMetaRow";
 import { downloadArticlePdf } from "@/features/acervo/api";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -23,16 +37,29 @@ import {
 import { QueryState } from "@/components/ui/query-state";
 import {
   useAdminArticlesQuery,
+  useAreasQuery,
+  useCoursesQuery,
   useDeleteArticleMutation,
+  useExtractArticlePdfMetadataMutation,
+  useUpdateArticleMutation,
   useUpdateArticleStatusMutation,
   useUploadArticlePdfMutation,
 } from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
 import { toArticleDownloadName, triggerBrowserDownload } from "@/lib/article-download";
+import {
+  ARTICLE_MODALITIES,
+  applyExtractedMetadataToArticleForm,
+  splitArticleAuthors,
+  type ArticleFormValue,
+  type ArticleModality,
+} from "@/lib/article-form";
 import { getApiErrorMessage } from "@/lib/api";
+import { splitCommaSeparatedValues } from "@/lib/comma-separated-values";
 import { isUsableResourceUrl } from "@/lib/file-links";
-import type { Article, ArticleStatus } from "@/types/acervo";
+import { formatFileSize } from "@/lib/file-size";
+import type { Article, ArticleStatus, ExtractedArticlePdfMetadata } from "@/types/acervo";
 
 const tabs: { key: ArticleStatus; label: string }[] = [
   { key: "draft", label: "Rascunhos" },
@@ -50,17 +77,73 @@ function hasAttachedPdf(article?: Pick<Article, "pdfUrl"> | null) {
   return isUsableResourceUrl(article?.pdfUrl);
 }
 
+function isPdfFile(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+function normalizeArticleModality(value?: string): ArticleModality {
+  return ARTICLE_MODALITIES.find((modalidade) => modalidade === value) ?? "Resumo Simples";
+}
+
+function normalizePages(value?: string) {
+  if (!value || value === "—" || value === "â€”") return "";
+  return value;
+}
+
+function articleToFormValue(article: Article): ArticleFormValue {
+  return {
+    title: article.title,
+    authors: article.authors.join(", "),
+    area: article.area,
+    courses: article.courses.join(", "),
+    abstract: article.abstract,
+    modalidade: normalizeArticleModality(article.modality),
+    pages: normalizePages(article.pages),
+  };
+}
+
+function isArticleFormReady(value: ArticleFormValue) {
+  return Boolean(value.title.trim() && splitArticleAuthors(value.authors).length > 0 && value.area.trim());
+}
+
+function toArticleUpdatePayload(value: ArticleFormValue) {
+  return {
+    title: value.title.trim(),
+    authors: splitArticleAuthors(value.authors),
+    area: value.area.trim() || "Geral",
+    courses: splitCommaSeparatedValues(value.courses),
+    abstract: value.abstract,
+    pages: value.pages.trim(),
+    modality: value.modalidade,
+  };
+}
+
+type PdfReviewState = {
+  articleId: string;
+  file: File;
+  draft: ArticleFormValue;
+  metadata: ExtractedArticlePdfMetadata | null;
+  metadataError: string | null;
+};
+
 export default function AdminPublicacoes() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { data: articles = [], isLoading, isError } = useAdminArticlesQuery(isAuthenticated);
+  const { data: areas = [] } = useAreasQuery({ includeEmpty: true });
+  const { data: courses = [] } = useCoursesQuery({ includeEmpty: true });
   const updateStatusMutation = useUpdateArticleStatusMutation();
+  const updateArticleMutation = useUpdateArticleMutation();
   const deleteArticleMutation = useDeleteArticleMutation();
   const uploadPdfMutation = useUploadArticlePdfMutation();
+  const extractPdfMutation = useExtractArticlePdfMetadataMutation();
   const [tab, setTab] = useState<ArticleStatus>("draft");
   const [q, setQ] = useState("");
   const deferredQuery = useDeferredValue(q);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [managingId, setManagingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<ArticleFormValue | null>(null);
+  const [pdfReview, setPdfReview] = useState<PdfReviewState | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ articleId: string; title: string } | null>(null);
   const [uploadingArticleId, setUploadingArticleId] = useState<string | null>(null);
   const [downloadingArticleId, setDownloadingArticleId] = useState<string | null>(null);
@@ -91,32 +174,109 @@ export default function AdminPublicacoes() {
     );
   }, [articles]);
 
-  const previewItem = preview ? articles.find((article) => article.id === preview) ?? null : null;
+  const areaSuggestions = useMemo(() => areas.map((area) => area.name), [areas]);
+  const courseSuggestions = useMemo(() => courses.map((course) => course.name), [courses]);
+  const managingItem = managingId ? articles.find((article) => article.id === managingId) ?? null : null;
+  const editingItem = editingId ? articles.find((article) => article.id === editingId) ?? null : null;
+  const pdfReviewItem = pdfReview ? articles.find((article) => article.id === pdfReview.articleId) ?? null : null;
 
   const changeStatus = async (article: Article, status: keyof typeof toApiStatus, successTitle: string) => {
     try {
       await updateStatusMutation.mutateAsync({ id: article.id, status: toApiStatus[status] });
       toast({ title: successTitle, description: article.title });
-      setPreview(null);
+      setManagingId(null);
     } catch (error) {
       toast({ title: "Falha ao atualizar status", description: getApiErrorMessage(error), variant: "destructive" });
     }
   };
 
-  const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>, article: Article) => {
+  const openEditDialog = (article: Article) => {
+    setEditDraft(articleToFormValue(article));
+    setEditingId(article.id);
+    setManagingId(null);
+  };
+
+  const saveArticleEdit = async () => {
+    if (!editingItem || !editDraft || !isArticleFormReady(editDraft)) return;
+
+    try {
+      await updateArticleMutation.mutateAsync({
+        id: editingItem.id,
+        payload: toArticleUpdatePayload(editDraft),
+      });
+      toast({ title: "Trabalho atualizado", description: editingItem.title });
+      setEditingId(null);
+      setEditDraft(null);
+    } catch (error) {
+      toast({ title: "Falha ao salvar alterações", description: getApiErrorMessage(error), variant: "destructive" });
+    }
+  };
+
+  const preparePdfReview = async (event: React.ChangeEvent<HTMLInputElement>, article: Article) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
 
+    if (!isPdfFile(file)) {
+      toast({ title: "Arquivo inválido", description: "Selecione um arquivo PDF para continuar.", variant: "destructive" });
+      return;
+    }
+
     setUploadingArticleId(article.id);
 
+    let metadata: ExtractedArticlePdfMetadata | null = null;
+    let metadataError: string | null = null;
+
     try {
-      await uploadPdfMutation.mutateAsync({ id: article.id, file });
-      toast({ title: "PDF enviado", description: `${article.title} (${file.name})` });
+      metadata = await extractPdfMutation.mutateAsync({ file, eventId: article.eventId });
     } catch (error) {
-      toast({ title: "Falha ao enviar PDF", description: getApiErrorMessage(error), variant: "destructive" });
+      metadataError = getApiErrorMessage(
+        error,
+        "Não foi possível ler os metadados automaticamente. Revise os dados manualmente antes de salvar.",
+      );
     } finally {
       setUploadingArticleId(null);
+    }
+
+    const baseDraft = articleToFormValue(article);
+    setPdfReview({
+      articleId: article.id,
+      file,
+      draft: metadata ? applyExtractedMetadataToArticleForm(baseDraft, metadata) : baseDraft,
+      metadata,
+      metadataError,
+    });
+    setManagingId(null);
+  };
+
+  const savePdfReview = async (options: { updateMetadata: boolean }) => {
+    if (!pdfReview || !pdfReviewItem) return;
+    if (options.updateMetadata && !isArticleFormReady(pdfReview.draft)) return;
+
+    try {
+      await uploadPdfMutation.mutateAsync({ id: pdfReview.articleId, file: pdfReview.file });
+
+      if (options.updateMetadata) {
+        try {
+          await updateArticleMutation.mutateAsync({
+            id: pdfReview.articleId,
+            payload: toArticleUpdatePayload(pdfReview.draft),
+          });
+          toast({ title: "PDF e dados atualizados", description: pdfReviewItem.title });
+        } catch (error) {
+          toast({
+            title: "PDF substituído, mas os dados não foram salvos",
+            description: getApiErrorMessage(error),
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({ title: "PDF substituído", description: pdfReviewItem.title });
+      }
+
+      setPdfReview(null);
+    } catch (error) {
+      toast({ title: "Falha ao substituir PDF", description: getApiErrorMessage(error), variant: "destructive" });
     }
   };
 
@@ -147,15 +307,19 @@ export default function AdminPublicacoes() {
       await deleteArticleMutation.mutateAsync(confirmDelete.articleId);
       toast({ title: "Trabalho removido", description: confirmDelete.title });
       setConfirmDelete(null);
-      setPreview(null);
+      setManagingId(null);
+      setEditingId(null);
+      setPdfReview(null);
     } catch (error) {
       toast({ title: "Falha ao remover trabalho", description: getApiErrorMessage(error), variant: "destructive" });
     }
   };
 
-  const isUploadingPreviewPdf = previewItem ? uploadingArticleId === previewItem.id : false;
-  const isDownloadingPreviewPdf = previewItem ? downloadingArticleId === previewItem.id : false;
-  const previewHasPdf = hasAttachedPdf(previewItem);
+  const isUploadingManagingPdf = managingItem ? uploadingArticleId === managingItem.id : false;
+  const isDownloadingManagingPdf = managingItem ? downloadingArticleId === managingItem.id : false;
+  const managingHasPdf = hasAttachedPdf(managingItem);
+  const isSavingEdit = updateArticleMutation.isPending;
+  const isSavingPdfReview = uploadPdfMutation.isPending || updateArticleMutation.isPending;
 
   return (
     <AdminShell title="Publicações">
@@ -221,8 +385,12 @@ export default function AdminPublicacoes() {
                 )}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => setPreview(article.id)}>
-                  <Eye className="h-3.5 w-3.5" /> Ver
+                <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => setManagingId(article.id)}>
+                  <Settings2 className="h-3.5 w-3.5" /> Gerenciar
+                </Button>
+
+                <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => openEditDialog(article)}>
+                  <Pencil className="h-3.5 w-3.5" /> Editar
                 </Button>
 
                 {tab === "draft" && (
@@ -271,88 +439,244 @@ export default function AdminPublicacoes() {
         </div>
       </QueryState>
 
-      <Dialog open={Boolean(preview)} onOpenChange={(open) => !open && setPreview(null)}>
+      <Dialog open={Boolean(managingId)} onOpenChange={(open) => !open && setManagingId(null)}>
         <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
           <DialogHeader>
             <PublicationMetaRow
-              eventTitle={previewItem?.eventTitle}
-              viewCount={previewItem?.viewCount}
-              downloadCount={previewItem?.downloadCount}
+              eventTitle={managingItem?.eventTitle}
+              viewCount={managingItem?.viewCount}
+              downloadCount={managingItem?.downloadCount}
               className="pr-8"
             />
-            <DialogTitle className="text-left text-base leading-tight">{previewItem?.title}</DialogTitle>
+            <DialogTitle className="text-left text-base leading-tight">Gerenciar trabalho</DialogTitle>
             <DialogDescription className="text-left">
-              {previewItem?.authors.join(" · ")} · pp. {previewItem?.pages}
+              {managingItem?.title}
+              {managingItem ? ` · pp. ${managingItem.pages}` : ""}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 text-sm">
-            <Row label="Área" value={previewItem?.area} />
-            <Row label="Origem" value={previewItem?.importedFrom ?? "-"} />
-            <Row label="ID externo" value={previewItem?.externalId ?? "-"} mono />
-            <Row label="Submetido em" value={previewItem?.submittedAt ?? "-"} />
-            {previewItem?.importedAt && <Row label="Importado em" value={previewItem.importedAt} />}
-            {previewItem?.publishedAt && <Row label="Publicado em" value={previewItem.publishedAt} />}
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Resumo</div>
-              <p className="leading-relaxed">{previewItem?.abstract}</p>
-            </div>
-            <div className="flex items-center gap-2 rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
-              <FileText className="h-4 w-4" />
-              {previewHasPdf ? "PDF anexado" : "PDF não anexado (ainda)"}
-            </div>
-          </div>
-          {previewItem && (
-            <div className="space-y-2 pt-2">
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 gap-1"
-                  onClick={() => handlePdfDownload(previewItem)}
-                  disabled={!previewHasPdf || isDownloadingPreviewPdf}
-                >
-                  <FileDown className="h-4 w-4" />
-                  {isDownloadingPreviewPdf ? "Baixando..." : "Baixar PDF"}
-                </Button>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="relative flex-1 gap-1 overflow-hidden"
-                  disabled={isUploadingPreviewPdf}
-                >
-                  <Upload className="h-4 w-4" />
-                  {isUploadingPreviewPdf ? "Enviando..." : previewHasPdf ? "Substituir PDF" : "Enviar PDF"}
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    className="absolute inset-0 cursor-pointer opacity-0"
-                    onChange={(event) => handlePdfUpload(event, previewItem)}
-                    disabled={isUploadingPreviewPdf}
-                  />
-                </Button>
+          {managingItem && (
+            <>
+              <div className="space-y-3 text-sm">
+                <Row label="Autores" value={managingItem.authors.join(" · ")} />
+                <Row label="Área" value={managingItem.area} />
+                <Row label="Cursos" value={managingItem.courses.length ? managingItem.courses.join(", ") : "-"} />
+                <Row label="Origem" value={managingItem.importedFrom ?? "-"} />
+                <Row label="ID externo" value={managingItem.externalId ?? "-"} mono />
+                <Row label="Submetido em" value={managingItem.submittedAt ?? "-"} />
+                {managingItem.importedAt && <Row label="Importado em" value={managingItem.importedAt} />}
+                {managingItem.publishedAt && <Row label="Publicado em" value={managingItem.publishedAt} />}
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Resumo</div>
+                  <p className="leading-relaxed">{managingItem.abstract}</p>
+                </div>
+                <div className="flex items-center gap-2 rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                  {managingHasPdf ? "PDF anexado" : "PDF não anexado (ainda)"}
+                </div>
               </div>
 
-              <div className="flex gap-2">
-                {previewItem.status !== "published" && (
+              <div className="space-y-2 pt-2">
+                <div className="flex gap-2">
                   <Button
-                    className="flex-1 gap-1 bg-success text-success-foreground hover:bg-success/90"
-                    onClick={() => changeStatus(previewItem, "published", "Trabalho publicado no Acervo")}
-                  >
-                    <Send className="h-4 w-4" /> Publicar
-                  </Button>
-                )}
-                {previewItem.status === "published" && (
-                  <Button
+                    type="button"
                     variant="outline"
                     className="flex-1 gap-1"
-                    onClick={() => changeStatus(previewItem, "archived", "Trabalho arquivado")}
+                    onClick={() => openEditDialog(managingItem)}
                   >
-                    <Archive className="h-4 w-4" /> Arquivar
+                    <Pencil className="h-4 w-4" />
+                    Editar dados
                   </Button>
-                )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 gap-1"
+                    onClick={() => handlePdfDownload(managingItem)}
+                    disabled={!managingHasPdf || isDownloadingManagingPdf}
+                  >
+                    <FileDown className="h-4 w-4" />
+                    {isDownloadingManagingPdf ? "Baixando..." : "Baixar PDF"}
+                  </Button>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="relative w-full gap-1 overflow-hidden"
+                  disabled={isUploadingManagingPdf}
+                >
+                  <Upload className="h-4 w-4" />
+                  {isUploadingManagingPdf ? "Lendo PDF..." : managingHasPdf ? "Substituir PDF" : "Enviar PDF"}
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                    onChange={(event) => preparePdfReview(event, managingItem)}
+                    disabled={isUploadingManagingPdf}
+                  />
+                </Button>
+
+                <div className="flex gap-2">
+                  {managingItem.status === "draft" && (
+                    <Button
+                      className="flex-1 gap-1 bg-success text-success-foreground hover:bg-success/90"
+                      onClick={() => changeStatus(managingItem, "published", "Trabalho publicado no Acervo")}
+                    >
+                      <Send className="h-4 w-4" /> Publicar
+                    </Button>
+                  )}
+                  {managingItem.status === "published" && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 gap-1"
+                      onClick={() => changeStatus(managingItem, "archived", "Trabalho arquivado")}
+                    >
+                      <Archive className="h-4 w-4" /> Arquivar
+                    </Button>
+                  )}
+                  {managingItem.status === "archived" && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 gap-1"
+                      onClick={() => changeStatus(managingItem, "draft", "Trabalho restaurado para rascunho")}
+                    >
+                      <ArchiveRestore className="h-4 w-4" /> Restaurar
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(editingId)}
+        onOpenChange={(open) => {
+          if (open) return;
+          setEditingId(null);
+          setEditDraft(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-left text-base leading-tight">Editar trabalho</DialogTitle>
+            <DialogDescription className="text-left">
+              Corrija os dados acadêmicos do trabalho antes de publicar ou manter no acervo.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editDraft && (
+            <ArticleEditorForm
+              idPrefix="article-edit"
+              value={editDraft}
+              onChange={(patch) => setEditDraft((current) => (current ? { ...current, ...patch } : current))}
+              areaOptions={areaSuggestions}
+              courseOptions={courseSuggestions}
+            />
+          )}
+
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEditingId(null);
+                setEditDraft(null);
+              }}
+              disabled={isSavingEdit}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="gap-2 bg-brand text-primary-foreground hover:bg-brand/90"
+              onClick={saveArticleEdit}
+              disabled={!editDraft || !isArticleFormReady(editDraft) || isSavingEdit}
+            >
+              <Save className="h-4 w-4" />
+              {isSavingEdit ? "Salvando..." : "Salvar alterações"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(pdfReview)}
+        onOpenChange={(open) => {
+          if (open || isSavingPdfReview) return;
+          setPdfReview(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-left text-base leading-tight">Revisar novo PDF</DialogTitle>
+            <DialogDescription className="text-left">
+              Confira os dados antes de substituir o arquivo de {pdfReviewItem?.title ?? "trabalho"}.
+            </DialogDescription>
+          </DialogHeader>
+
+          {pdfReview && (
+            <>
+              <Card className="border-border/60 bg-muted/30 p-3 shadow-none">
+                <div className="flex items-center gap-2 text-sm">
+                  <FileText className="h-4 w-4 shrink-0 text-brand" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold">{pdfReview.file.name}</div>
+                    <div className="text-xs text-muted-foreground">{formatFileSize(pdfReview.file.size)}</div>
+                  </div>
+                </div>
+              </Card>
+
+              {pdfReview.metadataError ? (
+                <div className="flex gap-2 rounded-md bg-amber-500/10 p-3 text-xs text-amber-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>{pdfReview.metadataError}</div>
+                </div>
+              ) : null}
+
+              {pdfReview.metadata ? (
+                <div className="rounded-md border border-emerald-200 bg-emerald-500/10 p-3 text-xs text-emerald-700">
+                  Metadados extraídos do novo PDF. Revise título, autores, área, cursos e páginas antes de salvar.
+                </div>
+              ) : null}
+
+              <ArticleEditorForm
+                idPrefix="article-pdf-review"
+                value={pdfReview.draft}
+                onChange={(patch) =>
+                  setPdfReview((current) =>
+                    current ? { ...current, draft: { ...current.draft, ...patch } } : current,
+                  )
+                }
+                areaOptions={areaSuggestions}
+                courseOptions={courseSuggestions}
+              />
+
+              <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" onClick={() => setPdfReview(null)} disabled={isSavingPdfReview}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => savePdfReview({ updateMetadata: false })}
+                  disabled={isSavingPdfReview}
+                >
+                  Salvar somente PDF
+                </Button>
+                <Button
+                  type="button"
+                  className="gap-2 bg-brand text-primary-foreground hover:bg-brand/90"
+                  onClick={() => savePdfReview({ updateMetadata: true })}
+                  disabled={!isArticleFormReady(pdfReview.draft) || isSavingPdfReview}
+                >
+                  <Save className="h-4 w-4" />
+                  {isSavingPdfReview ? "Salvando..." : "Salvar PDF e alterações"}
+                </Button>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

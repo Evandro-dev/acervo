@@ -1,6 +1,7 @@
 import { api } from "@/lib/api";
 import type {
   Article,
+  ArticleUpdateInput,
   AreaSummary,
   Author,
   Event,
@@ -152,6 +153,11 @@ export async function uploadEventCoverImage(id: string, file: File) {
 
 export async function updateArticleStatus(id: string, status: "DRAFT" | "PUBLISHED" | "ARCHIVED") {
   const response = await api.patch<Article>(`/articles/${id}/status`, { status });
+  return response.data;
+}
+
+export async function updateArticle(id: string, payload: ArticleUpdateInput) {
+  const response = await api.put<Article>(`/articles/${id}`, payload);
   return response.data;
 }
 

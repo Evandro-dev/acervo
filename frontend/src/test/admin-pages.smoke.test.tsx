@@ -13,6 +13,7 @@ import {
   useDeleteArticleMutation,
   useExtractArticlePdfMetadataMutation,
   useImportArticlesMutation,
+  useUpdateArticleMutation,
   useUpdateArticleStatusMutation,
   useUploadArticlePdfMutation,
 } from "@/features/acervo/hooks";
@@ -25,6 +26,7 @@ vi.mock("@/features/acervo/hooks", () => ({
   useAreasQuery: vi.fn(),
   useCoursesQuery: vi.fn(),
   useUpdateArticleStatusMutation: vi.fn(),
+  useUpdateArticleMutation: vi.fn(),
   useDeleteArticleMutation: vi.fn(),
   useExtractArticlePdfMetadataMutation: vi.fn(),
   useUploadArticlePdfMutation: vi.fn(),
@@ -44,6 +46,7 @@ const mockedUseAdminArticlesQuery = vi.mocked(useAdminArticlesQuery);
 const mockedUseAreasQuery = vi.mocked(useAreasQuery);
 const mockedUseCoursesQuery = vi.mocked(useCoursesQuery);
 const mockedUseUpdateArticleStatusMutation = vi.mocked(useUpdateArticleStatusMutation);
+const mockedUseUpdateArticleMutation = vi.mocked(useUpdateArticleMutation);
 const mockedUseDeleteArticleMutation = vi.mocked(useDeleteArticleMutation);
 const mockedUseExtractArticlePdfMetadataMutation = vi.mocked(useExtractArticlePdfMetadataMutation);
 const mockedUseUploadArticlePdfMutation = vi.mocked(useUploadArticlePdfMutation);
@@ -115,6 +118,7 @@ const adminArticle = {
   authors: ["Ana Silva", "Carlos Lima"],
   authorProfiles: [],
   area: "Tecnologia",
+  courses: ["Ciência da Computação"],
   abstract: "Resumo do artigo",
   pages: "1-10",
   status: "draft" as const,
@@ -134,6 +138,7 @@ describe("Admin pages", () => {
     mockedUseCoursesQuery.mockReturnValue({ data: [], isLoading: false, isError: false } as never);
     mockedUseDeleteArticleMutation.mockReturnValue({ mutateAsync: vi.fn() } as never);
     mockedUseUpdateArticleStatusMutation.mockReturnValue({ mutateAsync: vi.fn() } as never);
+    mockedUseUpdateArticleMutation.mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never);
     mockedUseExtractArticlePdfMetadataMutation.mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never);
     mockedUseUploadArticlePdfMutation.mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never);
     mockedUseImportArticlesMutation.mockReturnValue({ mutateAsync: vi.fn(), isPending: false } as never);
@@ -205,6 +210,129 @@ describe("Admin pages", () => {
     );
   });
 
+  it("edits article metadata from admin curation", async () => {
+    const updateArticleMutateAsync = vi.fn().mockResolvedValue({});
+
+    mockedUseAdminEventsQuery.mockReturnValue({
+      data: [adminEvent],
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseAdminArticlesQuery.mockReturnValue({
+      data: [adminArticle],
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseUpdateArticleMutation.mockReturnValue({
+      mutateAsync: updateArticleMutateAsync,
+      isPending: false,
+    } as never);
+
+    renderAdminPage(<AdminPublicacoes />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Editar/i }));
+    fireEvent.change(screen.getByLabelText("Título"), {
+      target: { value: "Artigo Revisado" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    await waitFor(() =>
+      expect(updateArticleMutateAsync).toHaveBeenCalledWith({
+        id: "article-1",
+        payload: expect.objectContaining({
+          title: "Artigo Revisado",
+          authors: ["Ana Silva", "Carlos Lima"],
+          area: "Tecnologia",
+          courses: ["Ciência da Computação"],
+          pages: "1-10",
+          modality: "Resumo Simples",
+        }),
+      }),
+    );
+  });
+
+  it("reviews replacement PDF metadata before saving the new file", async () => {
+    const extractMutateAsync = vi.fn().mockResolvedValue({
+      title: "Artigo Atualizado pelo PDF",
+      authors: ["Lara Ferreira"],
+      emails: [],
+      abstract: "Resumo lido do novo PDF.",
+      suggestedArea: "Saúde",
+      areaSuggestionConfidence: "high",
+      areaSuggestions: [],
+      suggestedCourses: ["Enfermagem"],
+      courseSuggestionConfidence: "high",
+      courseSuggestions: [],
+      pageCount: 4,
+      warnings: [],
+    });
+    const uploadMutateAsync = vi.fn().mockResolvedValue({});
+    const updateArticleMutateAsync = vi.fn().mockResolvedValue({});
+
+    mockedUseAdminEventsQuery.mockReturnValue({
+      data: [adminEvent],
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseAdminArticlesQuery.mockReturnValue({
+      data: [{ ...adminArticle, pdfUrl: "https://cdn.example.com/artigo.pdf" }],
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseExtractArticlePdfMetadataMutation.mockReturnValue({
+      mutateAsync: extractMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUploadArticlePdfMutation.mockReturnValue({
+      mutateAsync: uploadMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUpdateArticleMutation.mockReturnValue({
+      mutateAsync: updateArticleMutateAsync,
+      isPending: false,
+    } as never);
+
+    renderAdminPage(<AdminPublicacoes />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Gerenciar/i }));
+    const pdfInput = document.querySelector('input[type="file"][accept*=".pdf"]');
+    const file = new File(["novo-pdf"], "novo-artigo.pdf", { type: "application/pdf" });
+    fireEvent.change(pdfInput!, { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(extractMutateAsync).toHaveBeenCalledWith({
+        file,
+        eventId: "event-1",
+      }),
+    );
+
+    await waitFor(() => expect(screen.getByText("Revisar novo PDF")).toBeInTheDocument());
+    expect(screen.getByDisplayValue("Artigo Atualizado pelo PDF")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Lara Ferreira")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar PDF e alterações" }));
+
+    await waitFor(() =>
+      expect(uploadMutateAsync).toHaveBeenCalledWith({
+        id: "article-1",
+        file,
+      }),
+    );
+    await waitFor(() =>
+      expect(updateArticleMutateAsync).toHaveBeenCalledWith({
+        id: "article-1",
+        payload: expect.objectContaining({
+          title: "Artigo Atualizado pelo PDF",
+          authors: ["Lara Ferreira"],
+          area: "Saúde",
+          courses: ["Enfermagem"],
+          pages: "1-4",
+          modality: "Resumo Expandido",
+        }),
+      }),
+    );
+  });
+
   it("submits manual article import to the API", async () => {
     const mutateAsync = vi.fn().mockResolvedValue({ count: 1, items: [] });
 
@@ -226,7 +354,7 @@ describe("Admin pages", () => {
       target: { value: "Ana Silva, Carlos Lima" },
     });
 
-    const submitButton = screen.getByRole("button", { name: "Importar 1 trabalho" });
+    const submitButton = screen.getByRole("button", { name: "Salvar 1 trabalho como rascunho" });
     await waitFor(() => expect(submitButton).toBeEnabled());
 
     fireEvent.click(submitButton);
@@ -245,6 +373,44 @@ describe("Admin pages", () => {
           }),
         ],
       }),
+    );
+  });
+
+  it("publishes manual imports when immediate publishing is enabled", async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({ count: 1, items: [] });
+
+    mockedUseAdminEventsQuery.mockReturnValue({
+      data: [adminEvent],
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseImportArticlesMutation.mockReturnValue({ mutateAsync, isPending: false } as never);
+
+    renderAdminPage(<AdminImportar />);
+
+    fireEvent.click(screen.getByRole("switch"));
+
+    const [titleInput, authorsInput] = screen.getAllByRole("textbox");
+    fireEvent.change(titleInput, {
+      target: { value: "Trabalho publicado direto" },
+    });
+    fireEvent.change(authorsInput, {
+      target: { value: "Ana Silva" },
+    });
+
+    const submitButton = screen.getByRole("button", { name: "Publicar 1 trabalho" });
+    await waitFor(() => expect(submitButton).toBeEnabled());
+
+    fireEvent.click(submitButton);
+
+    await waitFor(() =>
+      expect(mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventId: "event-1",
+          publishImmediately: true,
+          invalidateOnSuccess: false,
+        }),
+      ),
     );
   });
 
@@ -352,7 +518,7 @@ describe("Admin pages", () => {
     expect(screen.getByDisplayValue("Pedro Souza")).toBeInTheDocument();
     expect(screen.getByDisplayValue("1-7")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Salvar 2 trabalhos e anexar PDFs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Salvar 2 trabalhos como rascunho e anexar PDFs/i }));
 
     await waitFor(() =>
       expect(importMutateAsync).toHaveBeenCalledWith({
@@ -451,7 +617,7 @@ describe("Admin pages", () => {
     fireEvent.click(screen.getByRole("button", { name: /Ler 26 PDFs pendentes/i }));
 
     await waitFor(() => expect(extractMutateAsync).toHaveBeenCalledTimes(26));
-    const saveButton = screen.getByRole("button", { name: /Salvar 26 trabalhos e anexar PDFs/i });
+    const saveButton = screen.getByRole("button", { name: /Salvar 26 trabalhos como rascunho e anexar PDFs/i });
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 

@@ -229,6 +229,8 @@ export type ImportArticleInput = {
   status?: Uppercase<ArticleStatus>;
 };
 
+export type ArticleUpdateInput = Partial<ImportArticleInput>;
+
 export type ArticleReportFilters = {
   eventId?: string;
   area?: string;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileSpreadsheet, ShieldCheck } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -80,14 +80,6 @@ export default function AdminRelatorios() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <Alert className="border-brand/15 bg-brand/5">
-            <ShieldCheck className="h-4 w-4 text-brand" />
-            <AlertTitle>Arquivo completo</AlertTitle>
-            <AlertDescription>
-              O Excel contém visão geral, resumo numérico por área, resumo numérico por curso e trabalhos detalhados.
-            </AlertDescription>
-          </Alert>
-
           {reportCountQuery.isError ? (
             <Alert variant="destructive">
               <AlertTitle>Não foi possível verificar os trabalhos</AlertTitle>

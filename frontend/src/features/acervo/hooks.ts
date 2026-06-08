@@ -16,13 +16,14 @@ import {
   removeUploadedEventRuleFile,
   trackArticleView,
   trackEventView,
+  updateArticle,
   updateArticleStatus,
   updateEvent,
   uploadArticlePdf,
   uploadEventCoverImage,
   uploadEventRuleFile,
 } from "./api";
-import type { EventMutationInput, ImportArticleInput } from "@/types/acervo";
+import type { ArticleUpdateInput, EventMutationInput, ImportArticleInput } from "@/types/acervo";
 
 type EventQueryOptions = {
   staleTime?: number;
@@ -205,6 +206,15 @@ export function useUpdateArticleStatusMutation() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED" }) =>
       updateArticleStatus(id, status),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateArticleMutation() {
+  const invalidate = useInvalidateAcervoData();
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: ArticleUpdateInput }) => updateArticle(id, payload),
     onSuccess: invalidate,
   });
 }
