@@ -15,6 +15,7 @@ import {
   Upload,
 } from "lucide-react";
 import { ArticleEditorForm } from "@/components/admin/ArticleEditorForm";
+import { PdfFileSummary } from "@/components/admin/PdfFileSummary";
 import { PublicationMetaRow } from "@/components/publications/PublicationMetaRow";
 import { downloadArticlePdf } from "@/features/acervo/api";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -58,7 +59,6 @@ import {
 import { getApiErrorMessage } from "@/lib/api";
 import { splitCommaSeparatedValues } from "@/lib/comma-separated-values";
 import { isUsableResourceUrl } from "@/lib/file-links";
-import { formatFileSize } from "@/lib/file-size";
 import type { Article, ArticleStatus, ExtractedArticlePdfMetadata } from "@/types/acervo";
 
 const tabs: { key: ArticleStatus; label: string }[] = [
@@ -619,26 +619,12 @@ export default function AdminPublicacoes() {
 
           {pdfReview && (
             <>
-              <Card className="border-border/60 bg-muted/30 p-3 shadow-none">
-                <div className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 shrink-0 text-brand" />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold">{pdfReview.file.name}</div>
-                    <div className="text-xs text-muted-foreground">{formatFileSize(pdfReview.file.size)}</div>
-                  </div>
-                </div>
-              </Card>
+              <PdfFileSummary name={pdfReview.file.name} size={pdfReview.file.size} />
 
               {pdfReview.metadataError ? (
                 <div className="flex gap-2 rounded-md bg-amber-500/10 p-3 text-xs text-amber-700">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   <div>{pdfReview.metadataError}</div>
-                </div>
-              ) : null}
-
-              {pdfReview.metadata ? (
-                <div className="rounded-md border border-emerald-200 bg-emerald-500/10 p-3 text-xs text-emerald-700">
-                  Metadados extraídos do novo PDF. Revise título, autores, área, cursos e páginas antes de salvar.
                 </div>
               ) : null}
 

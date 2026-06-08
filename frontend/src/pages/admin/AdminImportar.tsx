@@ -18,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { ArticleEditorForm } from "@/components/admin/ArticleEditorForm";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { PdfFilePicker } from "@/components/admin/PdfFilePicker";
+import { PdfFileSummary } from "@/components/admin/PdfFileSummary";
 import { AreaCombobox } from "@/components/ui/area-combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,6 @@ import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
 import { chunkItems } from "@/lib/chunk-items";
 import { addCommaSeparatedValue, splitCommaSeparatedValues } from "@/lib/comma-separated-values";
-import { formatFileSize } from "@/lib/file-size";
 import {
   ARTICLE_MODALITIES,
   applyExtractedMetadataToArticleForm,
@@ -977,28 +977,11 @@ export default function AdminImportar() {
                       </div>
                     </div>
 
-                    <div className="mt-4 w-full min-w-0 overflow-hidden rounded-lg border border-border/60 bg-background/70">
-                      <div className="flex min-w-0">
-                        <div className="min-w-0 flex-1 overflow-hidden px-3 py-2">
-                          <div className="pdf-file-marquee-track">
-                            <span className="shrink-0 whitespace-nowrap pr-8 text-[11px] font-semibold leading-snug text-foreground sm:whitespace-normal sm:wrap-break-word sm:pr-0 sm:text-sm">
-                              {activePdfItem?.file.name}
-                            </span>
-
-                            <span
-                              aria-hidden="true"
-                              className="shrink-0 whitespace-nowrap pr-8 text-[11px] font-semibold leading-snug text-foreground sm:hidden"
-                            >
-                              {activePdfItem?.file.name}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex shrink-0 items-center border-l border-border/60 bg-muted px-2.5 text-[10px] font-semibold text-muted-foreground sm:text-xs">
-                          {formatFileSize(activePdfItem?.file.size ?? 0)}
-                        </div>
-                      </div>
-                    </div>
+                    <PdfFileSummary
+                      className="mt-4"
+                      name={activePdfItem?.file.name ?? ""}
+                      size={activePdfItem?.file.size ?? 0}
+                    />
 
                     <div className="mt-4 flex justify-center">
                       <Button
