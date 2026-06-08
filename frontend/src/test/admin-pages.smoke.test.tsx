@@ -354,7 +354,7 @@ describe("Admin pages", () => {
       target: { value: "Ana Silva, Carlos Lima" },
     });
 
-    const submitButton = screen.getByRole("button", { name: "Salvar 1 trabalho como rascunho" });
+    const submitButton = screen.getByRole("button", { name: "Salvar como rascunho" });
     await waitFor(() => expect(submitButton).toBeEnabled());
 
     fireEvent.click(submitButton);
@@ -374,6 +374,19 @@ describe("Admin pages", () => {
         ],
       }),
     );
+  });
+
+  it("shows a neutral processing label while import data is being processed", () => {
+    mockedUseAdminEventsQuery.mockReturnValue({
+      data: [adminEvent],
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseImportArticlesMutation.mockReturnValue({ mutateAsync: vi.fn(), isPending: true } as never);
+
+    renderAdminPage(<AdminImportar />);
+
+    expect(screen.getByRole("button", { name: "Processando dados..." })).toBeDisabled();
   });
 
   it("publishes manual imports when immediate publishing is enabled", async () => {
@@ -398,7 +411,7 @@ describe("Admin pages", () => {
       target: { value: "Ana Silva" },
     });
 
-    const submitButton = screen.getByRole("button", { name: "Publicar 1 trabalho" });
+    const submitButton = screen.getByRole("button", { name: "Publicar trabalhos" });
     await waitFor(() => expect(submitButton).toBeEnabled());
 
     fireEvent.click(submitButton);
@@ -518,7 +531,7 @@ describe("Admin pages", () => {
     expect(screen.getByDisplayValue("Pedro Souza")).toBeInTheDocument();
     expect(screen.getByDisplayValue("1-7")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Salvar 2 trabalhos como rascunho e anexar PDFs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Salvar como rascunho/i }));
 
     await waitFor(() =>
       expect(importMutateAsync).toHaveBeenCalledWith({
@@ -617,7 +630,7 @@ describe("Admin pages", () => {
     fireEvent.click(screen.getByRole("button", { name: /Ler 26 PDFs pendentes/i }));
 
     await waitFor(() => expect(extractMutateAsync).toHaveBeenCalledTimes(26));
-    const saveButton = screen.getByRole("button", { name: /Salvar 26 trabalhos como rascunho e anexar PDFs/i });
+    const saveButton = screen.getByRole("button", { name: /Salvar como rascunho/i });
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 

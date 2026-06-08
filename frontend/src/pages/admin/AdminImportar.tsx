@@ -158,45 +158,34 @@ function getImportSuccessTitle(count: number, publishImmediately: boolean) {
 
 function getManualImportButtonLabel(count: number, publishImmediately: boolean, isPending: boolean) {
   if (isPending) {
-    return publishImmediately ? "Publicando..." : "Salvando rascunhos...";
+    return "Processando dados...";
   }
 
   if (count <= 0) {
-    return publishImmediately ? "Publicar trabalhos" : "Salvar trabalhos como rascunho";
+    return publishImmediately ? "Publicar trabalhos" : "Salvar como rascunho";
   }
 
-  if (publishImmediately) {
-    return `Publicar ${count} ${pluralize(count, "trabalho", "trabalhos")}`;
-  }
-
-  return `Salvar ${count} ${pluralize(count, "trabalho", "trabalhos")} como rascunho`;
+  return publishImmediately ? "Publicar trabalhos" : "Salvar como rascunho";
 }
 
 function getJsonImportButtonLabel(publishImmediately: boolean, isPending: boolean) {
   if (isPending) {
-    return publishImmediately ? "Publicando arquivo..." : "Salvando arquivo como rascunho...";
+    return "Processando dados...";
   }
 
-  return publishImmediately ? "Importar e publicar arquivo" : "Importar arquivo como rascunho";
+  return publishImmediately ? "Publicar arquivo" : "Salvar arquivo como rascunho";
 }
 
 function getPdfImportButtonLabel(count: number, publishImmediately: boolean, isPending: boolean) {
   if (isPending) {
-    return publishImmediately ? "Publicando lote..." : "Salvando rascunhos...";
+    return "Processando dados...";
   }
 
   if (count <= 0) {
-    return publishImmediately
-      ? "Publicar trabalhos e anexar PDFs"
-      : "Salvar trabalhos como rascunho e anexar PDFs";
+    return publishImmediately ? "Publicar trabalhos" : "Salvar como rascunho";
   }
 
-  const workLabel = `${count} ${pluralize(count, "trabalho", "trabalhos")}`;
-  const pdfLabel = pluralize(count, "PDF", "PDFs");
-
-  return publishImmediately
-    ? `Publicar ${workLabel} e anexar ${pdfLabel}`
-    : `Salvar ${workLabel} como rascunho e anexar ${pdfLabel}`;
+  return publishImmediately ? "Publicar trabalhos" : "Salvar como rascunho";
 }
 
 export default function AdminImportar() {
