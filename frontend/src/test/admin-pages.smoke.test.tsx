@@ -310,7 +310,7 @@ describe("Admin pages", () => {
     expect(screen.getByDisplayValue("Artigo Atualizado pelo PDF")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Lara Ferreira")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Salvar PDF e alterações" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
     await waitFor(() =>
       expect(uploadMutateAsync).toHaveBeenCalledWith({

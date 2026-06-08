@@ -249,29 +249,25 @@ export default function AdminPublicacoes() {
     setManagingId(null);
   };
 
-  const savePdfReview = async (options: { updateMetadata: boolean }) => {
+  const savePdfReview = async () => {
     if (!pdfReview || !pdfReviewItem) return;
-    if (options.updateMetadata && !isArticleFormReady(pdfReview.draft)) return;
+    if (!isArticleFormReady(pdfReview.draft)) return;
 
     try {
       await uploadPdfMutation.mutateAsync({ id: pdfReview.articleId, file: pdfReview.file });
 
-      if (options.updateMetadata) {
-        try {
-          await updateArticleMutation.mutateAsync({
-            id: pdfReview.articleId,
-            payload: toArticleUpdatePayload(pdfReview.draft),
-          });
-          toast({ title: "PDF e dados atualizados", description: pdfReviewItem.title });
-        } catch (error) {
-          toast({
-            title: "PDF substituído, mas os dados não foram salvos",
-            description: getApiErrorMessage(error),
-            variant: "destructive",
-          });
-        }
-      } else {
-        toast({ title: "PDF substituído", description: pdfReviewItem.title });
+      try {
+        await updateArticleMutation.mutateAsync({
+          id: pdfReview.articleId,
+          payload: toArticleUpdatePayload(pdfReview.draft),
+        });
+        toast({ title: "PDF e dados atualizados", description: pdfReviewItem.title });
+      } catch (error) {
+        toast({
+          title: "PDF substituído, mas os dados não foram salvos",
+          description: getApiErrorMessage(error),
+          variant: "destructive",
+        });
       }
 
       setPdfReview(null);
@@ -646,20 +642,12 @@ export default function AdminPublicacoes() {
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => savePdfReview({ updateMetadata: false })}
-                  disabled={isSavingPdfReview}
-                >
-                  Salvar somente PDF
-                </Button>
-                <Button
-                  type="button"
                   className="gap-2 bg-brand text-primary-foreground hover:bg-brand/90"
-                  onClick={() => savePdfReview({ updateMetadata: true })}
+                  onClick={savePdfReview}
                   disabled={!isArticleFormReady(pdfReview.draft) || isSavingPdfReview}
                 >
                   <Save className="h-4 w-4" />
-                  {isSavingPdfReview ? "Salvando..." : "Salvar PDF e alterações"}
+                  {isSavingPdfReview ? "Salvando..." : "Salvar alterações"}
                 </Button>
               </div>
             </>
