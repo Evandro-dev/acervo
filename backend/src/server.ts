@@ -17,6 +17,7 @@ import { eventRoutes } from "./modules/events/events.routes.js";
 import { articleRoutes } from "./modules/articles/articles.routes.js";
 import { courseRoutes } from "./modules/courses/courses.routes.js";
 import { reportRoutes } from "./modules/reports/reports.routes.js";
+import { searchRoutes } from "./modules/search/search.routes.js";
 
 const app = Fastify({ logger: true, trustProxy: env.TRUST_PROXY_HOPS });
 
@@ -94,6 +95,7 @@ await app.register(userRoutes, { prefix: "/users" });
 await app.register(authorRoutes, { prefix: "/authors" });
 await app.register(areaRoutes, { prefix: "/areas" });
 await app.register(courseRoutes, { prefix: "/courses" });
+await app.register(searchRoutes, { prefix: "/search" });
 await app.register(reportRoutes, { prefix: "/reports" });
 await app.register(eventRoutes, { prefix: "/events" });
 await app.register(articleRoutes, { prefix: "/articles" });

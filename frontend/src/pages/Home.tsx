@@ -1,42 +1,21 @@
-import { useDeferredValue, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, FileText, BookMarked, Users, Tag, Library } from "lucide-react";
 import { EventCoverThumb } from "@/components/events/EventCoverThumb";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
 import { PublicationMetaRow } from "@/components/publications/PublicationMetaRow";
+import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { QueryState } from "@/components/ui/query-state";
-import { SearchField } from "@/components/ui/search-field";
 import { usePublicEventsQuery } from "@/features/acervo/hooks";
 
 export default function Home() {
   const { data: events = [], isLoading, isError } = usePublicEventsQuery();
-  const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
-  const search = deferredQuery.toLowerCase().trim();
 
-  const filteredEvents = useMemo(() => {
-    if (!search) return events;
-
-    return events.filter((event) =>
-      [
-        event.title,
-        event.area,
-        event.type,
-        event.themes.join(" "),
-        event.articles.map((article) => `${article.title} ${article.authors.join(" ")} ${article.area}`).join(" "),
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(search),
-    );
-  }, [events, search]);
-
-  const recent = filteredEvents.slice(0, 3);
+  const recent = events.slice(0, 3);
   const totalArticles = events.reduce((accumulator, event) => accumulator + event.publishedCount, 0);
-  const featuredEntry = filteredEvents
+  const featuredEntry = events
     .flatMap((event) => event.articles.map((article) => ({ article, event })))
     .find(({ article }) => article.status === "published");
   const featuredArticle = featuredEntry?.article;
@@ -52,11 +31,9 @@ export default function Home() {
         <SiteContainer className="pb-6 pt-2 md:pb-10 md:pt-6">
           <h1 className="text-xl font-bold md:text-3xl">Bem-vindo(a) ao Acervo,</h1>
           <p className="mt-1 text-sm opacity-90 md:text-base">Repositório Oficial dos Anais da Una Pouso Alegre</p>
-          <SearchField
+          <GlobalSearchBox
             containerClassName="mt-4"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar eventos, autores ou áreas..."
+            placeholder="Buscar publicações, eventos, autores, áreas ou cursos..."
             className="border-0 bg-background text-foreground shadow-card"
           />
 

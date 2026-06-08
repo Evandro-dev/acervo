@@ -12,6 +12,7 @@ import {
   fetchAuthors,
   fetchEvent,
   fetchEvents,
+  fetchGlobalSearch,
   importArticles,
   removeUploadedEventRuleFile,
   trackArticleView,
@@ -47,6 +48,7 @@ const acervoKeys = {
   courses: (includeEmpty: boolean, search = "") => ["acervo", "courses", includeEmpty, search] as const,
   authors: (search = "") => ["acervo", "authors", search] as const,
   author: (idOrSlug: string) => ["acervo", "author", idOrSlug] as const,
+  globalSearch: (query: string, limit: number) => ["acervo", "global-search", query, limit] as const,
 };
 
 export function usePublicEventsQuery() {
@@ -138,6 +140,18 @@ export function useAuthorQuery(idOrSlug?: string) {
     enabled: Boolean(normalizedId),
     queryKey: acervoKeys.author(normalizedId ?? ""),
     queryFn: () => fetchAuthor(normalizedId!),
+  });
+}
+
+export function useGlobalSearchQuery(query: string, options?: { limit?: number }) {
+  const normalizedQuery = query.trim();
+  const limit = options?.limit ?? 5;
+
+  return useQuery({
+    enabled: normalizedQuery.length >= 2,
+    queryKey: acervoKeys.globalSearch(normalizedQuery, limit),
+    queryFn: () => fetchGlobalSearch(normalizedQuery, { limit }),
+    staleTime: 20_000,
   });
 }
 

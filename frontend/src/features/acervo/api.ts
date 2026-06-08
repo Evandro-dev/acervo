@@ -7,6 +7,7 @@ import type {
   Event,
   EventMutationInput,
   ExtractedArticlePdfMetadata,
+  GlobalSearchResponse,
   ImportArticleInput,
   CourseSummary,
 } from "@/types/acervo";
@@ -104,6 +105,17 @@ export async function fetchCourses(params?: { includeEmpty?: boolean; q?: string
 
 export async function fetchAuthor(idOrSlug: string) {
   const response = await api.get<Author>(`/authors/${idOrSlug}`);
+  return response.data;
+}
+
+export async function fetchGlobalSearch(query: string, options?: { limit?: number }) {
+  const response = await api.get<GlobalSearchResponse>("/search", {
+    params: compact({
+      q: query,
+      limit: options?.limit,
+    }),
+  });
+
   return response.data;
 }
 

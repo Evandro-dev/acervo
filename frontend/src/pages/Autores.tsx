@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { User, FileText, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
+import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
 import { Card } from "@/components/ui/card";
-import { SearchField } from "@/components/ui/search-field";
 import { Badge } from "@/components/ui/badge";
 import { QueryState } from "@/components/ui/query-state";
 import { useAuthorsQuery } from "@/features/acervo/hooks";
@@ -26,11 +26,11 @@ export default function Autores() {
         <SiteContainer className="pb-5 pt-3">
           <h1 className="text-xl font-bold">Autores</h1>
           <p className="text-xs opacity-90">{isLoading ? "Carregando..." : `${authors.length} autores no acervo`}</p>
-          <SearchField
+          <GlobalSearchBox
             containerClassName="mt-3"
             value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="Buscar pesquisador..."
+            onValueChange={setQ}
+            placeholder="Buscar no Acervo..."
             className="border-0 bg-background text-foreground shadow-card"
           />
         </SiteContainer>

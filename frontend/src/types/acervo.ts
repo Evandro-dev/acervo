@@ -239,3 +239,21 @@ export type ArticleReportFilters = {
   dateFrom?: string;
   dateTo?: string;
 };
+
+export type GlobalSearchType = "article" | "event" | "author" | "area" | "course";
+
+export type GlobalSearchResult = {
+  id: string;
+  type: GlobalSearchType;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  href: string;
+  matchedFields: string[];
+};
+
+export type GlobalSearchResponse = {
+  query: string;
+  total: number;
+  groups: Record<GlobalSearchType, GlobalSearchResult[]>;
+};

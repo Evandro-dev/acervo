@@ -1,0 +1,301 @@
+import { useId, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  BookOpen,
+  CalendarDays,
+  GraduationCap,
+  Library,
+  Loader2,
+  Search,
+  Tag,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { useGlobalSearchQuery } from "@/features/acervo/hooks";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { normalizeSearch } from "@/lib/search";
+import { cn } from "@/lib/utils";
+import type { GlobalSearchResult, GlobalSearchType } from "@/types/acervo";
+
+const RESULT_GROUPS: Array<{
+  type: GlobalSearchType;
+  label: string;
+  icon: LucideIcon;
+}> = [
+  { type: "article", label: "Publicações", icon: Library },
+  { type: "event", label: "Eventos", icon: CalendarDays },
+  { type: "author", label: "Autores", icon: UserRound },
+  { type: "area", label: "Áreas", icon: Tag },
+  { type: "course", label: "Cursos", icon: GraduationCap },
+];
+
+type GlobalSearchBoxProps = {
+  placeholder?: string;
+  className?: string;
+  containerClassName?: string;
+  iconClassName?: string;
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+  limit?: number;
+};
+
+function getResultIcon(type: GlobalSearchType) {
+  return RESULT_GROUPS.find((group) => group.type === type)?.icon ?? BookOpen;
+}
+
+function flattenResults(groups: Record<GlobalSearchType, GlobalSearchResult[]>) {
+  return RESULT_GROUPS.flatMap((group) => groups[group.type]);
+}
+
+function trimDescription(value?: string) {
+  if (!value) return "";
+  const trimmed = value.replace(/\s+/g, " ").trim();
+  if (trimmed.length <= 120) return trimmed;
+  return `${trimmed.slice(0, 117).trim()}...`;
+}
+
+function findNormalizedMatchRange(text: string, query: string) {
+  const normalizedQuery = normalizeSearch(query);
+  if (!normalizedQuery) return null;
+
+  for (let start = 0; start < text.length; start += 1) {
+    for (let end = start + 1; end <= text.length; end += 1) {
+      const normalizedSlice = normalizeSearch(text.slice(start, end));
+      if (normalizedSlice === normalizedQuery) return { start, end };
+      if (normalizedSlice.length > normalizedQuery.length) break;
+    }
+  }
+
+  return null;
+}
+
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  const range = findNormalizedMatchRange(text, query);
+  if (!range) return <>{text}</>;
+
+  return (
+    <>
+      {text.slice(0, range.start)}
+      <mark className="rounded bg-brand-soft px-0.5 font-semibold text-primary-dark">
+        {text.slice(range.start, range.end)}
+      </mark>
+      {text.slice(range.end)}
+    </>
+  );
+}
+
+export function GlobalSearchBox({
+  placeholder = "Buscar no Acervo...",
+  className,
+  containerClassName,
+  iconClassName,
+  value: controlledValue,
+  defaultValue = "",
+  onValueChange,
+  limit = 5,
+}: GlobalSearchBoxProps) {
+  const navigate = useNavigate();
+  const generatedId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
+  const [open, setOpen] = useState(false);
+  const [requestedActiveIndex, setRequestedActiveIndex] = useState(0);
+  const value = controlledValue ?? uncontrolledValue;
+  const debouncedValue = useDebouncedValue(value, 220);
+  const search = debouncedValue.trim();
+  const { data, isFetching, isError } = useGlobalSearchQuery(search, { limit });
+  const results = useMemo(() => (data ? flattenResults(data.groups) : []), [data]);
+  const shouldShowPanel = open && value.trim().length > 0;
+  const hasEnoughText = value.trim().length >= 2;
+  const listboxId = `${generatedId}-results`;
+  const activeIndex = Math.min(requestedActiveIndex, Math.max(results.length - 1, 0));
+
+  const updateValue = (nextValue: string) => {
+    if (controlledValue === undefined) {
+      setUncontrolledValue(nextValue);
+    }
+    setRequestedActiveIndex(0);
+    onValueChange?.(nextValue);
+    setOpen(true);
+  };
+
+  const goToResult = (result: GlobalSearchResult) => {
+    setOpen(false);
+    inputRef.current?.blur();
+    navigate(result.href);
+  };
+
+  const activeResult = results[activeIndex];
+
+  return (
+    <Popover open={shouldShowPanel} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <div className={cn("relative", containerClassName)}>
+          <Search
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
+              iconClassName,
+            )}
+          />
+          <Input
+            ref={inputRef}
+            id={generatedId}
+            name={generatedId}
+            type="search"
+            role="combobox"
+            aria-label="Buscar no Acervo"
+            aria-autocomplete="list"
+            aria-expanded={shouldShowPanel}
+            aria-controls={listboxId}
+            aria-activedescendant={activeResult ? `${listboxId}-${activeResult.type}-${activeResult.id}` : undefined}
+            value={value}
+            onChange={(event) => updateValue(event.target.value)}
+            onFocus={() => setOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                setOpen(true);
+                setRequestedActiveIndex((current) => Math.min(current + 1, Math.max(results.length - 1, 0)));
+              }
+
+              if (event.key === "ArrowUp") {
+                event.preventDefault();
+                setRequestedActiveIndex((current) => Math.max(current - 1, 0));
+              }
+
+              if (event.key === "Enter" && activeResult) {
+                event.preventDefault();
+                goToResult(activeResult);
+              }
+
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setOpen(false);
+                inputRef.current?.blur();
+              }
+            }}
+            placeholder={placeholder}
+            autoComplete="off"
+            className={cn("pl-9", className)}
+          />
+        </div>
+      </PopoverAnchor>
+
+      <PopoverContent
+        align="start"
+        sideOffset={8}
+        className="w-[min(calc(100vw-2rem),42rem)] overflow-hidden rounded-2xl border-border/70 p-0 shadow-2xl"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onFocusOutside={(event) => {
+          if (event.target instanceof Node && inputRef.current?.contains(event.target)) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <div className="border-b border-border/60 bg-gradient-to-r from-brand-soft to-background px-4 py-3">
+          <div className="text-sm font-bold text-foreground">Busca geral do Acervo</div>
+          <div className="text-xs text-muted-foreground">
+            Pesquise publicações, eventos, autores, áreas e cursos.
+          </div>
+        </div>
+
+        {!hasEnoughText ? (
+          <div className="p-4 text-sm text-muted-foreground">Digite pelo menos 2 caracteres para buscar.</div>
+        ) : isFetching && !data ? (
+          <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Buscando no Acervo...
+          </div>
+        ) : isError ? (
+          <div className="p-4 text-sm text-destructive">Não foi possível carregar os resultados agora.</div>
+        ) : results.length === 0 ? (
+          <div className="p-4 text-sm text-muted-foreground">Nenhum resultado encontrado para “{search}”.</div>
+        ) : (
+          <div id={listboxId} role="listbox" className="max-h-[70vh] overflow-y-auto p-2">
+            {RESULT_GROUPS.map((group) => {
+              const groupResults = data?.groups[group.type] ?? [];
+              if (!groupResults.length) return null;
+              const GroupIcon = group.icon;
+
+              return (
+                <section key={group.type} className="py-1">
+                  <div className="flex items-center gap-2 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                    <GroupIcon className="h-3.5 w-3.5" />
+                    {group.label}
+                  </div>
+
+                  <div className="space-y-1">
+                    {groupResults.map((result) => {
+                      const flatIndex = results.findIndex((item) => item.type === result.type && item.id === result.id);
+                      const Icon = getResultIcon(result.type);
+                      const isActive = flatIndex === activeIndex;
+
+                      return (
+                        <Link
+                          id={`${listboxId}-${result.type}-${result.id}`}
+                          role="option"
+                          aria-selected={isActive}
+                          key={`${result.type}-${result.id}`}
+                          to={result.href}
+                          onMouseEnter={() => setRequestedActiveIndex(flatIndex)}
+                          onClick={() => setOpen(false)}
+                          className={cn(
+                            "flex gap-3 rounded-xl px-3 py-2.5 text-left transition",
+                            isActive ? "bg-brand-soft text-primary-dark" : "hover:bg-muted/70",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                              isActive ? "bg-white text-primary-dark" : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="line-clamp-2 text-sm font-bold leading-snug">
+                              <HighlightedText text={result.title} query={search} />
+                            </span>
+                            {result.subtitle ? (
+                              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                                <HighlightedText text={result.subtitle} query={search} />
+                              </span>
+                            ) : null}
+                            {result.description ? (
+                              <span className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                                <HighlightedText text={trimDescription(result.description)} query={search} />
+                              </span>
+                            ) : null}
+                            {result.matchedFields.length ? (
+                              <span className="mt-2 flex flex-wrap gap-1">
+                                {result.matchedFields.slice(0, 3).map((field) => (
+                                  <Badge key={field} variant="outline" className="h-5 rounded-full px-1.5 text-[10px]">
+                                    {field}
+                                  </Badge>
+                                ))}
+                              </span>
+                            ) : null}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
+
+            {isFetching ? (
+              <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Atualizando resultados...
+              </div>
+            ) : null}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}

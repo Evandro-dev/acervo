@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import { ChevronRight, Tag } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
+import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
 import { Card } from "@/components/ui/card";
 import { QueryState } from "@/components/ui/query-state";
-import { SearchField } from "@/components/ui/search-field";
 import { useAreasQuery } from "@/features/acervo/hooks";
 import { includesSearch } from "@/lib/search";
 
@@ -31,11 +31,11 @@ export default function Areas() {
                 ? `${filteredAreas.length} de ${areas.length} áreas`
                 : `${areas.length} áreas de conhecimento`}
           </p>
-          <SearchField
+          <GlobalSearchBox
             containerClassName="mt-3"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar área temática..."
+            onValueChange={setQuery}
+            placeholder="Buscar no Acervo..."
             className="border-0 bg-background text-foreground shadow-card"
           />
         </SiteContainer>

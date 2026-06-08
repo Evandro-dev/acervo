@@ -4,6 +4,7 @@ import { ChevronRight, Filter } from "lucide-react";
 import { EventCoverThumb } from "@/components/events/EventCoverThumb";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
+import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,7 +12,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QueryState } from "@/components/ui/query-state";
-import { SearchField } from "@/components/ui/search-field";
 import {
   Sheet,
   SheetContent,
@@ -63,11 +63,11 @@ export default function Eventos() {
           <h1 className="text-xl font-bold">Eventos</h1>
           <p className="text-xs opacity-90">{isLoading ? "Carregando..." : `${filtered.length} resultados`}</p>
           <div className="mt-3 flex gap-2">
-            <SearchField
+            <GlobalSearchBox
               containerClassName="flex-1"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar eventos..."
+              onValueChange={setQuery}
+              placeholder="Buscar no Acervo..."
               className="border-0 bg-background text-foreground shadow-card"
             />
             <Sheet open={open} onOpenChange={setOpen}>

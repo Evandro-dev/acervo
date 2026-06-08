@@ -6,6 +6,11 @@ import { useAuth } from "@/features/auth/auth-context";
 
 vi.mock("@/features/acervo/hooks", () => ({
   usePublicEventsQuery: vi.fn(),
+  useGlobalSearchQuery: vi.fn(() => ({
+    data: undefined,
+    isFetching: false,
+    isError: false,
+  })),
 }));
 
 vi.mock("@/features/auth/auth-context", () => ({

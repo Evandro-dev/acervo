@@ -4,12 +4,12 @@ import { BookMarked, ChevronRight, Filter, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
 import { PublicationMetaRow } from "@/components/publications/PublicationMetaRow";
+import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QueryState } from "@/components/ui/query-state";
-import { SearchField } from "@/components/ui/search-field";
 import {
   Sheet,
   SheetContent,
@@ -35,6 +35,10 @@ function getArticleYear(article: Article) {
   return article.eventYear ? String(article.eventYear) : "";
 }
 
+function articleHasCourse(article: Article, course: string) {
+  return article.courses.some((currentCourse) => currentCourse.toLocaleLowerCase() === course.toLocaleLowerCase());
+}
+
 function toggleValue(values: string[], value: string) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
@@ -54,6 +58,7 @@ export default function Publicacoes() {
   const [onlyWithPdf, setOnlyWithPdf] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const areaFilter = searchParams.get("area");
+  const courseFilter = searchParams.get("course");
   const deferredQuery = useDeferredValue(q);
 
   const areaOptions = useMemo(
@@ -94,11 +99,17 @@ export default function Publicacoes() {
     [areaFilter, selectedAreas],
   );
   const activeFilterCount =
-    activeAreas.length + selectedEvents.length + selectedModalities.length + selectedYears.length + (onlyWithPdf ? 1 : 0);
+    activeAreas.length +
+    (courseFilter ? 1 : 0) +
+    selectedEvents.length +
+    selectedModalities.length +
+    selectedYears.length +
+    (onlyWithPdf ? 1 : 0);
 
   const filtered = useMemo(() => {
     return articles.filter((article) => {
       if (activeAreas.length && !activeAreas.includes(article.area)) return false;
+      if (courseFilter && !articleHasCourse(article, courseFilter)) return false;
       if (selectedEvents.length && !selectedEvents.includes(getArticleEventKey(article))) return false;
       if (selectedModalities.length && !selectedModalities.includes(getArticleModality(article))) return false;
       if (selectedYears.length && !selectedYears.includes(getArticleYear(article))) return false;
@@ -111,11 +122,17 @@ export default function Publicacoes() {
         deferredQuery,
       );
     });
-  }, [activeAreas, articles, deferredQuery, onlyWithPdf, selectedEvents, selectedModalities, selectedYears]);
+  }, [activeAreas, articles, courseFilter, deferredQuery, onlyWithPdf, selectedEvents, selectedModalities, selectedYears]);
 
   const clearArea = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("area");
+    setSearchParams(next);
+  };
+
+  const clearCourse = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("course");
     setSearchParams(next);
   };
 
@@ -132,7 +149,10 @@ export default function Publicacoes() {
   };
 
   const clearFilters = () => {
-    clearArea();
+    const next = new URLSearchParams(searchParams);
+    next.delete("area");
+    next.delete("course");
+    setSearchParams(next);
     setSelectedAreas([]);
     setSelectedEvents([]);
     setSelectedModalities([]);
@@ -155,12 +175,21 @@ export default function Publicacoes() {
               <X className="h-3 w-3" />
             </button>
           )}
+          {courseFilter && (
+            <button
+              onClick={clearCourse}
+              className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold backdrop-blur hover:bg-white/25"
+            >
+              Curso: {courseFilter}
+              <X className="h-3 w-3" />
+            </button>
+          )}
           <div className="mt-3 flex gap-2">
-            <SearchField
+            <GlobalSearchBox
               containerClassName="flex-1"
               value={q}
-              onChange={(event) => setQ(event.target.value)}
-              placeholder="Buscar título, autor, área..."
+              onValueChange={setQ}
+              placeholder="Buscar no Acervo..."
               className="border-0 bg-background text-foreground shadow-card"
             />
 
