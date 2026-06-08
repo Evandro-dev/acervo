@@ -38,7 +38,7 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
       <SiteContainer className="relative flex items-center justify-between py-3">
 
         {/* ESQUERDA */}
-        <div className="flex items-center gap-4 md:gap-8">
+        <div className="z-10 flex items-center gap-3 md:gap-4">
 
           {/* BOTÃO VOLTAR MOBILE */}
           {showBack && (
@@ -53,31 +53,46 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
           )}
 
           {/* LOGO UNA */}
-          <Link to="/" className="z-10 flex items-center">
+          <a
+            href="https://www.una.br/unidades/pouso-alegre/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Acessar site da UNA Pouso Alegre"
+            className="flex h-6 w-[3.25rem] items-center overflow-hidden md:h-7 md:w-[3.75rem] lg:h-7 lg:w-16"
+          >
             <ProtectedImage
-              src="/logo_una.png"
+              src="/logo_una.svg"
               alt="Una"
-              className="h-7 w-auto md:h-9"
+              className="h-full w-full object-contain object-left"
             />
+          </a>
+
+          <div aria-hidden="true" className="hidden h-8 w-px bg-white/25 lg:block" />
+
+          <Link to="/" className="hidden items-center lg:flex" aria-label="Ir para o início do Acervo">
+            <span className="flex h-8 w-[5.5rem] items-center overflow-hidden xl:w-24">
+              <ProtectedImage
+                src="/logo_acervo.svg"
+                alt="Acervo"
+                className="h-full w-full object-contain object-left"
+              />
+            </span>
           </Link>
         </div>
 
         {/* LOGO ACERVO CENTRALIZADA MOBILE */}
         <Link
           to="/"
-          className="absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0"
+          className="absolute left-1/2 -translate-x-1/2 lg:hidden"
+          aria-label="Ir para o início do Acervo"
         >
-          <div className="flex items-center gap-5">
-            
-            {/* DIVISOR DESKTOP */}
-            <div className="hidden h-8 w-px bg-white/20 lg:block" />
-
+          <span className="flex h-7 w-[4.75rem] items-center overflow-hidden md:h-8 md:w-[5.5rem]">
             <ProtectedImage
-              src="/logo_acervo.png"
+              src="/logo_acervo.svg"
               alt="Acervo"
-              className="h-8 w-auto md:h-10"
+              className="h-full w-full object-contain"
             />
-          </div>
+          </span>
         </Link>
 
         {/* NAVEGAÇÃO DESKTOP */}

@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "headers": [
     {
-      "source": "/(logo_acervo.png|logo_una.png|favicon.ico|placeholder.svg)",
+      "source": "/(logo_acervo.svg|logo_una.svg|favicon.ico)",
       "headers": [
         {
           "key": "Cache-Control",

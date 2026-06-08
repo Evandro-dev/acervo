@@ -82,6 +82,14 @@ describe("Home", () => {
       </MemoryRouter>,
     );
 
+    const unaLink = screen.getByRole("link", { name: "Acessar site da UNA Pouso Alegre" });
+    expect(unaLink).toHaveAttribute("href", "https://www.una.br/unidades/pouso-alegre/");
+    expect(unaLink).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("img", { name: "Una" })).toHaveAttribute("src", "/logo_una.svg");
+    expect(screen.getAllByRole("img", { name: "Acervo" })).toHaveLength(2);
+    for (const logo of screen.getAllByRole("img", { name: "Acervo" })) {
+      expect(logo).toHaveAttribute("src", "/logo_acervo.svg");
+    }
     expect(screen.getAllByText("Evento de Teste").length).toBeGreaterThan(0);
     expect(screen.getByRole("img", { name: "Imagem do evento Evento de Teste" })).toHaveAttribute("draggable", "false");
     expect(screen.getByText("Artigo em Destaque")).toBeInTheDocument();

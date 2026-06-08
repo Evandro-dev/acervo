@@ -377,7 +377,7 @@ export function GlobalSearchBox({
       <PopoverContent
         align="start"
         sideOffset={8}
-        className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border-border/70 p-0 shadow-2xl"
+        className="w-(--radix-popover-trigger-width) max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border-border/70 p-0 shadow-2xl"
         onOpenAutoFocus={(event) => event.preventDefault()}
         onFocusOutside={(event) => {
           if (
