@@ -21,39 +21,49 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { usePublicEventsQuery } from "@/features/acervo/hooks";
+import { useAreasQuery, usePublicEventsQuery } from "@/features/acervo/hooks";
+import { includesSearch } from "@/lib/search";
 import { eventTypes, type Event } from "@/types/acervo";
 
 export default function Eventos() {
   const { data: events = [], isLoading, isError } = usePublicEventsQuery();
+  const { data: registeredAreas = [] } = useAreasQuery({ includeEmpty: true });
   const [query, setQuery] = useState("");
-  const [year, setYear] = useState<number | null>(null);
+  const [eventDate, setEventDate] = useState("");
   const [types, setTypes] = useState<string[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const deferredQuery = useDeferredValue(query);
 
   const allAreas = useMemo(
-    () => Array.from(new Set(events.flatMap((event) => event.themes))).sort((left, right) => left.localeCompare(right)),
-    [events],
+    () =>
+      Array.from(
+        new Set([
+          ...registeredAreas.map((area) => area.name),
+          ...events.map((event) => event.area).filter(Boolean),
+        ]),
+      ).sort((left, right) => left.localeCompare(right)),
+    [events, registeredAreas],
   );
 
   const filtered = useMemo(() => {
-    const q = deferredQuery.toLowerCase().trim();
+    const selectedYear = eventDate ? Number(eventDate.slice(0, 4)) : null;
 
     return events.filter((event) => {
-      if (q && !`${event.title} ${event.area} ${event.themes.join(" ")}`.toLowerCase().includes(q)) return false;
-      if (year && event.year !== year) return false;
+      if (deferredQuery && !includesSearch(`${event.title} ${event.area} ${event.themes.join(" ")}`, deferredQuery)) {
+        return false;
+      }
+      if (selectedYear && event.year !== selectedYear) return false;
       if (types.length && !types.includes(event.type)) return false;
-      if (areas.length && !event.themes.some((theme) => areas.includes(theme))) return false;
+      if (areas.length && !areas.includes(event.area)) return false;
       return true;
     });
-  }, [areas, deferredQuery, events, types, year]);
+  }, [areas, deferredQuery, eventDate, events, types]);
 
   const toggle = (values: string[], value: string, setValues: (next: string[]) => void) =>
     setValues(values.includes(value) ? values.filter((item) => item !== value) : [...values, value]);
 
-  const activeCount = (year ? 1 : 0) + types.length + areas.length;
+  const activeCount = (eventDate ? 1 : 0) + types.length + areas.length;
   const toFilterId = (prefix: string, value: string) => `${prefix}-${encodeURIComponent(value)}`;
 
   return (
@@ -94,7 +104,7 @@ export default function Eventos() {
                 <SheetHeader className="mb-6 flex flex-row items-center justify-between space-y-0 text-left">
                   <SheetTitle className="text-2xl font-bold text-[#E30613]">Filtros</SheetTitle>
                   <SheetDescription className="sr-only">
-                    Filtre a lista de eventos por data, tipo e area tematica.
+                    Filtre a lista de eventos por data, tipo e área temática.
                   </SheetDescription>
                 </SheetHeader>
 
@@ -103,6 +113,8 @@ export default function Eventos() {
                   <Input
                     id="event-date-filter"
                     type="date"
+                    value={eventDate}
+                    onChange={(event) => setEventDate(event.target.value)}
                     className="h-11 rounded-xl border-zinc-300 bg-white text-sm shadow-none"
                   />
                 </div>
@@ -129,22 +141,26 @@ export default function Eventos() {
 
                 <div className="mb-8">
                   <div className="mb-4 block text-sm font-semibold text-black">Área</div>
-                  <div className="grid gap-3">
-                    {allAreas.map((area) => {
-                      const id = toFilterId("event-area", area);
+                  {allAreas.length > 0 ? (
+                    <div className="grid gap-3">
+                      {allAreas.map((area) => {
+                        const id = toFilterId("event-area", area);
 
-                      return (
-                      <label key={area} htmlFor={id} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          id={id}
-                          checked={areas.includes(area)}
-                          onCheckedChange={() => toggle(areas, area, setAreas)}
-                        />
-                        <span>{area}</span>
-                      </label>
-                      );
-                    })}
-                  </div>
+                        return (
+                        <label key={area} htmlFor={id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            id={id}
+                            checked={areas.includes(area)}
+                            onCheckedChange={() => toggle(areas, area, setAreas)}
+                          />
+                          <span>{area}</span>
+                        </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhuma área cadastrada ainda.</p>
+                  )}
                 </div>
 
                 <SheetFooter className="mt-8 grid grid-cols-2 gap-4">
@@ -152,7 +168,7 @@ export default function Eventos() {
                     variant="outline"
                     className="h-12 rounded-xl border-zinc-300 text-base font-semibold"
                     onClick={() => {
-                      setYear(null);
+                      setEventDate("");
                       setTypes([]);
                       setAreas([]);
                     }}

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { BookMarked, Building2, Mail } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
+import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
 import { Card } from "@/components/ui/card";
 
 export default function Sobre() {
@@ -14,6 +15,11 @@ export default function Sobre() {
             Plataforma institucional de anais acadêmicos para consulta, descoberta e curadoria contínua da produção
             científica, com foco em organização, acesso e disseminação do conhecimento.
           </p>
+          <GlobalSearchBox
+            containerClassName="mt-4"
+            placeholder="Buscar publicações, eventos, autores, áreas ou cursos..."
+            className="border-0 bg-background text-foreground shadow-card"
+          />
         </SiteContainer>
       </section>
 

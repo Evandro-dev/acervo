@@ -133,4 +133,75 @@ describe("GlobalSearchBox", () => {
     const highlightedText = await screen.findByText("Saúde");
     expect(highlightedText.tagName).toBe("MARK");
   });
+
+  it("prioritizes author results when the typed term matches an author name", async () => {
+    mockedUseGlobalSearchQuery.mockImplementation((query) => ({
+      data:
+        query.length >= 2
+          ? {
+              query,
+              total: 2,
+              groups: {
+                ...emptyGroups,
+                article: [
+                  {
+                    id: "article-3",
+                    type: "article",
+                    title: "Cuidados interdisciplinares",
+                    subtitle: "EXPO UNA 2025 · Abreu de Andrade Maria Clara",
+                    href: "/eventos/expo-una-2025/artigos/article-3",
+                    matchedFields: ["Autor"],
+                  },
+                ],
+                author: [
+                  {
+                    id: "author-1",
+                    type: "author",
+                    title: "Abreu de Andrade Maria Clara",
+                    href: "/autores/abreu-de-andrade-maria-clara",
+                    matchedFields: ["Autor"],
+                  },
+                ],
+              },
+            }
+          : undefined,
+      isFetching: false,
+      isError: false,
+    }));
+
+    render(
+      <MemoryRouter>
+        <GlobalSearchBox placeholder="Pesquisar" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Buscar no Acervo" }), {
+      target: { value: "Abreu" },
+    });
+
+    const authorsHeading = await screen.findByText("Autores");
+    const publicationsHeading = screen.getByText("Publicações");
+
+    expect(authorsHeading.compareDocumentPosition(publicationsHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("shows a category shortcut when the query names a section", async () => {
+    mockedUseGlobalSearchQuery.mockImplementation((query) => ({
+      data: query.length >= 2 ? { query, total: 0, groups: emptyGroups } : undefined,
+      isFetching: false,
+      isError: false,
+    }));
+
+    render(
+      <MemoryRouter>
+        <GlobalSearchBox placeholder="Pesquisar" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Buscar no Acervo" }), {
+      target: { value: "autores" },
+    });
+
+    expect((await screen.findByText("Autores")).closest("a")).toHaveAttribute("href", "/autores");
+  });
 });

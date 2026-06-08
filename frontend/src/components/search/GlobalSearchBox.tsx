@@ -24,13 +24,40 @@ const RESULT_GROUPS: Array<{
   type: GlobalSearchType;
   label: string;
   icon: LucideIcon;
+  href: string;
+  keywords: string[];
 }> = [
-  { type: "article", label: "Publicações", icon: Library },
-  { type: "event", label: "Eventos", icon: CalendarDays },
-  { type: "author", label: "Autores", icon: UserRound },
-  { type: "area", label: "Áreas", icon: Tag },
-  { type: "course", label: "Cursos", icon: GraduationCap },
+  {
+    type: "article",
+    label: "Publicações",
+    icon: Library,
+    href: "/publicacoes",
+    keywords: ["publicacao", "publicacoes", "artigo", "artigos", "trabalho", "trabalhos"],
+  },
+  { type: "event", label: "Eventos", icon: CalendarDays, href: "/eventos", keywords: ["evento", "eventos"] },
+  { type: "author", label: "Autores", icon: UserRound, href: "/autores", keywords: ["autor", "autores"] },
+  { type: "area", label: "Áreas", icon: Tag, href: "/areas", keywords: ["area", "areas"] },
+  { type: "course", label: "Cursos", icon: GraduationCap, href: "/publicacoes", keywords: ["curso", "cursos"] },
 ];
+
+type ResultGroup = (typeof RESULT_GROUPS)[number] & {
+  results: GlobalSearchResult[];
+  score: number;
+};
+
+type SearchItem =
+  | {
+      kind: "shortcut";
+      id: string;
+      title: string;
+      subtitle: string;
+      href: string;
+      icon: LucideIcon;
+    }
+  | {
+      kind: "result";
+      result: GlobalSearchResult;
+    };
 
 type GlobalSearchBoxProps = {
   placeholder?: string;
@@ -47,15 +74,77 @@ function getResultIcon(type: GlobalSearchType) {
   return RESULT_GROUPS.find((group) => group.type === type)?.icon ?? BookOpen;
 }
 
-function flattenResults(groups: Record<GlobalSearchType, GlobalSearchResult[]>) {
-  return RESULT_GROUPS.flatMap((group) => groups[group.type]);
-}
-
 function trimDescription(value?: string) {
   if (!value) return "";
   const trimmed = value.replace(/\s+/g, " ").trim();
   if (trimmed.length <= 120) return trimmed;
   return `${trimmed.slice(0, 117).trim()}...`;
+}
+
+function getIntentScore(group: (typeof RESULT_GROUPS)[number], query: string) {
+  const normalizedQuery = normalizeSearch(query);
+  if (!normalizedQuery) return 100;
+
+  const normalizedLabel = normalizeSearch(group.label);
+  if (group.keywords.includes(normalizedQuery) || normalizedLabel === normalizedQuery) return 0;
+  if (group.keywords.some((keyword) => keyword.startsWith(normalizedQuery))) return 1;
+  if (normalizedLabel.includes(normalizedQuery)) return 2;
+  return 100;
+}
+
+function getResultScore(result: GlobalSearchResult, query: string) {
+  const normalizedQuery = normalizeSearch(query);
+  if (!normalizedQuery) return 50;
+
+  const title = normalizeSearch(result.title);
+  const subtitle = normalizeSearch(result.subtitle ?? "");
+  const description = normalizeSearch(result.description ?? "");
+
+  if (title === normalizedQuery) return 0;
+  if (title.startsWith(normalizedQuery)) return 1;
+  if (title.includes(normalizedQuery)) return 2;
+  if (subtitle.startsWith(normalizedQuery)) return 3;
+  if (subtitle.includes(normalizedQuery)) return 4;
+  if (result.matchedFields.length > 0) return 5;
+  if (description.includes(normalizedQuery)) return 6;
+  return 50;
+}
+
+function getShortcutActions(query: string): SearchItem[] {
+  const normalizedQuery = normalizeSearch(query);
+  if (normalizedQuery.length < 2) return [];
+
+  return RESULT_GROUPS.filter((group) => getIntentScore(group, query) <= 2).map((group) => ({
+    kind: "shortcut",
+    id: `shortcut-${group.type}`,
+    title: group.label,
+    subtitle: "Abrir seção do Acervo",
+    href: group.href,
+    icon: group.icon,
+  }));
+}
+
+function getOrderedGroups(groups: Record<GlobalSearchType, GlobalSearchResult[]>, query: string): ResultGroup[] {
+  return RESULT_GROUPS.map((group, originalIndex) => {
+    const results = groups[group.type] ?? [];
+    const resultScore = results.length ? Math.min(...results.map((result) => getResultScore(result, query))) : 50;
+    const intentScore = getIntentScore(group, query);
+
+    return {
+      ...group,
+      results,
+      score: Math.min(intentScore, resultScore) * 10 + originalIndex,
+    };
+  })
+    .filter((group) => group.results.length > 0)
+    .sort((left, right) => left.score - right.score);
+}
+
+function flattenSearchItems(shortcuts: SearchItem[], groups: ResultGroup[]): SearchItem[] {
+  return [
+    ...shortcuts,
+    ...groups.flatMap((group) => group.results.map((result) => ({ kind: "result" as const, result }))),
+  ];
 }
 
 function findNormalizedMatchRange(text: string, query: string) {
@@ -108,11 +197,13 @@ export function GlobalSearchBox({
   const debouncedValue = useDebouncedValue(value, 220);
   const search = debouncedValue.trim();
   const { data, isFetching, isError } = useGlobalSearchQuery(search, { limit });
-  const results = useMemo(() => (data ? flattenResults(data.groups) : []), [data]);
+  const shortcuts = useMemo(() => getShortcutActions(search), [search]);
+  const orderedGroups = useMemo(() => (data ? getOrderedGroups(data.groups, search) : []), [data, search]);
+  const searchItems = useMemo(() => flattenSearchItems(shortcuts, orderedGroups), [orderedGroups, shortcuts]);
   const shouldShowPanel = open && value.trim().length > 0;
   const hasEnoughText = value.trim().length >= 2;
   const listboxId = `${generatedId}-results`;
-  const activeIndex = Math.min(requestedActiveIndex, Math.max(results.length - 1, 0));
+  const activeIndex = Math.min(requestedActiveIndex, Math.max(searchItems.length - 1, 0));
 
   const updateValue = (nextValue: string) => {
     if (controlledValue === undefined) {
@@ -123,13 +214,18 @@ export function GlobalSearchBox({
     setOpen(true);
   };
 
-  const goToResult = (result: GlobalSearchResult) => {
+  const goToHref = (href: string) => {
     setOpen(false);
     inputRef.current?.blur();
-    navigate(result.href);
+    navigate(href);
   };
 
-  const activeResult = results[activeIndex];
+  const activeItem = searchItems[activeIndex];
+  const activeItemId = activeItem
+    ? activeItem.kind === "shortcut"
+      ? `${listboxId}-${activeItem.id}`
+      : `${listboxId}-${activeItem.result.type}-${activeItem.result.id}`
+    : undefined;
 
   return (
     <Popover open={shouldShowPanel} onOpenChange={setOpen}>
@@ -152,7 +248,7 @@ export function GlobalSearchBox({
             aria-autocomplete="list"
             aria-expanded={shouldShowPanel}
             aria-controls={listboxId}
-            aria-activedescendant={activeResult ? `${listboxId}-${activeResult.type}-${activeResult.id}` : undefined}
+            aria-activedescendant={activeItemId}
             value={value}
             onChange={(event) => updateValue(event.target.value)}
             onFocus={() => setOpen(true)}
@@ -160,7 +256,7 @@ export function GlobalSearchBox({
               if (event.key === "ArrowDown") {
                 event.preventDefault();
                 setOpen(true);
-                setRequestedActiveIndex((current) => Math.min(current + 1, Math.max(results.length - 1, 0)));
+                setRequestedActiveIndex((current) => Math.min(current + 1, Math.max(searchItems.length - 1, 0)));
               }
 
               if (event.key === "ArrowUp") {
@@ -168,9 +264,9 @@ export function GlobalSearchBox({
                 setRequestedActiveIndex((current) => Math.max(current - 1, 0));
               }
 
-              if (event.key === "Enter" && activeResult) {
+              if (event.key === "Enter" && activeItem) {
                 event.preventDefault();
-                goToResult(activeResult);
+                goToHref(activeItem.kind === "shortcut" ? activeItem.href : activeItem.result.href);
               }
 
               if (event.key === "Escape") {
@@ -212,13 +308,56 @@ export function GlobalSearchBox({
           </div>
         ) : isError ? (
           <div className="p-4 text-sm text-destructive">Não foi possível carregar os resultados agora.</div>
-        ) : results.length === 0 ? (
+        ) : searchItems.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">Nenhum resultado encontrado para “{search}”.</div>
         ) : (
           <div id={listboxId} role="listbox" className="max-h-[70vh] overflow-y-auto p-2">
-            {RESULT_GROUPS.map((group) => {
-              const groupResults = data?.groups[group.type] ?? [];
-              if (!groupResults.length) return null;
+            {shortcuts.length ? (
+              <section className="py-1">
+                <div className="flex items-center gap-2 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  <Search className="h-3.5 w-3.5" />
+                  Atalhos
+                </div>
+                <div className="space-y-1">
+                  {shortcuts.map((item, index) => {
+                    if (item.kind !== "shortcut") return null;
+                    const Icon = item.icon;
+                    const isActive = index === activeIndex;
+
+                    return (
+                      <Link
+                        id={`${listboxId}-${item.id}`}
+                        role="option"
+                        aria-selected={isActive}
+                        key={item.id}
+                        to={item.href}
+                        onMouseEnter={() => setRequestedActiveIndex(index)}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "flex gap-3 rounded-xl px-3 py-2.5 text-left transition",
+                          isActive ? "bg-brand-soft text-primary-dark" : "hover:bg-muted/70",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                            isActive ? "bg-white text-primary-dark" : "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-1 text-sm font-bold leading-snug">{item.title}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">{item.subtitle}</span>
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
+            {orderedGroups.map((group) => {
               const GroupIcon = group.icon;
 
               return (
@@ -229,8 +368,10 @@ export function GlobalSearchBox({
                   </div>
 
                   <div className="space-y-1">
-                    {groupResults.map((result) => {
-                      const flatIndex = results.findIndex((item) => item.type === result.type && item.id === result.id);
+                    {group.results.map((result) => {
+                      const flatIndex = searchItems.findIndex(
+                        (item) => item.kind === "result" && item.result.type === result.type && item.result.id === result.id,
+                      );
                       const Icon = getResultIcon(result.type);
                       const isActive = flatIndex === activeIndex;
 
