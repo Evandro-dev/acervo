@@ -59,8 +59,11 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
   }, [closeMenu, open]);
 
   useEffect(() => {
-    closeMenu();
-  }, [closeMenu, pathname]);
+    if (!open) return;
+
+    const frame = window.requestAnimationFrame(() => setOpen(false));
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, pathname]);
 
   if (!isAuthenticated) {
     return (
@@ -74,28 +77,6 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
 </Link>
     );
   }
-
-  const actions = [
-    ...(isPrivileged
-      ? [
-          {
-            key: "dashboard",
-            label: "Painel",
-            icon: LayoutDashboard,
-            to: "/admin",
-          },
-        ]
-      : []),
-    {
-      key: "logout",
-      label: "Sair",
-      icon: LogOut,
-      onClick: () => {
-        closeMenu();
-        onLogout();
-      },
-    },
-  ];
 
   return (
     <div
@@ -116,33 +97,32 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
             open ? "max-w-35.5 pl-3 pr-2 opacity-100" : "max-w-0 pl-0 pr-0 opacity-0",
           )}
         >
-          {actions.map((action) =>
-            "to" in action ? (
-              <Link
-                key={action.key}
-                to={action.to}
-                tabIndex={open ? 0 : -1}
-                className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors"
-                style={{ color: brandRed }}
-                onClick={closeMenu}
-              >
-                <action.icon className="h-3.5 w-3.5" style={{ color: brandRed }} />
-                <span>{action.label}</span>
-              </Link>
-            ) : (
-              <button
-                key={action.key}
-                type="button"
-                tabIndex={open ? 0 : -1}
-                className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors"
-                style={{ color: brandRed }}
-                onClick={action.onClick}
-              >
-                <action.icon className="h-3.5 w-3.5" style={{ color: brandRed }} />
-                <span>{action.label}</span>
-              </button>
-            ),
-          )}
+          {isPrivileged ? (
+            <Link
+              to="/admin"
+              tabIndex={open ? 0 : -1}
+              className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors"
+              style={{ color: brandRed }}
+              onClick={() => setOpen(false)}
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" style={{ color: brandRed }} />
+              <span>Painel</span>
+            </Link>
+          ) : null}
+
+          <button
+            type="button"
+            tabIndex={open ? 0 : -1}
+            className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors"
+            style={{ color: brandRed }}
+            onClick={() => {
+              setOpen(false);
+              onLogout();
+            }}
+          >
+            <LogOut className="h-3.5 w-3.5" style={{ color: brandRed }} />
+            <span>Sair</span>
+          </button>
         </div>
 
         <button

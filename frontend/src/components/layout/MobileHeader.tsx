@@ -96,8 +96,8 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
         </Link>
 
         {/* NAVEGAÇÃO DESKTOP */}
-        <div className="hidden flex-1 justify-center lg:flex">
-          <nav>
+        <div className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 lg:flex">
+          <nav className="pointer-events-auto">
             <ul className="flex items-center gap-2">
               {desktopNav.map((item) => (
                 <li key={item.to}>
