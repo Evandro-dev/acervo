@@ -7,6 +7,8 @@ const REPORT_WHITE = "FFFFFFFF";
 const REPORT_ZEBRA_GRAY = "FFD9D9D9";
 const REPORT_BORDER_GRAY = "FFBFBFBF";
 const REPORT_TEXT = "FF000000";
+const REPORT_TRAILING_COLUMNS_TO_HIDE = 40;
+const REPORT_LINK_LABEL = "Clique aqui";
 
 export type ArticleReportItem = {
   title: string;
@@ -54,6 +56,93 @@ function formatDate(value?: Date | null) {
   return value ? value.toISOString().slice(0, 10) : EMPTY_VALUE;
 }
 
+function columnLetter(columnNumber: number) {
+  let dividend = columnNumber;
+  let columnName = "";
+
+  while (dividend > 0) {
+    const modulo = (dividend - 1) % 26;
+    columnName = String.fromCharCode(65 + modulo) + columnName;
+    dividend = Math.floor((dividend - modulo) / 26);
+  }
+
+  return columnName;
+}
+
+function getWorksheetContentBounds(worksheet: ExcelJS.Worksheet) {
+  return {
+    rowCount: Math.max(worksheet.actualRowCount, worksheet.rowCount, 1),
+    columnCount: Math.max(worksheet.actualColumnCount, worksheet.columnCount, 1),
+  };
+}
+
+function applyCompactWorksheetView(
+  worksheet: ExcelJS.Worksheet,
+  {
+    rowCount,
+    columnCount,
+    freezeHeader = false,
+  }: { rowCount: number; columnCount: number; freezeHeader?: boolean },
+) {
+  worksheet.views = [
+    freezeHeader
+      ? { state: "frozen", ySplit: 1, showGridLines: false }
+      : { state: "normal", showGridLines: false },
+  ];
+  worksheet.pageSetup = {
+    ...worksheet.pageSetup,
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    horizontalCentered: true,
+    printArea: `A1:${columnLetter(columnCount)}${rowCount}`,
+  };
+
+  for (
+    let columnNumber = columnCount + 1;
+    columnNumber <= columnCount + REPORT_TRAILING_COLUMNS_TO_HIDE;
+    columnNumber += 1
+  ) {
+    worksheet.getColumn(columnNumber).hidden = true;
+  }
+}
+
+function pdfUrlCellValue(value?: string | null): ExcelJS.CellValue {
+  const text = value?.trim();
+  if (!text) {
+    return EMPTY_VALUE;
+  }
+
+  try {
+    const url = new URL(text);
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return sanitizeSpreadsheetText(text);
+    }
+
+    return {
+      text: REPORT_LINK_LABEL,
+      hyperlink: url.toString(),
+    };
+  } catch {
+    return sanitizeSpreadsheetText(text);
+  }
+}
+
+function isHyperlinkValue(value: ExcelJS.CellValue): value is ExcelJS.CellHyperlinkValue {
+  return typeof value === "object" && value !== null && "hyperlink" in value;
+}
+
+function styleHyperlinkColumn(worksheet: ExcelJS.Worksheet, key: string) {
+  worksheet.getColumn(key).eachCell((cell, rowNumber) => {
+    if (rowNumber === 1 || !isHyperlinkValue(cell.value)) {
+      return;
+    }
+
+    cell.font = { name: "Calibri", size: 11, color: { argb: REPORT_RED }, underline: true };
+    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  });
+}
+
 export function sanitizeSpreadsheetText(value?: string | null) {
   const text = value?.trim() || EMPTY_VALUE;
   return /^[=+\-@]/.test(text) ? `'${text}` : text;
@@ -75,6 +164,7 @@ function summarize(items: ArticleReportItem[], getValues: (item: ArticleReportIt
 }
 
 function styleTable(worksheet: ExcelJS.Worksheet) {
+  const bounds = getWorksheetContentBounds(worksheet);
   worksheet.properties.tabColor = { argb: REPORT_RED };
   const header = worksheet.getRow(1);
   header.font = { name: "Calibri", size: 11, bold: true, color: { argb: REPORT_WHITE } };
@@ -96,14 +186,15 @@ function styleTable(worksheet: ExcelJS.Worksheet) {
     });
   }
 
-  worksheet.views = [{ state: "frozen", ySplit: 1 }];
   worksheet.autoFilter = {
     from: { row: 1, column: 1 },
-    to: { row: 1, column: worksheet.columnCount },
+    to: { row: 1, column: bounds.columnCount },
   };
+  applyCompactWorksheetView(worksheet, { ...bounds, freezeHeader: true });
 }
 
 function styleOverview(worksheet: ExcelJS.Worksheet) {
+  const bounds = getWorksheetContentBounds(worksheet);
   worksheet.properties.tabColor = { argb: REPORT_RED };
   worksheet.mergeCells("A1:B1");
   worksheet.getRow(1).height = 24;
@@ -131,6 +222,7 @@ function styleOverview(worksheet: ExcelJS.Worksheet) {
   titleCell.font = { name: "Calibri", bold: true, size: 14, color: { argb: REPORT_WHITE } };
   titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: REPORT_RED } };
   titleCell.alignment = { vertical: "middle" };
+  applyCompactWorksheetView(worksheet, bounds);
 }
 
 function addSummarySheet(workbook: ExcelJS.Workbook, title: string, label: string, rows: readonly (readonly [string, number])[]) {
@@ -210,10 +302,11 @@ export async function buildArticleReportWorkbook({
       submittedAt: formatDate(item.submittedAt),
       importedAt: formatDate(item.importedAt),
       publishedAt: formatDate(item.publishedAt),
-      pdfUrl: sanitizeSpreadsheetText(item.pdfUrl),
+      pdfUrl: pdfUrlCellValue(item.pdfUrl),
     })),
   );
   styleTable(details);
+  styleHyperlinkColumn(details, "pdfUrl");
 
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }

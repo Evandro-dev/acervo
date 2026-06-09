@@ -64,9 +64,20 @@ test("builds an XLSX report with overview, numeric summaries and detailed works"
   assert.equal(details.getCell("A1").font.color?.argb, "FFFFFFFF");
   assert.equal((details.getCell("A2").fill as ExcelJS.FillPattern).fgColor?.argb, "FFD9D9D9");
   assert.equal((details.getCell("A3").fill as ExcelJS.FillPattern).fgColor?.argb, "FFFFFFFF");
+  assert.equal(details.views[0]?.showGridLines, false);
+  assert.equal(details.pageSetup.printArea, "A1:M3");
+  assert.equal(details.getColumn("N").hidden, true);
+  assert.deepEqual(details.getCell("M2").value, {
+    text: "Clique aqui",
+    hyperlink: "https://example.com/article-1.pdf",
+  });
+  assert.equal(details.getCell("M2").font.color?.argb, "FFC00000");
+  assert.equal(details.getCell("M2").font.underline, true);
+  assert.equal(details.getCell("M3").value, sanitizeSpreadsheetText());
 
   for (const worksheet of workbook.worksheets) {
     assert.equal(worksheet.properties.tabColor?.argb, "FFC00000");
+    assert.equal(worksheet.views[0]?.showGridLines, false);
   }
 });
 
