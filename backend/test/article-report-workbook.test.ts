@@ -58,6 +58,16 @@ test("builds an XLSX report with overview, numeric summaries and detailed works"
   const details = workbook.getWorksheet("Trabalhos detalhados")!;
   assert.equal(details.getCell("A3").value, "'=HYPERLINK(\"https://example.com\")");
   assert.equal(details.getCell("D2").value, "Enfermagem, Biomedicina");
+  assert.equal(details.properties.tabColor?.argb, "FFC00000");
+  assert.equal(details.getCell("A1").fill.type, "pattern");
+  assert.equal((details.getCell("A1").fill as ExcelJS.FillPattern).fgColor?.argb, "FFC00000");
+  assert.equal(details.getCell("A1").font.color?.argb, "FFFFFFFF");
+  assert.equal((details.getCell("A2").fill as ExcelJS.FillPattern).fgColor?.argb, "FFD9D9D9");
+  assert.equal((details.getCell("A3").fill as ExcelJS.FillPattern).fgColor?.argb, "FFFFFFFF");
+
+  for (const worksheet of workbook.worksheets) {
+    assert.equal(worksheet.properties.tabColor?.argb, "FFC00000");
+  }
 });
 
 test("neutralizes spreadsheet formula prefixes from text fields", () => {

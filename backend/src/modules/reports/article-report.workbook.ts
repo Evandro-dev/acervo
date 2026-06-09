@@ -2,6 +2,11 @@ import ExcelJS from "exceljs";
 import type { ArticleReportFilters } from "./article-report.filters.js";
 
 const EMPTY_VALUE = "Não informado";
+const REPORT_RED = "FFC00000";
+const REPORT_WHITE = "FFFFFFFF";
+const REPORT_ZEBRA_GRAY = "FFD9D9D9";
+const REPORT_BORDER_GRAY = "FFBFBFBF";
+const REPORT_TEXT = "FF000000";
 
 export type ArticleReportItem = {
   title: string;
@@ -70,16 +75,62 @@ function summarize(items: ArticleReportItem[], getValues: (item: ArticleReportIt
 }
 
 function styleTable(worksheet: ExcelJS.Worksheet) {
+  worksheet.properties.tabColor = { argb: REPORT_RED };
   const header = worksheet.getRow(1);
-  header.font = { bold: true, color: { argb: "FFFFFFFF" } };
-  header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F4E78" } };
-  header.alignment = { vertical: "middle" };
+  header.font = { name: "Calibri", size: 11, bold: true, color: { argb: REPORT_WHITE } };
+  header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: REPORT_RED } };
+  header.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
   header.height = 22;
+
+  for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber);
+    const fillColor = rowNumber % 2 === 0 ? REPORT_ZEBRA_GRAY : REPORT_WHITE;
+
+    row.eachCell((cell) => {
+      cell.font = { name: "Calibri", size: 11, color: { argb: REPORT_TEXT } };
+      cell.alignment = { vertical: "middle", wrapText: true };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillColor } };
+      cell.border = {
+        bottom: { style: "thin", color: { argb: REPORT_BORDER_GRAY } },
+      };
+    });
+  }
+
   worksheet.views = [{ state: "frozen", ySplit: 1 }];
   worksheet.autoFilter = {
     from: { row: 1, column: 1 },
     to: { row: 1, column: worksheet.columnCount },
   };
+}
+
+function styleOverview(worksheet: ExcelJS.Worksheet) {
+  worksheet.properties.tabColor = { argb: REPORT_RED };
+  worksheet.mergeCells("A1:B1");
+  worksheet.getRow(1).height = 24;
+
+  const titleCell = worksheet.getCell("A1");
+  titleCell.font = { name: "Calibri", bold: true, size: 14, color: { argb: REPORT_WHITE } };
+  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: REPORT_RED } };
+  titleCell.alignment = { vertical: "middle" };
+
+  for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber);
+    const fillColor = rowNumber % 2 === 0 ? REPORT_WHITE : REPORT_ZEBRA_GRAY;
+
+    row.eachCell((cell) => {
+      cell.font = { name: "Calibri", size: 11, color: { argb: REPORT_TEXT } };
+      cell.alignment = { vertical: "middle", wrapText: true };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillColor } };
+      cell.border = {
+        bottom: { style: "thin", color: { argb: REPORT_BORDER_GRAY } },
+      };
+    });
+  }
+
+  worksheet.getColumn(1).font = { name: "Calibri", bold: true, color: { argb: REPORT_TEXT } };
+  titleCell.font = { name: "Calibri", bold: true, size: 14, color: { argb: REPORT_WHITE } };
+  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: REPORT_RED } };
+  titleCell.alignment = { vertical: "middle" };
 }
 
 function addSummarySheet(workbook: ExcelJS.Workbook, title: string, label: string, rows: readonly (readonly [string, number])[]) {
@@ -124,9 +175,7 @@ export async function buildArticleReportWorkbook({
     ["Rascunhos", items.filter((item) => item.status.toUpperCase() === "DRAFT").length],
     ["Arquivados", items.filter((item) => item.status.toUpperCase() === "ARCHIVED").length],
   ]);
-  overview.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1F4E78" } };
-  overview.mergeCells("A1:B1");
-  overview.getColumn(1).font = { bold: true };
+  styleOverview(overview);
 
   addSummarySheet(workbook, "Resumo por área", "Área", summarize(items, (item) => [item.area]));
   addSummarySheet(workbook, "Resumo por curso", "Curso", summarize(items, (item) => item.courses));
