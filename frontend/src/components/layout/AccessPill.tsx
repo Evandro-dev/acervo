@@ -19,6 +19,7 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
   const { pathname } = useLocation();
+  const previousPathnameRef = useRef(pathname);
   const menuId = useId();
 
   const closeMenu = useCallback(() => {
@@ -59,11 +60,12 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
   }, [closeMenu, open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (previousPathnameRef.current === pathname) return;
+    previousPathnameRef.current = pathname;
 
     const frame = window.requestAnimationFrame(() => setOpen(false));
     return () => window.cancelAnimationFrame(frame);
-  }, [open, pathname]);
+  }, [pathname]);
 
   if (!isAuthenticated) {
     return (
