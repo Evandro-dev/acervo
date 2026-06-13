@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Calendar, Mail, Phone, FileDown, ChevronRight, BookMarked, ExternalLink } from "lucide-react";
-import { PublicationEngagementIndicators } from "@/components/publications/PublicationMetaRow";
+import { Barcode, Calendar, Mail, Phone, FileDown, ChevronRight, ExternalLink } from "lucide-react";
+import { PublicArticleCard } from "@/components/publications/PublicArticleCard";
 import { AppShell } from "@/components/layout/AppShell";
 import { HeroBackButton } from "@/components/layout/HeroBackButton";
 import { SiteContainer } from "@/components/layout/SiteContainer";
@@ -103,6 +103,7 @@ export default function EventoDetalhe() {
             <h1 className="text-xl font-bold leading-tight">Carregando evento...</h1>
           </SiteContainer>
         </section>
+
         <section className="py-4">
           <SiteContainer>
             <StatePanel>Buscando os detalhes do evento.</StatePanel>
@@ -121,6 +122,7 @@ export default function EventoDetalhe() {
             <h1 className="text-xl font-bold leading-tight">Evento</h1>
           </SiteContainer>
         </section>
+
         <section className="py-4">
           <SiteContainer>
             <StatePanel>Não foi possível carregar este evento.</StatePanel>
@@ -132,20 +134,39 @@ export default function EventoDetalhe() {
 
   const approved = event.articles.filter((article) => article.status === "published");
   const groupedCommittee = groupCommitteeMembers(event.committee);
+  const isbn = event.catalog?.isbn?.trim();
 
   return (
     <AppShell>
       <section className="bg-brand text-primary-foreground">
         <SiteContainer className="pb-5 pt-3">
           <HeroBackButton />
+
           <Badge className="mb-2 border-0 bg-white/20 text-primary-foreground">{event.type}</Badge>
+
           <h1 className="text-xl font-bold leading-tight">{event.title}</h1>
+
           <p className="mt-1 flex items-center gap-1.5 text-xs opacity-90">
-            <Calendar className="h-3.5 w-3.5" /> {event.date}
+            <Calendar className="h-3.5 w-3.5" />
+            {event.date}
           </p>
-          <p className="mt-2 text-[11px] opacity-80">
-            {event.edition} · {event.area}
-          </p>
+
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Badge className="border-0 bg-white/15 px-2 py-0.5 text-[11px] font-medium text-primary-foreground">
+              {event.edition}
+            </Badge>
+
+            <Badge className="border-0 bg-white/15 px-2 py-0.5 text-[11px] font-medium text-primary-foreground">
+              {event.area}
+            </Badge>
+
+            {isbn && isbn !== "—" && (
+              <Badge className="gap-1 border-0 bg-white/20 px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
+                <Barcode className="h-3 w-3" />
+                ISBN {isbn}
+              </Badge>
+            )}
+          </div>
         </SiteContainer>
       </section>
 
@@ -178,6 +199,7 @@ export default function EventoDetalhe() {
             <TabsContent value="apresentacao" className="m-0">
               <SectionTitle>Apresentação do Evento</SectionTitle>
               <p className="text-sm leading-relaxed text-foreground/80">{event.presentation}</p>
+
               <div className="mt-4 flex flex-wrap gap-2">
                 {event.themes.slice(0, 5).map((theme) => (
                   <Badge key={theme} variant="outline" className="font-normal">
@@ -189,41 +211,19 @@ export default function EventoDetalhe() {
 
             <TabsContent value="publicacoes" className="m-0 space-y-3">
               <SectionTitle>{approved.length} Publicações</SectionTitle>
+
               {approved.length === 0 ? (
                 <StatePanel>Nenhuma publicação aprovada neste evento.</StatePanel>
               ) : (
                 approved.map((article) => (
-                  <Card key={article.id} className="overflow-hidden border-border/60 shadow-card">
-                    <div className="p-3">
-                      <div className="flex items-start gap-2">
-                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-primary-dark">
-                          <BookMarked className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-bold leading-tight">{article.title}</h3>
-                          <p className="mt-1 text-[11px] text-muted-foreground">
-                            {article.authors.join(" · ")} · pp. {article.pages}
-                          </p>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                              {article.area}
-                            </Badge>
-                            <PublicationEngagementIndicators
-                              viewCount={article.viewCount}
-                              showDownloads={false}
-                              className="text-[11px]"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <Link
-                      to={`/eventos/${event.slug}/artigos/${article.id}`}
-                      className="flex items-center justify-between border-t border-border/60 bg-brand-soft px-4 py-2 text-xs font-semibold text-primary-dark"
-                    >
-                      Ver artigo <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </Card>
+                  <PublicArticleCard
+                    key={article.id}
+                    article={article}
+                    href={`/eventos/${event.slug}/artigos/${article.id}`}
+                    eventTitle={event.title}
+                    actionLabel="Ver artigo"
+                    showDownloads={false}
+                  />
                 ))
               )}
             </TabsContent>
@@ -240,10 +240,15 @@ export default function EventoDetalhe() {
                         {groupedCommittee.map((group) => (
                           <Card key={group.key} className="border-border/60 p-3 shadow-card">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-brand">{group.title}</h3>
+
                             <ul className="mt-2 divide-y text-sm">
                               {group.members.map((member) => (
-                                <li key={`${group.key}-${member.name}-${member.role}`} className="py-2 first:pt-0 last:pb-0">
+                                <li
+                                  key={`${group.key}-${member.name}-${member.role}`}
+                                  className="py-2 first:pt-0 last:pb-0"
+                                >
                                   <span className="font-medium">{member.name}</span>
+
                                   {group.key === "Outra" ? (
                                     <Badge variant="outline" className="ml-2 align-middle text-[10px]">
                                       {member.role}
@@ -293,8 +298,12 @@ export default function EventoDetalhe() {
                   <AccordionTrigger className="text-sm font-bold text-brand">Normas</AccordionTrigger>
                   <AccordionContent className="space-y-2">
                     {event.rules.map((rule, index) => (
-                      <Card key={`${rule.title}-${index}`} className="flex items-center justify-between border-border/60 p-3 shadow-card">
+                      <Card
+                        key={`${rule.title}-${index}`}
+                        className="flex items-center justify-between border-border/60 p-3 shadow-card"
+                      >
                         <span className="text-sm font-medium">{rule.title}</span>
+
                         <Button
                           size="sm"
                           variant="outline"
@@ -305,10 +314,14 @@ export default function EventoDetalhe() {
                               return;
                             }
 
-                            toast({ title: "Arquivo indisponível", description: "A norma ainda não foi vinculada." });
+                            toast({
+                              title: "Arquivo indisponível",
+                              description: "A norma ainda não foi vinculada.",
+                            });
                           }}
                         >
-                          <FileDown className="h-4 w-4" /> {getEventRuleDocumentLabel(rule.file)}
+                          <FileDown className="h-4 w-4" />
+                          {getEventRuleDocumentLabel(rule.file)}
                         </Button>
                       </Card>
                     ))}
@@ -321,6 +334,7 @@ export default function EventoDetalhe() {
                     {event.previousEditions.length === 0 && (
                       <p className="text-sm text-muted-foreground">Esta é a primeira edição.</p>
                     )}
+
                     {event.previousEditions.map((edition) => (
                       <PreviousEditionCard key={edition.id} edition={edition} />
                     ))}
@@ -332,11 +346,14 @@ export default function EventoDetalhe() {
                   <AccordionContent>
                     <Card className="space-y-2 border-border/60 p-4 shadow-card">
                       <a href={`mailto:${event.contact.email}`} className="flex items-center gap-2 text-sm">
-                        <Mail className="h-4 w-4 text-primary" /> {event.contact.email}
+                        <Mail className="h-4 w-4 text-primary" />
+                        {event.contact.email}
                       </a>
+
                       {event.contact.phone && (
                         <p className="flex items-center gap-2 text-sm">
-                          <Phone className="h-4 w-4 text-primary" /> {event.contact.phone}
+                          <Phone className="h-4 w-4 text-primary" />
+                          {event.contact.phone}
                         </p>
                       )}
                     </Card>
@@ -351,7 +368,7 @@ export default function EventoDetalhe() {
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({ children }: { children: ReactNode }) {
   return <h2 className="mb-3 text-base font-bold text-brand">{children}</h2>;
 }
 
@@ -394,6 +411,7 @@ function PreviousEditionCard({ edition }: { edition: EventPreviousEdition }) {
         <div className="text-sm font-bold">{edition.label}</div>
         <div className="text-xs text-muted-foreground">{edition.year}</div>
       </div>
+
       <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sem link</span>
     </Card>
   );

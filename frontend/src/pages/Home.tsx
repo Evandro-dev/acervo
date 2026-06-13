@@ -1,12 +1,10 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, FileText, BookMarked, Users, Tag, Library } from "lucide-react";
-import { EventCoverThumb } from "@/components/events/EventCoverThumb";
+import { Users, Tag, Library } from "lucide-react";
+import { PublicEventCard } from "@/components/events/PublicEventCard";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
-import { PublicationMetaRow } from "@/components/publications/PublicationMetaRow";
+import { PublicArticleCard } from "@/components/publications/PublicArticleCard";
 import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { QueryState } from "@/components/ui/query-state";
 import { usePublicEventsQuery } from "@/features/acervo/hooks";
 
@@ -31,6 +29,7 @@ export default function Home() {
         <SiteContainer className="pb-6 pt-2 md:pb-10 md:pt-6">
           <h1 className="text-xl font-bold md:text-3xl">Bem-vindo(a) ao Acervo,</h1>
           <p className="mt-1 text-sm opacity-90 md:text-base">Repositório Oficial dos Anais da Una Pouso Alegre</p>
+
           <GlobalSearchBox
             containerClassName="mt-4"
             placeholder="Buscar publicações, eventos, autores, áreas ou cursos..."
@@ -42,6 +41,7 @@ export default function Home() {
               <div className="text-xs opacity-80">Eventos</div>
               <div className="text-lg font-bold">{isLoading ? "..." : events.length}</div>
             </div>
+
             <div className="rounded-lg bg-white/10 px-3 py-2 backdrop-blur">
               <div className="text-xs opacity-80">Publicações</div>
               <div className="text-lg font-bold">{isLoading ? "..." : totalArticles}</div>
@@ -91,34 +91,8 @@ export default function Home() {
             emptyMessage="Nenhum evento disponível."
           >
             <div className="grid auto-rows-fr gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-              {recent.map((ev) => (
-                <Card key={ev.id} className="flex h-full min-h-41 flex-col overflow-hidden border-border/60 shadow-card">
-                  <div className="flex flex-1 gap-3 p-3">
-                    <EventCoverThumb cover={ev.cover} title={ev.title} className="h-16 w-16" />
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <h3 className="line-clamp-3 text-sm font-bold leading-tight">{ev.title}</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">{ev.date}</p>
-                      <div className="mt-1.5 flex min-w-0 flex-wrap items-start gap-1">
-                        <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-[10px]">
-                          {ev.type}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="h-auto min-h-5 max-w-full min-w-0 whitespace-normal wrap-break-word px-1.5 py-0.5 text-left text-[10px] leading-tight"
-                        >
-                          {ev.area}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <Link
-                    to={`/eventos/${ev.slug}`}
-                    className="mt-auto flex min-h-10 shrink-0 items-center justify-between border-t border-border/60 bg-brand-soft px-4 py-2.5 text-sm font-semibold text-primary-dark"
-                  >
-                    Ver detalhes
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </Card>
+              {recent.map((event) => (
+                <PublicEventCard key={event.id} event={event} />
               ))}
             </div>
           </QueryState>
@@ -142,36 +116,11 @@ export default function Home() {
             errorMessage="Não foi possível carregar a publicação em destaque."
             emptyMessage="Nenhuma publicação em destaque."
           >
-            <Card className="overflow-hidden border-border/60 shadow-card">
-              <div className="bg-brand-soft p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-primary-foreground">
-                    <BookMarked className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <PublicationMetaRow
-                      eventTitle={featuredEvent?.title ?? featuredArticle?.eventTitle ?? "Anais"}
-                      eventHref={featuredEvent ? `/eventos/${featuredEvent.slug}` : undefined}
-                      viewCount={featuredArticle?.viewCount}
-                      downloadCount={featuredArticle?.downloadCount}
-                      titleClassName="text-[11px]"
-                      metricsClassName="text-[11px]"
-                    />
-                    <h3 className="text-sm font-bold leading-tight">{featuredArticle?.title}</h3>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{featuredArticle?.abstract}</p>
-                  </div>
-                </div>
-              </div>
-              <Link
-                to={featuredArticleHref}
-                className="flex items-center justify-between border-t border-border/60 px-4 py-2.5 text-sm font-semibold text-primary-dark"
-              >
-                <span className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" /> Ler artigo
-                </span>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Card>
+            <PublicArticleCard
+              article={featuredArticle}
+              href={featuredArticleHref}
+              eventTitle={featuredEvent?.title ?? featuredArticle?.eventTitle ?? "Anais"}
+            />
           </QueryState>
         </SiteContainer>
       </section>
