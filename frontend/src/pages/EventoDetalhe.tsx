@@ -1,6 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Barcode, Calendar, Mail, Phone, FileDown, ChevronRight, ExternalLink } from "lucide-react";
+import {
+  Barcode,
+  Calendar,
+  Mail,
+  Phone,
+  FileDown,
+  ChevronRight,
+  ExternalLink,
+} from "lucide-react";
 import { PublicArticleCard } from "@/components/publications/PublicArticleCard";
 import { AppShell } from "@/components/layout/AppShell";
 import { HeroBackButton } from "@/components/layout/HeroBackButton";
@@ -9,9 +17,17 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { StatePanel } from "@/components/ui/state-panel";
-import { useEventQuery, useTrackEventViewMutation } from "@/features/acervo/hooks";
+import {
+  useEventQuery,
+  useTrackEventViewMutation,
+} from "@/features/acervo/hooks";
 import { toast } from "@/hooks/use-toast";
 import { getApiResourceUrl } from "@/lib/api";
 import { reserveViewTracking, rollbackViewTracking } from "@/lib/engagement";
@@ -19,7 +35,10 @@ import { getBrandedNavigationItemStateClassName } from "@/lib/branded-navigation
 import { getEventRuleDocumentLabel } from "@/lib/event-rule-documents";
 import { isUsableResourceUrl } from "@/lib/file-links";
 import { cn } from "@/lib/utils";
-import type { EventCommitteeMember, EventPreviousEdition } from "@/types/acervo";
+import type {
+  EventCommitteeMember,
+  EventPreviousEdition,
+} from "@/types/acervo";
 
 const committeeGroups = [
   { key: "Organizadora", title: "Comissão Organizadora" },
@@ -42,12 +61,21 @@ function groupCommitteeMembers(committee: EventCommitteeMember[]) {
   const grouped = committeeGroups
     .map((group) => ({
       ...group,
-      members: committee.filter((member) => normalizeCommitteeType(member.role) === group.key),
+      members: committee.filter(
+        (member) => normalizeCommitteeType(member.role) === group.key,
+      ),
     }))
     .filter((group) => group.members.length > 0);
 
-  const otherMembers = committee.filter((member) => normalizeCommitteeType(member.role) === "Outra");
-  return otherMembers.length ? [...grouped, { key: "Outra", title: "Outras funções", members: otherMembers }] : grouped;
+  const otherMembers = committee.filter(
+    (member) => normalizeCommitteeType(member.role) === "Outra",
+  );
+  return otherMembers.length
+    ? [
+        ...grouped,
+        { key: "Outra", title: "Outras funções", members: otherMembers },
+      ]
+    : grouped;
 }
 
 function getPreviousEditionInternalHref(edition: EventPreviousEdition) {
@@ -77,7 +105,11 @@ function EditionCardContent({
 
 export default function EventoDetalhe() {
   const { id } = useParams();
-  const { data: event, isLoading, isError } = useEventQuery(id, "published", {
+  const {
+    data: event,
+    isLoading,
+    isError,
+  } = useEventQuery(id, "published", {
     staleTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
@@ -100,7 +132,9 @@ export default function EventoDetalhe() {
         <section className="bg-brand text-primary-foreground">
           <SiteContainer className="pb-5 pt-3">
             <HeroBackButton />
-            <h1 className="text-xl font-bold leading-tight">Carregando evento...</h1>
+            <h1 className="text-xl font-bold leading-tight">
+              Carregando evento...
+            </h1>
           </SiteContainer>
         </section>
 
@@ -132,9 +166,12 @@ export default function EventoDetalhe() {
     );
   }
 
-  const approved = event.articles.filter((article) => article.status === "published");
+  const approved = event.articles.filter(
+    (article) => article.status === "published",
+  );
   const groupedCommittee = groupCommitteeMembers(event.committee);
-  const isbn = event.catalog?.isbn?.trim();
+  const catalogIsbn = event.catalog?.isbn?.trim();
+  const catalogText = event.catalog?.text?.trim();
 
   return (
     <AppShell>
@@ -142,7 +179,9 @@ export default function EventoDetalhe() {
         <SiteContainer className="pb-5 pt-3">
           <HeroBackButton />
 
-          <Badge className="mb-2 border-0 bg-white/20 text-primary-foreground">{event.type}</Badge>
+          <Badge className="mb-2 border-0 bg-white/20 text-primary-foreground">
+            {event.type}
+          </Badge>
 
           <h1 className="text-xl font-bold leading-tight">{event.title}</h1>
 
@@ -160,10 +199,10 @@ export default function EventoDetalhe() {
               {event.area}
             </Badge>
 
-            {isbn && isbn !== "—" && (
+            {catalogIsbn && catalogIsbn !== "—" && (
               <Badge className="gap-1 border-0 bg-white/20 px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
                 <Barcode className="h-3 w-3" />
-                ISBN {isbn}
+                ISBN {catalogIsbn}
               </Badge>
             )}
           </div>
@@ -198,7 +237,9 @@ export default function EventoDetalhe() {
           <SiteContainer>
             <TabsContent value="apresentacao" className="m-0">
               <SectionTitle>Apresentação do Evento</SectionTitle>
-              <p className="text-sm leading-relaxed text-foreground/80">{event.presentation}</p>
+              <p className="text-sm leading-relaxed text-foreground/80">
+                {event.presentation}
+              </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {event.themes.slice(0, 5).map((theme) => (
@@ -213,7 +254,9 @@ export default function EventoDetalhe() {
               <SectionTitle>{approved.length} Publicações</SectionTitle>
 
               {approved.length === 0 ? (
-                <StatePanel>Nenhuma publicação aprovada neste evento.</StatePanel>
+                <StatePanel>
+                  Nenhuma publicação aprovada neste evento.
+                </StatePanel>
               ) : (
                 approved.map((article) => (
                   <PublicArticleCard
@@ -231,15 +274,24 @@ export default function EventoDetalhe() {
             <TabsContent value="sobre" className="m-0">
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="comissao">
-                  <AccordionTrigger className="text-sm font-bold text-brand">Comissão</AccordionTrigger>
+                  <AccordionTrigger className="text-sm font-bold text-brand">
+                    Comissão
+                  </AccordionTrigger>
                   <AccordionContent>
                     {groupedCommittee.length === 0 ? (
-                      <StatePanel>Nenhum membro de comissão cadastrado.</StatePanel>
+                      <StatePanel>
+                        Nenhum membro de comissão cadastrado.
+                      </StatePanel>
                     ) : (
                       <div className="space-y-3">
                         {groupedCommittee.map((group) => (
-                          <Card key={group.key} className="border-border/60 p-3 shadow-card">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-brand">{group.title}</h3>
+                          <Card
+                            key={group.key}
+                            className="border-border/60 p-3 shadow-card"
+                          >
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-brand">
+                              {group.title}
+                            </h3>
 
                             <ul className="mt-2 divide-y text-sm">
                               {group.members.map((member) => (
@@ -247,10 +299,15 @@ export default function EventoDetalhe() {
                                   key={`${group.key}-${member.name}-${member.role}`}
                                   className="py-2 first:pt-0 last:pb-0"
                                 >
-                                  <span className="font-medium">{member.name}</span>
+                                  <span className="font-medium">
+                                    {member.name}
+                                  </span>
 
                                   {group.key === "Outra" ? (
-                                    <Badge variant="outline" className="ml-2 align-middle text-[10px]">
+                                    <Badge
+                                      variant="outline"
+                                      className="ml-2 align-middle text-[10px]"
+                                    >
                                       {member.role}
                                     </Badge>
                                   ) : null}
@@ -265,21 +322,33 @@ export default function EventoDetalhe() {
                 </AccordionItem>
 
                 <AccordionItem value="ficha">
-                  <AccordionTrigger className="text-sm font-bold text-brand">Ficha Catalográfica</AccordionTrigger>
+                  <AccordionTrigger className="text-sm font-bold text-brand">
+                    Ficha Catalográfica
+                  </AccordionTrigger>
                   <AccordionContent>
                     <Card className="border-border/60 p-4 shadow-card">
-                      <dl className="space-y-2 text-sm">
-                        <Field label="ISBN" value={event.catalog.isbn ?? "—"} />
-                        <Field label="Editora" value={event.catalog.publisher ?? "—"} />
-                        <Field label="Endereço" value={event.catalog.address ?? "—"} />
-                        <Field label="Edição" value={event.edition} />
-                      </dl>
+                      {catalogIsbn && catalogIsbn !== "—" ? (
+                        <dl className="mb-3 space-y-2 text-sm">
+                          <Field label="ISBN" value={catalogIsbn} />
+                        </dl>
+                      ) : null}
+
+                      {catalogText ? (
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
+                          {catalogText}
+                        </div>
+                      ) : (
+                        <StatePanel>
+                          Ficha catalográfica não cadastrada.
+                        </StatePanel>
+                      )}
                     </Card>
                   </AccordionContent>
                 </AccordionItem>
-
                 <AccordionItem value="temas">
-                  <AccordionTrigger className="text-sm font-bold text-brand">Área Temática</AccordionTrigger>
+                  <AccordionTrigger className="text-sm font-bold text-brand">
+                    Área Temática
+                  </AccordionTrigger>
                   <AccordionContent>
                     <div className="flex flex-col gap-2">
                       {event.themes.map((theme) => (
@@ -295,14 +364,18 @@ export default function EventoDetalhe() {
                 </AccordionItem>
 
                 <AccordionItem value="normas">
-                  <AccordionTrigger className="text-sm font-bold text-brand">Normas</AccordionTrigger>
+                  <AccordionTrigger className="text-sm font-bold text-brand">
+                    Normas
+                  </AccordionTrigger>
                   <AccordionContent className="space-y-2">
                     {event.rules.map((rule, index) => (
                       <Card
                         key={`${rule.title}-${index}`}
                         className="flex items-center justify-between border-border/60 p-3 shadow-card"
                       >
-                        <span className="text-sm font-medium">{rule.title}</span>
+                        <span className="text-sm font-medium">
+                          {rule.title}
+                        </span>
 
                         <Button
                           size="sm"
@@ -310,7 +383,11 @@ export default function EventoDetalhe() {
                           className="gap-1"
                           onClick={() => {
                             if (isUsableResourceUrl(rule.file)) {
-                              window.open(getApiResourceUrl(rule.file), "_blank", "noopener,noreferrer");
+                              window.open(
+                                getApiResourceUrl(rule.file),
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
                               return;
                             }
 
@@ -329,10 +406,14 @@ export default function EventoDetalhe() {
                 </AccordionItem>
 
                 <AccordionItem value="edicoes">
-                  <AccordionTrigger className="text-sm font-bold text-brand">Edições</AccordionTrigger>
+                  <AccordionTrigger className="text-sm font-bold text-brand">
+                    Edições
+                  </AccordionTrigger>
                   <AccordionContent className="space-y-2">
                     {event.previousEditions.length === 0 && (
-                      <p className="text-sm text-muted-foreground">Esta é a primeira edição.</p>
+                      <p className="text-sm text-muted-foreground">
+                        Esta é a primeira edição.
+                      </p>
                     )}
 
                     {event.previousEditions.map((edition) => (
@@ -342,10 +423,15 @@ export default function EventoDetalhe() {
                 </AccordionItem>
 
                 <AccordionItem value="contato">
-                  <AccordionTrigger className="text-sm font-bold text-brand">Contato</AccordionTrigger>
+                  <AccordionTrigger className="text-sm font-bold text-brand">
+                    Contato
+                  </AccordionTrigger>
                   <AccordionContent>
                     <Card className="space-y-2 border-border/60 p-4 shadow-card">
-                      <a href={`mailto:${event.contact.email}`} className="flex items-center gap-2 text-sm">
+                      <a
+                        href={`mailto:${event.contact.email}`}
+                        className="flex items-center gap-2 text-sm"
+                      >
                         <Mail className="h-4 w-4 text-primary" />
                         {event.contact.email}
                       </a>
@@ -375,7 +461,9 @@ function SectionTitle({ children }: { children: ReactNode }) {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-3 gap-2">
-      <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </dt>
       <dd className="col-span-2 text-sm">{value}</dd>
     </div>
   );
@@ -386,7 +474,10 @@ function PreviousEditionCard({ edition }: { edition: EventPreviousEdition }) {
 
   if (internalHref) {
     return (
-      <Link to={internalHref} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Link
+        to={internalHref}
+        className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
         <EditionCardContent edition={edition} />
       </Link>
     );
@@ -412,7 +503,9 @@ function PreviousEditionCard({ edition }: { edition: EventPreviousEdition }) {
         <div className="text-xs text-muted-foreground">{edition.year}</div>
       </div>
 
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sem link</span>
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Sem link
+      </span>
     </Card>
   );
 }

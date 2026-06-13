@@ -1,18 +1,36 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { DateRange } from "react-day-picker";
-import { ExternalLink, FileText, Plus, Save, Trash2, Upload } from "lucide-react";
+import {
+  ExternalLink,
+  FileText,
+  Plus,
+  Save,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { DocumentFilePicker } from "@/components/admin/DocumentFilePicker";
 import { EventCoverImagePicker } from "@/components/admin/EventCoverImagePicker";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AreaCombobox } from "@/components/ui/area-combobox";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StatePanel } from "@/components/ui/state-panel";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,9 +54,18 @@ import {
   isSupportedEventRuleDocument,
   removeEventRuleDocumentExtension,
 } from "@/lib/event-rule-documents";
-import { isUsableExternalResourceUrl, isUsableResourceUrl } from "@/lib/file-links";
+import {
+  isUsableExternalResourceUrl,
+  isUsableResourceUrl,
+} from "@/lib/file-links";
 import { cn } from "@/lib/utils";
-import { eventTypes, type Event, type EventMutationInput, type EventRule, type EventType } from "@/types/acervo";
+import {
+  eventTypes,
+  type Event,
+  type EventMutationInput,
+  type EventRule,
+  type EventType,
+} from "@/types/acervo";
 
 const committeeTypeOptions = ["Organizadora", "Científica"] as const;
 type CommitteeType = (typeof committeeTypeOptions)[number];
@@ -86,8 +113,7 @@ type FormState = {
   contactPhone: string;
   catalogIsbn: string;
   catalogDoi: string;
-  catalogPublisher: string;
-  catalogAddress: string;
+  catalogText: string;
   themes: ThemeFormItem[];
   committee: CommitteeFormItem[];
   rules: RuleFormItem[];
@@ -134,7 +160,9 @@ function normalizeCommitteeType(value?: string): CommitteeType {
   return normalized === "CIENTIFICA" ? "Científica" : "Organizadora";
 }
 
-function createCommitteeItem(value?: Partial<Omit<CommitteeFormItem, "key">>): CommitteeFormItem {
+function createCommitteeItem(
+  value?: Partial<Omit<CommitteeFormItem, "key">>,
+): CommitteeFormItem {
   return {
     key: createKey("committee"),
     name: value?.name ?? "",
@@ -147,14 +175,28 @@ function isSupportedCoverImageFile(file: File) {
   const supportedExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
   const fileName = file.name.toLowerCase();
 
-  return supportedTypes.includes(file.type) || supportedExtensions.some((extension) => fileName.endsWith(extension));
+  return (
+    supportedTypes.includes(file.type) ||
+    supportedExtensions.some((extension) => fileName.endsWith(extension))
+  );
 }
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function createRuleItem(value?: Partial<Omit<RuleFormItem, "key" | "pendingFile">>): RuleFormItem {
+function extractIsbnFromCatalogText(value: string) {
+  const match = value.match(
+    /ISBN\s*[:\-]?\s*((?:97[89][-\s]?)?\d[\d\s-]{8,20}[\dXx])/i,
+  );
+  if (!match) return "";
+
+  return match[1].replace(/\s+/g, "-").replace(/-+/g, "-").trim();
+}
+
+function createRuleItem(
+  value?: Partial<Omit<RuleFormItem, "key" | "pendingFile">>,
+): RuleFormItem {
   const fileUrl = value?.fileUrl ?? "";
 
   return {
@@ -162,7 +204,9 @@ function createRuleItem(value?: Partial<Omit<RuleFormItem, "key" | "pendingFile"
     title: value?.title ?? "",
     fileUrl,
     pendingFile: null,
-    useExternalLink: value?.useExternalLink ?? (fileUrl ? !isStoredEventRuleFileUrl(fileUrl) : false),
+    useExternalLink:
+      value?.useExternalLink ??
+      (fileUrl ? !isStoredEventRuleFileUrl(fileUrl) : false),
   };
 }
 
@@ -170,12 +214,18 @@ function getRuleFileMode(rule: RuleFormItem): RuleFileMode {
   return rule.useExternalLink ? "external" : "upload";
 }
 
-function setRuleFileMode(rule: RuleFormItem, mode: RuleFileMode): Partial<RuleFormItem> {
+function setRuleFileMode(
+  rule: RuleFormItem,
+  mode: RuleFileMode,
+): Partial<RuleFormItem> {
   if (mode === "external") {
     return {
       useExternalLink: true,
       pendingFile: null,
-      fileUrl: !rule.fileUrl || isStoredEventRuleFileUrl(rule.fileUrl) ? "" : rule.fileUrl,
+      fileUrl:
+        !rule.fileUrl || isStoredEventRuleFileUrl(rule.fileUrl)
+          ? ""
+          : rule.fileUrl,
     };
   }
 
@@ -196,7 +246,9 @@ function createPreviousEditionItem(
     key: createKey("edition"),
     label: value?.label ?? "",
     year: value?.year ?? "",
-    linkMode: value?.linkMode ?? (eventId ? "internal" : externalUrl ? "external" : "none"),
+    linkMode:
+      value?.linkMode ??
+      (eventId ? "internal" : externalUrl ? "external" : "none"),
     eventId,
     externalUrl,
   };
@@ -218,8 +270,7 @@ function emptyForm(): FormState {
     contactPhone: "",
     catalogIsbn: "",
     catalogDoi: "",
-    catalogPublisher: "",
-    catalogAddress: "",
+    catalogText: "",
     themes: [createThemeItem()],
     committee: [createCommitteeItem()],
     rules: [createRuleItem()],
@@ -243,14 +294,17 @@ function mapEventToForm(event: Event): FormState {
     contactPhone: event.contact.phone ?? "",
     catalogIsbn: event.catalog.isbn ?? "",
     catalogDoi: event.catalog.doi ?? "",
-    catalogPublisher: event.catalog.publisher ?? "",
-    catalogAddress: event.catalog.address ?? "",
-    themes: event.themes.length ? event.themes.map((theme) => createThemeItem(theme)) : [createThemeItem()],
+    catalogText: event.catalog.text ?? "",
+    themes: event.themes.length
+      ? event.themes.map((theme) => createThemeItem(theme))
+      : [createThemeItem()],
     committee: event.committee.length
       ? event.committee.map((member) => createCommitteeItem(member))
       : [createCommitteeItem()],
     rules: event.rules.length
-      ? event.rules.map((rule) => createRuleItem({ title: rule.title, fileUrl: rule.file }))
+      ? event.rules.map((rule) =>
+          createRuleItem({ title: rule.title, fileUrl: rule.file }),
+        )
       : [createRuleItem()],
     previousEditions: event.previousEditions.map((edition) =>
       createPreviousEditionItem({
@@ -263,7 +317,11 @@ function mapEventToForm(event: Event): FormState {
   };
 }
 
-function replaceItemByKey<T extends { key: string }>(items: T[], key: string, patch: Partial<T>) {
+function replaceItemByKey<T extends { key: string }>(
+  items: T[],
+  key: string,
+  patch: Partial<T>,
+) {
   return items.map((item) => (item.key === key ? { ...item, ...patch } : item));
 }
 
@@ -278,21 +336,30 @@ function validateAndPrepare(form: FormState) {
   const presentation = form.presentation.trim();
   const contactEmail = form.contactEmail.trim();
   const contactPhone = form.contactPhone.trim();
+  const catalogText = form.catalogText.replace(/\r\n/g, "\n");
+  const catalogIsbn =
+    form.catalogIsbn.trim() || extractIsbnFromCatalogText(catalogText);
 
   if (title.length < 2) {
     throw new Error("Identificação > Título: informe pelo menos 2 caracteres.");
   }
 
   if (!Number.isInteger(form.year) || form.year < 1900 || form.year > 3000) {
-    throw new Error("Identificação > Ano: informe um ano válido para o evento.");
+    throw new Error(
+      "Identificação > Ano: informe um ano válido para o evento.",
+    );
   }
 
   if (!area) {
-    throw new Error("Identificação > Tema principal: informe a área principal do evento.");
+    throw new Error(
+      "Identificação > Tema principal: informe a área principal do evento.",
+    );
   }
 
   if (presentation.length < 10) {
-    throw new Error("Identificação > Apresentação: escreva pelo menos 10 caracteres.");
+    throw new Error(
+      "Identificação > Apresentação: escreva pelo menos 10 caracteres.",
+    );
   }
 
   if (!contactEmail) {
@@ -303,9 +370,7 @@ function validateAndPrepare(form: FormState) {
     throw new Error("Contato > E-mail: informe um e-mail válido.");
   }
 
-  const themes = form.themes
-    .map((theme) => theme.value.trim())
-    .filter(Boolean);
+  const themes = form.themes.map((theme) => theme.value.trim()).filter(Boolean);
 
   const committee = form.committee.flatMap((member) => {
     const name = member.name.trim();
@@ -333,20 +398,28 @@ function validateAndPrepare(form: FormState) {
       throw new Error("Informe um ano válido para as edições anteriores.");
     }
 
-    const eventId = edition.linkMode === "internal" ? edition.eventId.trim() : "";
-    const externalUrl = edition.linkMode === "external" ? edition.externalUrl.trim() : "";
+    const eventId =
+      edition.linkMode === "internal" ? edition.eventId.trim() : "";
+    const externalUrl =
+      edition.linkMode === "external" ? edition.externalUrl.trim() : "";
 
     if (edition.linkMode === "internal" && !eventId) {
-      throw new Error("Selecione o evento interno da edição anterior ou altere o destino.");
+      throw new Error(
+        "Selecione o evento interno da edição anterior ou altere o destino.",
+      );
     }
 
     if (edition.linkMode === "external") {
       if (!externalUrl) {
-        throw new Error("Informe o link externo da edição anterior ou altere o destino.");
+        throw new Error(
+          "Informe o link externo da edição anterior ou altere o destino.",
+        );
       }
 
       if (!isUsableExternalResourceUrl(externalUrl)) {
-        throw new Error("O link externo da edição anterior precisa ser uma URL http ou https válida.");
+        throw new Error(
+          "O link externo da edição anterior precisa ser uma URL http ou https válida.",
+        );
       }
     }
 
@@ -373,17 +446,25 @@ function validateAndPrepare(form: FormState) {
 
     if (rule.useExternalLink) {
       if (!fileUrl) {
-        throw new Error("Cada norma com link externo precisa de uma URL válida.");
+        throw new Error(
+          "Cada norma com link externo precisa de uma URL válida.",
+        );
       }
       if (!isUsableExternalResourceUrl(fileUrl)) {
-        throw new Error("Os links externos das normas precisam ser URLs http ou https válidas.");
+        throw new Error(
+          "Os links externos das normas precisam ser URLs http ou https válidas.",
+        );
       }
     } else {
       if (!fileUrl && !rule.pendingFile) {
-        throw new Error("Cada norma precisa de um arquivo enviado ou de uma URL válida.");
+        throw new Error(
+          "Cada norma precisa de um arquivo enviado ou de uma URL válida.",
+        );
       }
       if (fileUrl && !isUsableResourceUrl(fileUrl)) {
-        throw new Error("As URLs das normas precisam apontar para recursos válidos.");
+        throw new Error(
+          "As URLs das normas precisam apontar para recursos válidos.",
+        );
       }
     }
 
@@ -412,7 +493,9 @@ function validateAndPrepare(form: FormState) {
 
   const coverUrl = form.coverUrl.trim();
   if (coverUrl && !isUsableResourceUrl(coverUrl)) {
-    throw new Error("A imagem atual do evento precisa apontar para uma URL válida.");
+    throw new Error(
+      "A imagem atual do evento precisa apontar para uma URL válida.",
+    );
   }
 
   if (form.coverFile && !isSupportedCoverImageFile(form.coverFile)) {
@@ -437,10 +520,9 @@ function validateAndPrepare(form: FormState) {
       phone: contactPhone || undefined,
     },
     catalog: {
-      isbn: form.catalogIsbn.trim() || undefined,
+      isbn: catalogIsbn || undefined,
       doi: form.catalogDoi.trim() || undefined,
-      publisher: form.catalogPublisher.trim() || undefined,
-      address: form.catalogAddress.trim() || undefined,
+      text: catalogText || undefined,
     },
   };
 
@@ -482,11 +564,18 @@ function FormAccordionSection({
   children: React.ReactNode;
 }) {
   return (
-    <AccordionItem value={value} className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card">
+    <AccordionItem
+      value={value}
+      className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card"
+    >
       <AccordionTrigger className="bg-brand-soft px-4 py-4 text-left hover:no-underline">
         <div className="flex flex-col gap-1">
           <span className="text-sm font-bold text-brand">{title}</span>
-          {description ? <span className="text-xs font-normal leading-relaxed text-brand/80">{description}</span> : null}
+          {description ? (
+            <span className="text-xs font-normal leading-relaxed text-brand/80">
+              {description}
+            </span>
+          ) : null}
         </div>
       </AccordionTrigger>
       <AccordionContent className="px-4 pb-4 pt-4">
@@ -509,16 +598,23 @@ export default function AdminEventoForm() {
   const { id } = useParams();
   const { isAuthenticated } = useAuth();
   const isEdit = Boolean(id);
-  const { data: existing, isLoading, isError } = useEventQuery(isAuthenticated && id ? id : undefined, "all");
+  const {
+    data: existing,
+    isLoading,
+    isError,
+  } = useEventQuery(isAuthenticated && id ? id : undefined, "all");
   const { data: areas = [] } = useAreasQuery({ includeEmpty: true });
   const { data: adminEvents = [] } = useAdminEventsQuery(isAuthenticated);
   const createEventMutation = useCreateEventMutation();
   const updateEventMutation = useUpdateEventMutation();
   const uploadEventCoverImageMutation = useUploadEventCoverImageMutation();
   const uploadEventRuleFileMutation = useUploadEventRuleFileMutation();
-  const removeUploadedEventRuleFileMutation = useRemoveUploadedEventRuleFileMutation();
+  const removeUploadedEventRuleFileMutation =
+    useRemoveUploadedEventRuleFileMutation();
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [selectedDateRange, setSelectedDateRange] = useState<DateRange | undefined>(undefined);
+  const [selectedDateRange, setSelectedDateRange] = useState<
+    DateRange | undefined
+  >(undefined);
 
   useEffect(() => {
     if (!existing) return;
@@ -532,8 +628,18 @@ export default function AdminEventoForm() {
     uploadEventCoverImageMutation.isPending ||
     uploadEventRuleFileMutation.isPending ||
     removeUploadedEventRuleFileMutation.isPending;
-  const defaultOpenSections = ["identificacao", "contato", "ficha", "temas", "comissao", "normas", "edicoes"];
-  const previousEditionEventOptions = adminEvents.filter((event) => event.id !== id);
+  const defaultOpenSections = [
+    "identificacao",
+    "contato",
+    "ficha",
+    "temas",
+    "comissao",
+    "normas",
+    "edicoes",
+  ];
+  const previousEditionEventOptions = adminEvents.filter(
+    (event) => event.id !== id,
+  );
 
   const handleEventPeriodChange = (range: DateRange | undefined) => {
     setSelectedDateRange(range);
@@ -560,9 +666,13 @@ export default function AdminEventoForm() {
       const prepared = validateAndPrepare(form);
       const primaryPayload = prepared.payload;
 
-      savedEvent = isEdit && id
-        ? await updateEventMutation.mutateAsync({ id, payload: primaryPayload })
-        : await createEventMutation.mutateAsync(primaryPayload);
+      savedEvent =
+        isEdit && id
+          ? await updateEventMutation.mutateAsync({
+              id,
+              payload: primaryPayload,
+            })
+          : await createEventMutation.mutateAsync(primaryPayload);
 
       let uploadedCoverUrl: string | undefined;
       const postSaveIssues: string[] = [];
@@ -595,7 +705,10 @@ export default function AdminEventoForm() {
           }
         }
 
-        const finalRules = buildFinalRules(prepared.preparedRules, uploadedRuleUrls);
+        const finalRules = buildFinalRules(
+          prepared.preparedRules,
+          uploadedRuleUrls,
+        );
         const finalPayload: EventMutationInput = {
           ...primaryPayload,
           coverUrl: uploadedCoverUrl ?? primaryPayload.coverUrl,
@@ -611,7 +724,10 @@ export default function AdminEventoForm() {
         } catch (error) {
           await Promise.allSettled(
             [...uploadedRuleUrls.values()].map((fileUrl) =>
-              removeUploadedEventRuleFileMutation.mutateAsync({ id: savedEventId, fileUrl }),
+              removeUploadedEventRuleFileMutation.mutateAsync({
+                id: savedEventId,
+                fileUrl,
+              }),
             ),
           );
           throw error;
@@ -645,7 +761,10 @@ export default function AdminEventoForm() {
       if (savedEvent) {
         toast({
           title: "Evento salvo parcialmente",
-          description: getApiErrorMessage(error, "Revise os anexos e complete a configuração do evento."),
+          description: getApiErrorMessage(
+            error,
+            "Revise os anexos e complete a configuração do evento.",
+          ),
           variant: "destructive",
         });
         navigate(`/admin/eventos/${savedEvent.id}`);
@@ -679,7 +798,11 @@ export default function AdminEventoForm() {
   return (
     <AdminShell title={isEdit ? "Editar evento" : "Novo evento"}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <Accordion type="multiple" defaultValue={defaultOpenSections} className="flex flex-col gap-4">
+        <Accordion
+          type="multiple"
+          defaultValue={defaultOpenSections}
+          className="flex flex-col gap-4"
+        >
           <FormAccordionSection
             value="identificacao"
             title="Identificação"
@@ -690,7 +813,12 @@ export default function AdminEventoForm() {
               <Input
                 id="event-title"
                 value={form.title}
-                onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    title: event.target.value,
+                  }))
+                }
                 required
               />
             </div>
@@ -701,7 +829,12 @@ export default function AdminEventoForm() {
                 <Input
                   id="event-edition"
                   value={form.edition}
-                  onChange={(event) => setForm((current) => ({ ...current, edition: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      edition: event.target.value,
+                    }))
+                  }
                   placeholder="2ª Edição"
                 />
               </div>
@@ -710,7 +843,12 @@ export default function AdminEventoForm() {
                 <Select
                   name="event-type"
                   value={form.type}
-                  onValueChange={(value) => setForm((current) => ({ ...current, type: value as EventType }))}
+                  onValueChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      type: value as EventType,
+                    }))
+                  }
                 >
                   <SelectTrigger id="event-type">
                     <SelectValue />
@@ -735,7 +873,8 @@ export default function AdminEventoForm() {
                 fallbackLabel={form.date}
               />
               <p className="text-xs text-muted-foreground">
-                Ao escolher o calendário, o sistema salva automaticamente o ano do evento como <strong>{form.year}</strong>.
+                Ao escolher o calendário, o sistema salva automaticamente o ano
+                do evento como <strong>{form.year}</strong>.
               </p>
             </div>
 
@@ -745,12 +884,16 @@ export default function AdminEventoForm() {
                 id="event-area"
                 value={form.area}
                 options={areas.map((area) => area.name)}
-                onValueChange={(area) => setForm((current) => ({ ...current, area }))}
+                onValueChange={(area) =>
+                  setForm((current) => ({ ...current, area }))
+                }
               />
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="text-sm font-medium leading-none">Imagem do evento</div>
+              <div className="text-sm font-medium leading-none">
+                Imagem do evento
+              </div>
               <EventCoverImagePicker
                 currentCoverUrl={form.coverUrl || undefined}
                 disabled={isSubmitting}
@@ -779,7 +922,12 @@ export default function AdminEventoForm() {
                 id="event-presentation"
                 rows={5}
                 value={form.presentation}
-                onChange={(event) => setForm((current) => ({ ...current, presentation: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    presentation: event.target.value,
+                  }))
+                }
                 placeholder="Contextualize o evento, objetivos, público e escopo."
               />
             </div>
@@ -797,7 +945,12 @@ export default function AdminEventoForm() {
                   id="event-contact-email"
                   type="email"
                   value={form.contactEmail}
-                  onChange={(event) => setForm((current) => ({ ...current, contactEmail: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      contactEmail: event.target.value,
+                    }))
+                  }
                   required
                 />
               </div>
@@ -806,7 +959,12 @@ export default function AdminEventoForm() {
                 <Input
                   id="event-contact-phone"
                   value={form.contactPhone}
-                  onChange={(event) => setForm((current) => ({ ...current, contactPhone: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      contactPhone: event.target.value,
+                    }))
+                  }
                   placeholder="(31) 3000-0000"
                 />
               </div>
@@ -816,34 +974,53 @@ export default function AdminEventoForm() {
           <FormAccordionSection
             value="ficha"
             title="Ficha Catalográfica"
-            description="Metadados institucionais exibidos na página pública."
+            description="Cole a ficha completa. O ISBN será identificado automaticamente quando estiver presente no texto."
           >
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="event-catalog-isbn">ISBN</Label>
-                <Input
-                  id="event-catalog-isbn"
-                  value={form.catalogIsbn}
-                  onChange={(event) => setForm((current) => ({ ...current, catalogIsbn: event.target.value }))}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="event-catalog-publisher">Editora</Label>
-                <Input
-                  id="event-catalog-publisher"
-                  value={form.catalogPublisher}
-                  onChange={(event) => setForm((current) => ({ ...current, catalogPublisher: event.target.value }))}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="event-catalog-address">Endereço</Label>
-                <Input
-                  id="event-catalog-address"
-                  value={form.catalogAddress}
-                  onChange={(event) => setForm((current) => ({ ...current, catalogAddress: event.target.value }))}
-                />
-              </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="event-catalog-text">Ficha catalográfica</Label>
+              <Textarea
+                id="event-catalog-text"
+                rows={16}
+                wrap="off"
+                spellCheck={false}
+                className="min-h-80 overflow-x-auto font-mono text-[13px] leading-relaxed tab-2"
+                value={form.catalogText}
+                onChange={(event) => {
+                  const catalogText = event.target.value;
+
+                  setForm((current) => ({
+                    ...current,
+                    catalogText,
+                    catalogIsbn: extractIsbnFromCatalogText(catalogText),
+                  }));
+                }}
+                placeholder={`Cole aqui a ficha catalográfica completa.
+
+Ex.:
+Dados Internacionais de Catalogação na Publicação (CIP)
+(Câmara Brasileira do Livro, SP, Brasil)
+
+ExpoUna2025/2 [livro eletrônico] / organização...
+ISBN 978-65-02-14535-7
+...`}
+              />
+
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                O texto será exibido como ficha catalográfica na página pública.
+                O ISBN será salvo separadamente para uso nos cards e no
+                cabeçalho do evento.
+              </p>
             </div>
+
+            {form.catalogIsbn ? (
+              <div className="rounded-md border border-border/60 bg-brand-soft px-3 py-2 text-xs text-primary-dark">
+                ISBN detectado: <strong>{form.catalogIsbn}</strong>
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                Nenhum ISBN detectado no texto até o momento.
+              </div>
+            )}
           </FormAccordionSection>
 
           <FormAccordionSection
@@ -861,7 +1038,9 @@ export default function AdminEventoForm() {
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
-                        themes: replaceItemByKey(current.themes, theme.key, { value: event.target.value }),
+                        themes: replaceItemByKey(current.themes, theme.key, {
+                          value: event.target.value,
+                        }),
                       }))
                     }
                     placeholder={`Área Temática ${index + 1}`}
@@ -892,7 +1071,12 @@ export default function AdminEventoForm() {
               type="button"
               variant="outline"
               className="w-full gap-2"
-              onClick={() => setForm((current) => ({ ...current, themes: [...current.themes, createThemeItem()] }))}
+              onClick={() =>
+                setForm((current) => ({
+                  ...current,
+                  themes: [...current.themes, createThemeItem()],
+                }))
+              }
             >
               <Plus className="h-4 w-4" /> Adicionar área temática
             </Button>
@@ -908,32 +1092,46 @@ export default function AdminEventoForm() {
                 <Card key={member.key} className="border-border/60 p-3">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_180px_auto]">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor={`event-committee-name-${member.key}`}>Nome</Label>
+                      <Label htmlFor={`event-committee-name-${member.key}`}>
+                        Nome
+                      </Label>
                       <Input
                         id={`event-committee-name-${member.key}`}
                         value={member.name}
                         onChange={(event) =>
                           setForm((current) => ({
                             ...current,
-                            committee: replaceItemByKey(current.committee, member.key, { name: event.target.value }),
+                            committee: replaceItemByKey(
+                              current.committee,
+                              member.key,
+                              { name: event.target.value },
+                            ),
                           }))
                         }
                         placeholder="Profa. Dra. Roberta Manfron"
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor={`event-committee-role-${member.key}`}>Tipo</Label>
+                      <Label htmlFor={`event-committee-role-${member.key}`}>
+                        Tipo
+                      </Label>
                       <Select
                         name={`event-committee-role-${member.key}`}
                         value={normalizeCommitteeType(member.role)}
                         onValueChange={(value) =>
                           setForm((current) => ({
                             ...current,
-                            committee: replaceItemByKey(current.committee, member.key, { role: value }),
+                            committee: replaceItemByKey(
+                              current.committee,
+                              member.key,
+                              { role: value },
+                            ),
                           }))
                         }
                       >
-                        <SelectTrigger id={`event-committee-role-${member.key}`}>
+                        <SelectTrigger
+                          id={`event-committee-role-${member.key}`}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -990,21 +1188,27 @@ export default function AdminEventoForm() {
             title="Normas"
             description="Cadastre título e arquivo PDF, DOCX ou PPTX de cada norma publicada no evento."
           >
-            {form.rules.length === 0 ? <EmptyHint>Nenhuma norma cadastrada.</EmptyHint> : null}
+            {form.rules.length === 0 ? (
+              <EmptyHint>Nenhuma norma cadastrada.</EmptyHint>
+            ) : null}
             <div className="flex flex-col gap-3">
               {form.rules.map((rule, index) => (
                 <Card key={rule.key} className="border-border/60 p-3">
                   <div className="flex flex-col gap-3">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
                       <div className="flex flex-col gap-2">
-                        <Label htmlFor={`event-rule-title-${rule.key}`}>Título da norma</Label>
+                        <Label htmlFor={`event-rule-title-${rule.key}`}>
+                          Título da norma
+                        </Label>
                         <Input
                           id={`event-rule-title-${rule.key}`}
                           value={rule.title}
                           onChange={(event) =>
                             setForm((current) => ({
                               ...current,
-                              rules: replaceItemByKey(current.rules, rule.key, { title: event.target.value }),
+                              rules: replaceItemByKey(current.rules, rule.key, {
+                                title: event.target.value,
+                              }),
                             }))
                           }
                           placeholder="Normas de submissão"
@@ -1034,8 +1238,9 @@ export default function AdminEventoForm() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 rounded-xl bg-brand-soft px-3 py-2 text-xs text-primary-dark">
-                      <FileText className="h-4 w-4" />
-                      O fluxo principal é submeter o arquivo no Acervo. Use link externo somente quando ele já estiver hospedado fora.
+                      <FileText className="h-4 w-4" />O fluxo principal é
+                      submeter o arquivo no Acervo. Use link externo somente
+                      quando ele já estiver hospedado fora.
                     </div>
 
                     <SegmentedControl
@@ -1045,7 +1250,11 @@ export default function AdminEventoForm() {
                       onValueChange={(mode) =>
                         setForm((current) => ({
                           ...current,
-                          rules: replaceItemByKey(current.rules, rule.key, setRuleFileMode(rule, mode)),
+                          rules: replaceItemByKey(
+                            current.rules,
+                            rule.key,
+                            setRuleFileMode(rule, mode),
+                          ),
                         }))
                       }
                       options={[
@@ -1061,7 +1270,8 @@ export default function AdminEventoForm() {
                           value: "external",
                           label: (
                             <>
-                              <ExternalLink className="h-4 w-4" /> Usar link externo
+                              <ExternalLink className="h-4 w-4" /> Usar link
+                              externo
                             </>
                           ),
                         },
@@ -1070,14 +1280,18 @@ export default function AdminEventoForm() {
 
                     {rule.useExternalLink ? (
                       <div className="flex flex-col gap-2">
-                        <Label htmlFor={`event-rule-external-url-${rule.key}`}>Link externo do arquivo</Label>
+                        <Label htmlFor={`event-rule-external-url-${rule.key}`}>
+                          Link externo do arquivo
+                        </Label>
                         <Input
                           id={`event-rule-external-url-${rule.key}`}
                           value={rule.fileUrl}
                           onChange={(event) =>
                             setForm((current) => ({
                               ...current,
-                              rules: replaceItemByKey(current.rules, rule.key, { fileUrl: event.target.value }),
+                              rules: replaceItemByKey(current.rules, rule.key, {
+                                fileUrl: event.target.value,
+                              }),
                             }))
                           }
                           placeholder="https://..."
@@ -1085,7 +1299,9 @@ export default function AdminEventoForm() {
                         {rule.fileUrl && isUsableResourceUrl(rule.fileUrl) ? (
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                             <FileText className="h-4 w-4" />
-                            <span className="truncate">Link externo pronto para uso.</span>
+                            <span className="truncate">
+                              Link externo pronto para uso.
+                            </span>
                             <a
                               href={rule.fileUrl}
                               target="_blank"
@@ -1099,11 +1315,15 @@ export default function AdminEventoForm() {
                       </div>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        <div className="text-sm font-medium leading-none">Arquivo da norma</div>
+                        <div className="text-sm font-medium leading-none">
+                          Arquivo da norma
+                        </div>
                         <DocumentFilePicker
                           accept={eventRuleDocumentAccept}
                           title={
-                            rule.fileUrl ? "Selecionar novo arquivo da norma" : "Selecionar arquivo da norma"
+                            rule.fileUrl
+                              ? "Selecionar novo arquivo da norma"
+                              : "Selecionar arquivo da norma"
                           }
                           description="Envie um arquivo .pdf, .docx ou .pptx para publicar com o evento."
                           selectedFile={rule.pendingFile}
@@ -1112,7 +1332,8 @@ export default function AdminEventoForm() {
                             if (file && !isSupportedEventRuleDocument(file)) {
                               toast({
                                 title: "Arquivo não suportado",
-                                description: "Selecione um arquivo PDF, DOCX ou PPTX.",
+                                description:
+                                  "Selecione um arquivo PDF, DOCX ou PPTX.",
                                 variant: "destructive",
                               });
                               return;
@@ -1124,7 +1345,9 @@ export default function AdminEventoForm() {
                                 pendingFile: file,
                                 title:
                                   file && !rule.title.trim()
-                                    ? removeEventRuleDocumentExtension(file.name)
+                                    ? removeEventRuleDocumentExtension(
+                                        file.name,
+                                      )
                                     : rule.title,
                               }),
                             }));
@@ -1134,14 +1357,19 @@ export default function AdminEventoForm() {
                           onRemove={() =>
                             setForm((current) => ({
                               ...current,
-                              rules: replaceItemByKey(current.rules, rule.key, { pendingFile: null }),
+                              rules: replaceItemByKey(current.rules, rule.key, {
+                                pendingFile: null,
+                              }),
                             }))
                           }
                         />
-                        {rule.fileUrl && isStoredEventRuleFileUrl(rule.fileUrl) ? (
+                        {rule.fileUrl &&
+                        isStoredEventRuleFileUrl(rule.fileUrl) ? (
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                             <FileText className="h-4 w-4" />
-                            <span className="truncate">Arquivo atual vinculado.</span>
+                            <span className="truncate">
+                              Arquivo atual vinculado.
+                            </span>
                             {isUsableResourceUrl(rule.fileUrl) ? (
                               <a
                                 href={rule.fileUrl}
@@ -1164,7 +1392,12 @@ export default function AdminEventoForm() {
               type="button"
               variant="outline"
               className="w-full gap-2"
-              onClick={() => setForm((current) => ({ ...current, rules: [...current.rules, createRuleItem()] }))}
+              onClick={() =>
+                setForm((current) => ({
+                  ...current,
+                  rules: [...current.rules, createRuleItem()],
+                }))
+              }
             >
               <Plus className="h-4 w-4" /> Adicionar norma
             </Button>
@@ -1175,29 +1408,43 @@ export default function AdminEventoForm() {
             title="Edições anteriores"
             description="Histórico exibido na seção pública do evento."
           >
-            {form.previousEditions.length === 0 ? <EmptyHint>Esta pode ser a primeira edição.</EmptyHint> : null}
+            {form.previousEditions.length === 0 ? (
+              <EmptyHint>Esta pode ser a primeira edição.</EmptyHint>
+            ) : null}
             <div className="flex flex-col gap-3">
               {form.previousEditions.map((edition, index) => (
                 <Card key={edition.key} className="border-border/60 p-3">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_160px_auto]">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor={`event-previous-edition-label-${edition.key}`}>Nome</Label>
+                      <Label
+                        htmlFor={`event-previous-edition-label-${edition.key}`}
+                      >
+                        Nome
+                      </Label>
                       <Input
                         id={`event-previous-edition-label-${edition.key}`}
                         value={edition.label}
                         onChange={(event) =>
                           setForm((current) => ({
                             ...current,
-                            previousEditions: replaceItemByKey(current.previousEditions, edition.key, {
-                              label: event.target.value,
-                            }),
+                            previousEditions: replaceItemByKey(
+                              current.previousEditions,
+                              edition.key,
+                              {
+                                label: event.target.value,
+                              },
+                            ),
                           }))
                         }
                         placeholder="I Congresso Multidisciplinar"
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor={`event-previous-edition-year-${edition.key}`}>Ano</Label>
+                      <Label
+                        htmlFor={`event-previous-edition-year-${edition.key}`}
+                      >
+                        Ano
+                      </Label>
                       <Input
                         id={`event-previous-edition-year-${edition.key}`}
                         type="number"
@@ -1205,9 +1452,13 @@ export default function AdminEventoForm() {
                         onChange={(event) =>
                           setForm((current) => ({
                             ...current,
-                            previousEditions: replaceItemByKey(current.previousEditions, edition.key, {
-                              year: event.target.value,
-                            }),
+                            previousEditions: replaceItemByKey(
+                              current.previousEditions,
+                              edition.key,
+                              {
+                                year: event.target.value,
+                              },
+                            ),
                           }))
                         }
                       />
@@ -1223,7 +1474,10 @@ export default function AdminEventoForm() {
                         onClick={() =>
                           setForm((current) => ({
                             ...current,
-                            previousEditions: removeItemByKey(current.previousEditions, edition.key),
+                            previousEditions: removeItemByKey(
+                              current.previousEditions,
+                              edition.key,
+                            ),
                           }))
                         }
                       >
@@ -1233,27 +1487,44 @@ export default function AdminEventoForm() {
                   </div>
                   <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[180px_1fr]">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor={`event-previous-edition-link-mode-${edition.key}`}>Destino da seta</Label>
+                      <Label
+                        htmlFor={`event-previous-edition-link-mode-${edition.key}`}
+                      >
+                        Destino da seta
+                      </Label>
                       <Select
                         name={`event-previous-edition-link-mode-${edition.key}`}
                         value={edition.linkMode}
                         onValueChange={(value) =>
                           setForm((current) => ({
                             ...current,
-                            previousEditions: replaceItemByKey(current.previousEditions, edition.key, {
-                              linkMode: value as PreviousEditionFormItem["linkMode"],
-                              eventId: value === "internal" ? edition.eventId : "",
-                              externalUrl: value === "external" ? edition.externalUrl : "",
-                            }),
+                            previousEditions: replaceItemByKey(
+                              current.previousEditions,
+                              edition.key,
+                              {
+                                linkMode:
+                                  value as PreviousEditionFormItem["linkMode"],
+                                eventId:
+                                  value === "internal" ? edition.eventId : "",
+                                externalUrl:
+                                  value === "external"
+                                    ? edition.externalUrl
+                                    : "",
+                              },
+                            ),
                           }))
                         }
                       >
-                        <SelectTrigger id={`event-previous-edition-link-mode-${edition.key}`}>
+                        <SelectTrigger
+                          id={`event-previous-edition-link-mode-${edition.key}`}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Sem link</SelectItem>
-                          <SelectItem value="internal">Evento no Acervo</SelectItem>
+                          <SelectItem value="internal">
+                            Evento no Acervo
+                          </SelectItem>
                           <SelectItem value="external">Link externo</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1261,25 +1532,45 @@ export default function AdminEventoForm() {
 
                     {edition.linkMode === "internal" ? (
                       <div className="flex flex-col gap-2">
-                        <Label htmlFor={`event-previous-edition-event-${edition.key}`}>Evento vinculado</Label>
+                        <Label
+                          htmlFor={`event-previous-edition-event-${edition.key}`}
+                        >
+                          Evento vinculado
+                        </Label>
                         {previousEditionEventOptions.length ? (
                           <Select
                             name={`event-previous-edition-event-${edition.key}`}
                             value={edition.eventId || undefined}
                             onValueChange={(eventId) => {
-                              const selectedEvent = previousEditionEventOptions.find((event) => event.id === eventId);
+                              const selectedEvent =
+                                previousEditionEventOptions.find(
+                                  (event) => event.id === eventId,
+                                );
 
                               setForm((current) => ({
                                 ...current,
-                                previousEditions: replaceItemByKey(current.previousEditions, edition.key, {
-                                  eventId,
-                                  label: edition.label || selectedEvent?.title || "",
-                                  year: edition.year || (selectedEvent ? String(selectedEvent.year) : ""),
-                                }),
+                                previousEditions: replaceItemByKey(
+                                  current.previousEditions,
+                                  edition.key,
+                                  {
+                                    eventId,
+                                    label:
+                                      edition.label ||
+                                      selectedEvent?.title ||
+                                      "",
+                                    year:
+                                      edition.year ||
+                                      (selectedEvent
+                                        ? String(selectedEvent.year)
+                                        : ""),
+                                  },
+                                ),
                               }));
                             }}
                           >
-                            <SelectTrigger id={`event-previous-edition-event-${edition.key}`}>
+                            <SelectTrigger
+                              id={`event-previous-edition-event-${edition.key}`}
+                            >
                               <SelectValue placeholder="Selecione o evento da edição" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1291,23 +1582,33 @@ export default function AdminEventoForm() {
                             </SelectContent>
                           </Select>
                         ) : (
-                          <EmptyHint>Nenhum outro evento cadastrado no Acervo.</EmptyHint>
+                          <EmptyHint>
+                            Nenhum outro evento cadastrado no Acervo.
+                          </EmptyHint>
                         )}
                       </div>
                     ) : null}
 
                     {edition.linkMode === "external" ? (
                       <div className="flex flex-col gap-2">
-                        <Label htmlFor={`event-previous-edition-external-url-${edition.key}`}>Link externo da edição</Label>
+                        <Label
+                          htmlFor={`event-previous-edition-external-url-${edition.key}`}
+                        >
+                          Link externo da edição
+                        </Label>
                         <Input
                           id={`event-previous-edition-external-url-${edition.key}`}
                           value={edition.externalUrl}
                           onChange={(event) =>
                             setForm((current) => ({
                               ...current,
-                              previousEditions: replaceItemByKey(current.previousEditions, edition.key, {
-                                externalUrl: event.target.value,
-                              }),
+                              previousEditions: replaceItemByKey(
+                                current.previousEditions,
+                                edition.key,
+                                {
+                                  externalUrl: event.target.value,
+                                },
+                              ),
                             }))
                           }
                           placeholder="https://..."
@@ -1325,7 +1626,10 @@ export default function AdminEventoForm() {
               onClick={() =>
                 setForm((current) => ({
                   ...current,
-                  previousEditions: [...current.previousEditions, createPreviousEditionItem()],
+                  previousEditions: [
+                    ...current.previousEditions,
+                    createPreviousEditionItem(),
+                  ],
                 }))
               }
             >
@@ -1338,9 +1642,16 @@ export default function AdminEventoForm() {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className={cn("w-full gap-2 bg-brand text-primary-foreground hover:opacity-90", isSubmitting && "opacity-80")}
+            className={cn(
+              "w-full gap-2 bg-brand text-primary-foreground hover:opacity-90",
+              isSubmitting && "opacity-80",
+            )}
           >
-            {isSubmitting ? <Upload className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />}
+            {isSubmitting ? (
+              <Upload className="h-4 w-4 animate-pulse" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             {isSubmitting ? "Salvando evento..." : "Salvar evento completo"}
           </Button>
         </div>

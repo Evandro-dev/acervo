@@ -4,6 +4,7 @@ import {
   deleteArticle,
   deleteEvent,
   extractArticlePdfMetadata,
+  extractCatalogPdfMetadata,
   fetchArticle,
   fetchArticles,
   fetchAreas,
@@ -293,5 +294,11 @@ export function useTrackEventViewMutation() {
   return useMutation({
     mutationFn: (id: string) => trackEventView(id),
     onSuccess: invalidate,
+  });
+}
+
+export function useExtractCatalogPdfMetadataMutation() {
+  return useMutation({
+    mutationFn: ({ file }: { file: File }) => extractCatalogPdfMetadata(file),
   });
 }

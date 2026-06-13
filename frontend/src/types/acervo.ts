@@ -85,8 +85,7 @@ export type EventContact = {
 export type EventCatalog = {
   isbn?: string;
   doi?: string;
-  publisher?: string;
-  address?: string;
+  text?: string;
 };
 
 export type Event = {

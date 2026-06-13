@@ -160,8 +160,7 @@ model Event {
   contactPhone     String?   @map("contact_phone")
   isbn             String?
   doi              String?
-  publisher        String?
-  address          String?
+  catalogText      String?   @map("catalog_text")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
   articles         Article[]

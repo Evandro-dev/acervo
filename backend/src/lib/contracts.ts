@@ -35,10 +35,9 @@ export const eventPreviousEditionSchema = z.object({
 export const eventPreviousEditionsSchema = z.array(eventPreviousEditionSchema);
 
 export const eventCatalogSchema = z.object({
-  isbn: z.string().max(80).optional(),
-  doi: z.string().max(120).optional(),
-  publisher: z.string().max(160).optional(),
-  address: z.string().max(240).optional(),
+  isbn: z.string().trim().max(80).optional(),
+  doi: z.string().trim().max(120).optional(),
+  text: z.string().trim().max(10000).optional(),
 });
 
 export const eventContactSchema = z.object({

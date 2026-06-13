@@ -74,8 +74,7 @@ type EventShape = {
   contactPhone: string | null;
   isbn: string | null;
   doi: string | null;
-  publisher: string | null;
-  address: string | null;
+  catalogText: string | null;
   articles?: ArticleShape[];
   _count?: { articles: number };
 };
@@ -187,8 +186,7 @@ export function serializeEvent(event: EventShape, options?: { includeArticles?: 
     catalog: {
       isbn: event.isbn ?? "—",
       doi: event.doi ?? "—",
-      publisher: event.publisher ?? "—",
-      address: event.address ?? "—",
+      text: event.catalogText ?? "",
     },
     rules: parseStoredEventRules(event.rules),
     previousEditions: safeParse(eventPreviousEditionsSchema, event.previousEditions ?? [], []),

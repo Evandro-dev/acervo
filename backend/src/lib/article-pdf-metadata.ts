@@ -2,4 +2,5 @@ export type { ExtractedArticlePdfMetadata } from "./article-pdf-metadata/types.j
 export {
   extractArticlePdfMetadata,
   extractArticlePdfMetadataAnalysis,
+  extractCatalogPdfLayoutMetadata,
 } from "./article-pdf-metadata/service.js";

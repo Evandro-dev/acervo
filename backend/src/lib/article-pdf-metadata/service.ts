@@ -1,6 +1,7 @@
 import { extractAbstract, extractAbstractFromBody } from "./sections.js";
 import { extractAuthors, extractEmails, findAuthorLines, selectTitle, sliceHeaderLines } from "./header.js";
 import { extractPdfLines } from "./line-extractor.js";
+import { extractCatalogLayoutFromPdf } from "./catalog-layout-extractor.js";
 import type { ExtractedArticlePdfMetadata, ExtractedLine } from "./types.js";
 import { normalizeWhitespace } from "./text.js";
 
@@ -60,4 +61,15 @@ export async function extractArticlePdfMetadataAnalysis(data: Uint8Array): Promi
 
 export async function extractArticlePdfMetadata(data: Uint8Array): Promise<ExtractedArticlePdfMetadata> {
   return (await extractArticlePdfMetadataAnalysis(data)).metadata;
+}
+
+export async function extractCatalogPdfLayoutMetadata(data: Uint8Array) {
+  const result = await extractCatalogLayoutFromPdf(data);
+
+  return {
+    text: result.text,
+    isbn: result.isbn,
+    pageCount: result.pageCount,
+    warnings: result.warnings,
+  };
 }

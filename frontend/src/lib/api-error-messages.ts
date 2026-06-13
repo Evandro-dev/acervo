@@ -34,8 +34,7 @@ const apiFieldLabels: Record<string, string> = {
   catalog: "Ficha catalográfica",
   "catalog.isbn": "Ficha catalográfica > ISBN",
   "catalog.doi": "Ficha catalográfica > DOI",
-  "catalog.publisher": "Ficha catalográfica > Editora",
-  "catalog.address": "Ficha catalográfica > Endereço",
+  "catalog.text": "Ficha catalográfica > Texto",
 };
 
 function getApiFieldLabel(path?: string) {
