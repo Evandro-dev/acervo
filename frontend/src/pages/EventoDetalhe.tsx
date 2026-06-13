@@ -327,12 +327,6 @@ export default function EventoDetalhe() {
                   </AccordionTrigger>
                   <AccordionContent>
                     <Card className="border-border/60 p-4 shadow-card">
-                      {catalogIsbn && catalogIsbn !== "—" ? (
-                        <dl className="mb-3 space-y-2 text-sm">
-                          <Field label="ISBN" value={catalogIsbn} />
-                        </dl>
-                      ) : null}
-
                       {catalogText ? (
                         <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
                           {catalogText}
@@ -456,17 +450,6 @@ export default function EventoDetalhe() {
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return <h2 className="mb-3 text-base font-bold text-brand">{children}</h2>;
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="col-span-2 text-sm">{value}</dd>
-    </div>
-  );
 }
 
 function PreviousEditionCard({ edition }: { edition: EventPreviousEdition }) {

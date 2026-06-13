@@ -10,6 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import { DocumentFilePicker } from "@/components/admin/DocumentFilePicker";
+import { PdfFilePicker } from "@/components/admin/PdfFilePicker";
 import { EventCoverImagePicker } from "@/components/admin/EventCoverImagePicker";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AreaCombobox } from "@/components/ui/area-combobox";
@@ -39,6 +40,7 @@ import {
   useAdminEventsQuery,
   useCreateEventMutation,
   useEventQuery,
+  useExtractCatalogPdfMetadataMutation,
   useRemoveUploadedEventRuleFileMutation,
   useUpdateEventMutation,
   useUploadEventCoverImageMutation,
@@ -128,6 +130,7 @@ type PreparedRuleRow = {
 };
 
 type RuleFileMode = "upload" | "external";
+type CatalogInputMode = "manual" | "pdf";
 
 let keySequence = 0;
 
@@ -179,6 +182,10 @@ function isSupportedCoverImageFile(file: File) {
     supportedTypes.includes(file.type) ||
     supportedExtensions.some((extension) => fileName.endsWith(extension))
   );
+}
+
+function isCatalogPdfFile(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 }
 
 function isValidEmail(value: string) {
@@ -607,11 +614,17 @@ export default function AdminEventoForm() {
   const { data: adminEvents = [] } = useAdminEventsQuery(isAuthenticated);
   const createEventMutation = useCreateEventMutation();
   const updateEventMutation = useUpdateEventMutation();
+  const extractCatalogPdfMetadataMutation =
+    useExtractCatalogPdfMetadataMutation();
   const uploadEventCoverImageMutation = useUploadEventCoverImageMutation();
   const uploadEventRuleFileMutation = useUploadEventRuleFileMutation();
   const removeUploadedEventRuleFileMutation =
     useRemoveUploadedEventRuleFileMutation();
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [catalogInputMode, setCatalogInputMode] =
+    useState<CatalogInputMode>("manual");
+  const [catalogPdfFile, setCatalogPdfFile] = useState<File | null>(null);
+  const [hasCatalogPdfResult, setHasCatalogPdfResult] = useState(false);
   const [selectedDateRange, setSelectedDateRange] = useState<
     DateRange | undefined
   >(undefined);
@@ -619,15 +632,21 @@ export default function AdminEventoForm() {
   useEffect(() => {
     if (!existing) return;
     setForm(mapEventToForm(existing));
+    setCatalogPdfFile(null);
+    setHasCatalogPdfResult(false);
     setSelectedDateRange(undefined);
   }, [existing]);
 
+  const isReadingCatalogPdf = extractCatalogPdfMetadataMutation.isPending;
   const isSubmitting =
     createEventMutation.isPending ||
     updateEventMutation.isPending ||
     uploadEventCoverImageMutation.isPending ||
     uploadEventRuleFileMutation.isPending ||
     removeUploadedEventRuleFileMutation.isPending;
+  const isSaveDisabled = isSubmitting || isReadingCatalogPdf;
+  const shouldShowCatalogTextField =
+    catalogInputMode === "manual" || hasCatalogPdfResult;
   const defaultOpenSections = [
     "identificacao",
     "contato",
@@ -655,6 +674,60 @@ export default function AdminEventoForm() {
       year: from.getFullYear(),
       date: formatDateRangeLabel({ from, to: range?.to }),
     }));
+  };
+
+  const handleCatalogPdfFilesChange = async (files: File[]) => {
+    const file = files[0] ?? null;
+
+    if (!file) return;
+
+    if (!isCatalogPdfFile(file)) {
+      setHasCatalogPdfResult(false);
+      setCatalogPdfFile(null);
+      toast({
+        title: "Arquivo inválido",
+        description: "Selecione um arquivo PDF da ficha catalográfica.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setHasCatalogPdfResult(false);
+    setCatalogPdfFile(file);
+
+    try {
+      const result = await extractCatalogPdfMetadataMutation.mutateAsync({
+        file,
+      });
+
+      const catalogText = result.text;
+      const catalogIsbn =
+        result.isbn ?? extractIsbnFromCatalogText(catalogText);
+
+      setForm((current) => ({
+        ...current,
+        catalogText: catalogText || current.catalogText,
+        catalogIsbn: catalogIsbn || current.catalogIsbn,
+      }));
+
+      setHasCatalogPdfResult(true);
+
+      toast({
+        title: catalogText ? "Ficha lida do PDF" : "PDF processado",
+        description: result.warnings.length
+          ? result.warnings.join(" ")
+          : `Texto extraído de ${result.pageCount} página(s).`,
+        variant: catalogText ? "default" : "destructive",
+      });
+    } catch (error) {
+      setHasCatalogPdfResult(false);
+
+      toast({
+        title: "Falha ao ler PDF da ficha",
+        description: getApiErrorMessage(error),
+        variant: "destructive",
+      });
+    }
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -974,27 +1047,92 @@ export default function AdminEventoForm() {
           <FormAccordionSection
             value="ficha"
             title="Ficha Catalográfica"
-            description="Cole a ficha completa. O ISBN será identificado automaticamente quando estiver presente no texto."
+            description="Cole manualmente a ficha completa ou leia o texto a partir de um PDF."
           >
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="event-catalog-text">Ficha catalográfica</Label>
-              <Textarea
-                id="event-catalog-text"
-                rows={16}
-                wrap="off"
-                spellCheck={false}
-                className="min-h-80 overflow-x-auto font-mono text-[13px] leading-relaxed tab-2"
-                value={form.catalogText}
-                onChange={(event) => {
-                  const catalogText = event.target.value;
+            <SegmentedControl
+              ariaLabel="Origem da ficha catalográfica"
+              className="grid-cols-2"
+              value={catalogInputMode}
+              onValueChange={(mode) =>
+                setCatalogInputMode(mode as CatalogInputMode)
+              }
+              options={[
+                {
+                  value: "manual",
+                  label: (
+                    <>
+                      <FileText className="h-4 w-4" /> Manual
+                    </>
+                  ),
+                },
+                {
+                  value: "pdf",
+                  label: (
+                    <>
+                      <Upload className="h-4 w-4" /> PDF
+                    </>
+                  ),
+                },
+              ]}
+            />
 
-                  setForm((current) => ({
-                    ...current,
-                    catalogText,
-                    catalogIsbn: extractIsbnFromCatalogText(catalogText),
-                  }));
-                }}
-                placeholder={`Cole aqui a ficha catalográfica completa.
+            {catalogInputMode === "pdf" ? (
+              <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3">
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">
+                      Ler ficha a partir de PDF
+                    </div>
+                    <div className="text-xs leading-relaxed text-muted-foreground">
+                      Envie o PDF da ficha para preencher automaticamente o
+                      texto e detectar o ISBN. Revise o resultado antes de
+                      salvar o evento.
+                    </div>
+                  </div>
+
+                  <PdfFilePicker
+                    title="Selecionar PDF da ficha"
+                    description="Envie o PDF da ficha catalográfica para preencher o texto automaticamente."
+                    disabled={isReadingCatalogPdf}
+                    selectedFile={catalogPdfFile}
+                    onFilesChange={handleCatalogPdfFilesChange}
+                    onRemove={() => {
+                      setCatalogPdfFile(null);
+                      setHasCatalogPdfResult(false);
+                    }}
+                  />
+
+                  {isReadingCatalogPdf ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Upload className="h-3.5 w-3.5 animate-pulse" />
+                      Lendo PDF da ficha catalográfica...
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {shouldShowCatalogTextField ? (
+              <>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="event-catalog-text">Ficha catalográfica</Label>
+                  <Textarea
+                    id="event-catalog-text"
+                    rows={16}
+                    wrap="off"
+                    spellCheck={false}
+                    className="min-h-80 overflow-x-auto font-mono text-[13px] leading-relaxed tab-2"
+                    value={form.catalogText}
+                    onChange={(event) => {
+                      const catalogText = event.target.value;
+
+                      setForm((current) => ({
+                        ...current,
+                        catalogText,
+                        catalogIsbn: extractIsbnFromCatalogText(catalogText),
+                      }));
+                    }}
+                    placeholder={`Cole aqui a ficha catalográfica completa.
 
 Ex.:
 Dados Internacionais de Catalogação na Publicação (CIP)
@@ -1003,24 +1141,20 @@ Dados Internacionais de Catalogação na Publicação (CIP)
 ExpoUna2025/2 [livro eletrônico] / organização...
 ISBN 978-65-02-14535-7
 ...`}
-              />
+                  />
+                </div>
 
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                O texto será exibido como ficha catalográfica na página pública.
-                O ISBN será salvo separadamente para uso nos cards e no
-                cabeçalho do evento.
-              </p>
-            </div>
-
-            {form.catalogIsbn ? (
-              <div className="rounded-md border border-border/60 bg-brand-soft px-3 py-2 text-xs text-primary-dark">
-                ISBN detectado: <strong>{form.catalogIsbn}</strong>
-              </div>
-            ) : (
-              <div className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-                Nenhum ISBN detectado no texto até o momento.
-              </div>
-            )}
+                {form.catalogIsbn ? (
+                  <div className="rounded-md border border-border/60 bg-brand-soft px-3 py-2 text-xs text-primary-dark">
+                    ISBN detectado: <strong>{form.catalogIsbn}</strong>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                    Nenhum ISBN detectado no texto até o momento.
+                  </div>
+                )}
+              </>
+            ) : null}
           </FormAccordionSection>
 
           <FormAccordionSection
@@ -1641,18 +1775,22 @@ ISBN 978-65-02-14535-7
         <div className="sticky bottom-0 z-20 rounded-xl border border-border/60 bg-background/95 p-3 shadow-card backdrop-blur">
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSaveDisabled}
             className={cn(
               "w-full gap-2 bg-brand text-primary-foreground hover:opacity-90",
-              isSubmitting && "opacity-80",
+              isSaveDisabled && "opacity-80",
             )}
           >
-            {isSubmitting ? (
+            {isSaveDisabled ? (
               <Upload className="h-4 w-4 animate-pulse" />
             ) : (
               <Save className="h-4 w-4" />
             )}
-            {isSubmitting ? "Salvando evento..." : "Salvar evento completo"}
+            {isSubmitting
+              ? "Salvando evento..."
+              : isReadingCatalogPdf
+                ? "Lendo ficha catalográfica..."
+                : "Salvar evento completo"}
           </Button>
         </div>
       </form>
