@@ -465,6 +465,60 @@ export async function eventRoutes(app: FastifyInstance) {
     );
   });
 
+  app.get("/:id/catalog/files/:fileName", async (req, reply) => {
+    const { id, fileName } = req.params as { id: string; fileName: string };
+    const decodedFileName = decodeRouteFileName(fileName);
+
+    if (
+      !isSafeStorageResourceId(id) ||
+      !decodedFileName ||
+      !isSafeEventCatalogFileName(decodedFileName)
+    ) {
+      return reply.status(400).send({ error: "Nome de arquivo inválido" });
+    }
+
+    if (!(await eventCatalogFileExists(id, decodedFileName))) {
+      return reply.status(404).send({ error: "Arquivo não encontrado" });
+    }
+
+    const contentType = getEventCatalogContentType(decodedFileName);
+    const fileSize = await getEventCatalogFileSize(id, decodedFileName);
+    const byteRange = parseByteRange(req.headers.range, fileSize);
+
+    reply.header("Content-Type", contentType);
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("Cache-Control", "public, max-age=31536000, immutable");
+    reply.header("Content-Disposition", buildInlineContentDisposition(decodedFileName));
+
+    if (contentType === "application/pdf") {
+      reply.header("Accept-Ranges", "bytes");
+    }
+
+    if (byteRange === "invalid") {
+      return reply
+        .status(416)
+        .header("Content-Range", `bytes */${fileSize}`)
+        .send();
+    }
+
+    if (byteRange) {
+      const contentLength = byteRange.end - byteRange.start + 1;
+
+      return reply
+        .status(206)
+        .header(
+          "Content-Range",
+          `bytes ${byteRange.start}-${byteRange.end}/${fileSize}`,
+        )
+        .header("Content-Length", String(contentLength))
+        .send(createEventCatalogReadStream(id, decodedFileName, byteRange));
+    }
+
+    reply.header("Content-Length", String(fileSize));
+
+    return reply.send(createEventCatalogReadStream(id, decodedFileName));
+  });
+
   app.get("/catalog/files/:fileName", async (req, reply) => {
     const { fileName } = req.params as { fileName: string };
     const decodedFileName = decodeRouteFileName(fileName);
@@ -484,12 +538,10 @@ export async function eventRoutes(app: FastifyInstance) {
     reply.header("Content-Type", contentType);
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Cache-Control", "public, max-age=31536000, immutable");
+    reply.header("Content-Disposition", buildInlineContentDisposition(decodedFileName));
 
     if (contentType === "application/pdf") {
-      reply.header("Content-Disposition", buildInlineContentDisposition(decodedFileName));
       reply.header("Accept-Ranges", "bytes");
-    } else {
-      reply.header("Content-Disposition", `attachment; filename="${decodedFileName}"`);
     }
 
     if (byteRange === "invalid") {
@@ -776,11 +828,13 @@ export async function eventRoutes(app: FastifyInstance) {
       try {
         savedPdf = await saveEventCatalogPdf(
           req,
+          id,
           uploadParts.pdfFileName,
           uploadParts.pdfData,
         );
         savedImage = await saveEventCatalogImage(
           req,
+          id,
           uploadParts.imageFileName,
           uploadParts.imageData,
         );
@@ -798,10 +852,10 @@ export async function eventRoutes(app: FastifyInstance) {
 
         await removeResourcesBestEffort(req, "substituir ficha catalografica", [
           ...(event.catalogPdfUrl && event.catalogPdfUrl !== catalogPdfUrl
-            ? [removeEventCatalogResource(event.catalogPdfUrl)]
+            ? [removeEventCatalogResource(id, event.catalogPdfUrl)]
             : []),
           ...(event.catalogImageUrl && event.catalogImageUrl !== catalogImageUrl
-            ? [removeEventCatalogResource(event.catalogImageUrl)]
+            ? [removeEventCatalogResource(id, event.catalogImageUrl)]
             : []),
         ]);
 
@@ -818,9 +872,9 @@ export async function eventRoutes(app: FastifyInstance) {
           req,
           "desfazer upload de ficha catalografica sem registro",
           [
-            ...(savedPdf ? [removeEventCatalogResource(savedPdf.fileUrl)] : []),
+            ...(savedPdf ? [removeEventCatalogResource(id, savedPdf.fileUrl)] : []),
             ...(savedImage
-              ? [removeEventCatalogResource(savedImage.fileUrl)]
+              ? [removeEventCatalogResource(id, savedImage.fileUrl)]
               : []),
           ],
         );
@@ -989,10 +1043,10 @@ export async function eventRoutes(app: FastifyInstance) {
           ? [removeEventCoverResource(current.id, removedCoverResource)]
           : []),
         ...(removedCatalogPdfResource
-          ? [removeEventCatalogResource(removedCatalogPdfResource)]
+          ? [removeEventCatalogResource(current.id, removedCatalogPdfResource)]
           : []),
         ...(removedCatalogImageResource
-          ? [removeEventCatalogResource(removedCatalogImageResource)]
+          ? [removeEventCatalogResource(current.id, removedCatalogImageResource)]
           : []),
       ]);
 
@@ -1025,8 +1079,8 @@ export async function eventRoutes(app: FastifyInstance) {
       await prisma.event.delete({ where: { id } });
       await removeResourcesBestEffort(req, "excluir arquivos do evento", [
         removeEventCoverResource(id, event.coverUrl),
-        removeEventCatalogResource(event.catalogPdfUrl),
-        removeEventCatalogResource(event.catalogImageUrl),
+        removeEventCatalogResource(id, event.catalogPdfUrl),
+        removeEventCatalogResource(id, event.catalogImageUrl),
         ...parseStoredEventRules(event.rules).map((rule) =>
           removeEventRuleResource(id, rule.file),
         ),
