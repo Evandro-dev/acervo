@@ -10,7 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import { DocumentFilePicker } from "@/components/admin/DocumentFilePicker";
-import { PdfFilePicker } from "@/components/admin/PdfFilePicker";
+import { EventCatalogFilePicker } from "@/components/admin/EventCatalogFilePicker";
 import { EventCoverImagePicker } from "@/components/admin/EventCoverImagePicker";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AreaCombobox } from "@/components/ui/area-combobox";
@@ -43,12 +43,14 @@ import {
   useExtractCatalogPdfMetadataMutation,
   useRemoveUploadedEventRuleFileMutation,
   useUpdateEventMutation,
+  useUploadEventCatalogPdfMutation,
   useUploadEventCoverImageMutation,
   useUploadEventRuleFileMutation,
 } from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
+import { renderCatalogPdfPreview } from "@/lib/catalog-pdf-preview";
 import { formatDateRangeLabel } from "@/lib/date-range";
 import { isStoredEventRuleFileUrl } from "@/lib/event-rule-file";
 import {
@@ -116,6 +118,10 @@ type FormState = {
   catalogIsbn: string;
   catalogDoi: string;
   catalogText: string;
+  catalogPdfUrl: string;
+  catalogImageUrl: string;
+  catalogImagePreviewDataUrl: string;
+  removeCatalogFilesOnSave: boolean;
   themes: ThemeFormItem[];
   committee: CommitteeFormItem[];
   rules: RuleFormItem[];
@@ -185,7 +191,9 @@ function isSupportedCoverImageFile(file: File) {
 }
 
 function isCatalogPdfFile(file: File) {
-  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  return (
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+  );
 }
 
 function isValidEmail(value: string) {
@@ -278,6 +286,10 @@ function emptyForm(): FormState {
     catalogIsbn: "",
     catalogDoi: "",
     catalogText: "",
+    catalogPdfUrl: "",
+    catalogImageUrl: "",
+    catalogImagePreviewDataUrl: "",
+    removeCatalogFilesOnSave: false,
     themes: [createThemeItem()],
     committee: [createCommitteeItem()],
     rules: [createRuleItem()],
@@ -302,6 +314,10 @@ function mapEventToForm(event: Event): FormState {
     catalogIsbn: event.catalog.isbn ?? "",
     catalogDoi: event.catalog.doi ?? "",
     catalogText: event.catalog.text ?? "",
+    catalogPdfUrl: event.catalog.pdfUrl ?? "",
+    catalogImageUrl: event.catalog.imageUrl ?? "",
+    catalogImagePreviewDataUrl: "",
+    removeCatalogFilesOnSave: false,
     themes: event.themes.length
       ? event.themes.map((theme) => createThemeItem(theme))
       : [createThemeItem()],
@@ -336,7 +352,10 @@ function removeItemByKey<T extends { key: string }>(items: T[], key: string) {
   return items.filter((item) => item.key !== key);
 }
 
-function validateAndPrepare(form: FormState) {
+function validateAndPrepare(
+  form: FormState,
+  options?: { catalogInputMode?: CatalogInputMode },
+) {
   const title = form.title.trim();
   const date = form.date.trim();
   const area = form.area.trim();
@@ -344,8 +363,12 @@ function validateAndPrepare(form: FormState) {
   const contactEmail = form.contactEmail.trim();
   const contactPhone = form.contactPhone.trim();
   const catalogText = form.catalogText.replace(/\r\n/g, "\n");
+  const catalogPdfUrl = form.catalogPdfUrl.trim();
+  const catalogImageUrl = form.catalogImageUrl.trim();
   const catalogIsbn =
     form.catalogIsbn.trim() || extractIsbnFromCatalogText(catalogText);
+  const shouldSaveCatalogText =
+    options?.catalogInputMode !== "pdf" && !form.removeCatalogFilesOnSave;
 
   if (title.length < 2) {
     throw new Error("Identificação > Título: informe pelo menos 2 caracteres.");
@@ -375,6 +398,11 @@ function validateAndPrepare(form: FormState) {
 
   if (!isValidEmail(contactEmail)) {
     throw new Error("Contato > E-mail: informe um e-mail válido.");
+  }
+
+  const eventType = form.type?.toString().trim() ?? "";
+  if (!eventType || !eventTypes.includes(eventType as EventType)) {
+    throw new Error("Identificação > Tipo: selecione um tipo válido para o evento.");
   }
 
   const themes = form.themes.map((theme) => theme.value.trim()).filter(Boolean);
@@ -509,13 +537,25 @@ function validateAndPrepare(form: FormState) {
     throw new Error("A imagem do evento precisa ser JPG, PNG, WEBP ou GIF.");
   }
 
+  if (catalogPdfUrl && !isUsableResourceUrl(catalogPdfUrl)) {
+    throw new Error(
+      "O PDF da ficha catalográfica precisa apontar para uma URL válida.",
+    );
+  }
+
+  if (catalogImageUrl && !isUsableResourceUrl(catalogImageUrl)) {
+    throw new Error(
+      "A imagem da ficha catalográfica precisa apontar para uma URL válida.",
+    );
+  }
+
   const payload: EventMutationInput = {
     title,
     edition: form.edition.trim(),
     year: form.year,
     date,
     area,
-    type: form.type,
+    type: eventType as EventType,
     coverUrl: coverUrl || (form.removeCoverOnSave ? null : undefined),
     presentation,
     themes,
@@ -529,7 +569,11 @@ function validateAndPrepare(form: FormState) {
     catalog: {
       isbn: catalogIsbn || undefined,
       doi: form.catalogDoi.trim() || undefined,
-      text: catalogText || undefined,
+      text: shouldSaveCatalogText ? catalogText || undefined : "",
+      pdfUrl:
+        catalogPdfUrl || (form.removeCatalogFilesOnSave ? null : undefined),
+      imageUrl:
+        catalogImageUrl || (form.removeCatalogFilesOnSave ? null : undefined),
     },
   };
 
@@ -573,19 +617,23 @@ function FormAccordionSection({
   return (
     <AccordionItem
       value={value}
-      className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card"
+      className="-mx-4 overflow-hidden border-y border-border/60 bg-card shadow-none transition-colors hover:border-[#d00012]/25 data-[state=open]:border-border/70 sm:mx-0 sm:rounded-2xl sm:border sm:shadow-card"
     >
-      <AccordionTrigger className="bg-brand-soft px-4 py-4 text-left hover:no-underline">
+      <AccordionTrigger className="group relative bg-background px-4 py-4 text-left transition-colors after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-border/60 hover:bg-muted/30 hover:no-underline">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-0 z-10 h-0.5 w-0 bg-[#d00012] transition-[width] duration-300 ease-out group-hover:w-1/2 group-data-[state=open]:w-full group-data-[state=open]:group-hover:w-full"
+        />
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-brand">{title}</span>
+          <span className="text-sm font-bold text-[#d00012]">{title}</span>
           {description ? (
-            <span className="text-xs font-normal leading-relaxed text-brand/80">
+            <span className="text-xs font-normal leading-relaxed text-muted-foreground">
               {description}
             </span>
           ) : null}
         </div>
       </AccordionTrigger>
-      <AccordionContent className="px-4 pb-4 pt-4">
+      <AccordionContent className="bg-card px-4 pb-4 pt-4">
         <div className="flex flex-col gap-4">{children}</div>
       </AccordionContent>
     </AccordionItem>
@@ -616,6 +664,7 @@ export default function AdminEventoForm() {
   const updateEventMutation = useUpdateEventMutation();
   const extractCatalogPdfMetadataMutation =
     useExtractCatalogPdfMetadataMutation();
+  const uploadEventCatalogPdfMutation = useUploadEventCatalogPdfMutation();
   const uploadEventCoverImageMutation = useUploadEventCoverImageMutation();
   const uploadEventRuleFileMutation = useUploadEventRuleFileMutation();
   const removeUploadedEventRuleFileMutation =
@@ -624,6 +673,9 @@ export default function AdminEventoForm() {
   const [catalogInputMode, setCatalogInputMode] =
     useState<CatalogInputMode>("manual");
   const [catalogPdfFile, setCatalogPdfFile] = useState<File | null>(null);
+  const [catalogImageFile, setCatalogImageFile] = useState<File | null>(null);
+  const [isRenderingCatalogPdfPreview, setIsRenderingCatalogPdfPreview] =
+    useState(false);
   const [hasCatalogPdfResult, setHasCatalogPdfResult] = useState(false);
   const [selectedDateRange, setSelectedDateRange] = useState<
     DateRange | undefined
@@ -631,22 +683,30 @@ export default function AdminEventoForm() {
 
   useEffect(() => {
     if (!existing) return;
+
+    const hasSavedCatalogFile = Boolean(
+      existing.catalog.imageUrl || existing.catalog.pdfUrl,
+    );
+
     setForm(mapEventToForm(existing));
+    setCatalogInputMode(hasSavedCatalogFile ? "pdf" : "manual");
     setCatalogPdfFile(null);
+    setCatalogImageFile(null);
     setHasCatalogPdfResult(false);
     setSelectedDateRange(undefined);
   }, [existing]);
 
-  const isReadingCatalogPdf = extractCatalogPdfMetadataMutation.isPending;
+  const isReadingCatalogPdf =
+    extractCatalogPdfMetadataMutation.isPending || isRenderingCatalogPdfPreview;
   const isSubmitting =
     createEventMutation.isPending ||
     updateEventMutation.isPending ||
+    uploadEventCatalogPdfMutation.isPending ||
     uploadEventCoverImageMutation.isPending ||
     uploadEventRuleFileMutation.isPending ||
     removeUploadedEventRuleFileMutation.isPending;
   const isSaveDisabled = isSubmitting || isReadingCatalogPdf;
-  const shouldShowCatalogTextField =
-    catalogInputMode === "manual" || hasCatalogPdfResult;
+  const shouldShowCatalogTextField = catalogInputMode === "manual";
   const defaultOpenSections = [
     "identificacao",
     "contato",
@@ -684,6 +744,11 @@ export default function AdminEventoForm() {
     if (!isCatalogPdfFile(file)) {
       setHasCatalogPdfResult(false);
       setCatalogPdfFile(null);
+      setCatalogImageFile(null);
+      setForm((current) => ({
+        ...current,
+        catalogImagePreviewDataUrl: "",
+      }));
       toast({
         title: "Arquivo inválido",
         description: "Selecione um arquivo PDF da ficha catalográfica.",
@@ -694,20 +759,30 @@ export default function AdminEventoForm() {
 
     setHasCatalogPdfResult(false);
     setCatalogPdfFile(file);
+    setCatalogImageFile(null);
+    setIsRenderingCatalogPdfPreview(true);
+    setForm((current) => ({
+      ...current,
+      catalogImagePreviewDataUrl: "",
+    }));
 
     try {
-      const result = await extractCatalogPdfMetadataMutation.mutateAsync({
-        file,
-      });
+      const [result, preview] = await Promise.all([
+        extractCatalogPdfMetadataMutation.mutateAsync({ file }),
+        renderCatalogPdfPreview(file, { scale: 2 }),
+      ]);
 
       const catalogText = result.text;
       const catalogIsbn =
         result.isbn ?? extractIsbnFromCatalogText(catalogText);
 
+      setCatalogImageFile(preview.imageFile);
       setForm((current) => ({
         ...current,
-        catalogText: catalogText || current.catalogText,
+        catalogText: "",
         catalogIsbn: catalogIsbn || current.catalogIsbn,
+        catalogImagePreviewDataUrl: preview.dataUrl,
+        removeCatalogFilesOnSave: false,
       }));
 
       setHasCatalogPdfResult(true);
@@ -721,13 +796,66 @@ export default function AdminEventoForm() {
       });
     } catch (error) {
       setHasCatalogPdfResult(false);
+      setCatalogPdfFile(null);
+      setCatalogImageFile(null);
+      setForm((current) => ({
+        ...current,
+        catalogImagePreviewDataUrl: "",
+      }));
 
       toast({
         title: "Falha ao ler PDF da ficha",
         description: getApiErrorMessage(error),
         variant: "destructive",
       });
+    } finally {
+      setIsRenderingCatalogPdfPreview(false);
     }
+  };
+
+  const clearSelectedCatalogPdf = () => {
+    setCatalogPdfFile(null);
+    setCatalogImageFile(null);
+    setHasCatalogPdfResult(false);
+    setForm((current) => {
+      if (existing) {
+        return {
+          ...current,
+          catalogIsbn: existing.catalog.isbn ?? "",
+          catalogText: existing.catalog.text ?? "",
+          catalogPdfUrl: existing.catalog.pdfUrl ?? "",
+          catalogImageUrl: existing.catalog.imageUrl ?? "",
+          catalogImagePreviewDataUrl: "",
+          removeCatalogFilesOnSave: false,
+        };
+      }
+
+      return {
+        ...current,
+        catalogText: "",
+        catalogIsbn: "",
+        catalogPdfUrl: "",
+        catalogImageUrl: "",
+        catalogImagePreviewDataUrl: "",
+        removeCatalogFilesOnSave: false,
+      };
+    });
+  };
+
+  const removeCatalogPdfFromForm = () => {
+    setCatalogPdfFile(null);
+    setCatalogImageFile(null);
+    setHasCatalogPdfResult(false);
+    setForm((current) => ({
+      ...current,
+      catalogText: "",
+      catalogIsbn: "",
+      catalogPdfUrl: "",
+      catalogImageUrl: "",
+      catalogImagePreviewDataUrl: "",
+      removeCatalogFilesOnSave:
+        Boolean(current.catalogPdfUrl) || Boolean(current.catalogImageUrl),
+    }));
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -736,7 +864,7 @@ export default function AdminEventoForm() {
     let savedEvent: Event | null = null;
 
     try {
-      const prepared = validateAndPrepare(form);
+      const prepared = validateAndPrepare(form, { catalogInputMode });
       const primaryPayload = prepared.payload;
 
       savedEvent =
@@ -815,10 +943,39 @@ export default function AdminEventoForm() {
         }
       }
 
+      if (catalogPdfFile) {
+        if (!catalogImageFile) {
+          postSaveIssues.push("Falha ao gerar a imagem da ficha catalográfica.");
+        } else {
+          try {
+            const result = await uploadEventCatalogPdfMutation.mutateAsync({
+              id: savedEvent.id,
+              pdfFile: catalogPdfFile,
+              imageFile: catalogImageFile,
+            });
+
+            setForm((current) => ({
+              ...current,
+              catalogPdfUrl: result.catalogPdfUrl,
+              catalogImageUrl: result.catalogImageUrl ?? "",
+              catalogImagePreviewDataUrl: "",
+              removeCatalogFilesOnSave: false,
+            }));
+            setCatalogPdfFile(null);
+            setCatalogImageFile(null);
+            setHasCatalogPdfResult(false);
+          } catch (error) {
+            postSaveIssues.push(
+              `Falha ao anexar a ficha catalográfica: ${getApiErrorMessage(error)}.`,
+            );
+          }
+        }
+      }
+
       if (postSaveIssues.length > 0) {
         toast({
           title: "Evento salvo com pendências",
-          description: `${postSaveIssues.join(" ")} Revise o evento salvo.`,
+          description: `${postSaveIssues.join(" ")} Como a ficha foi enviada pelo modo PDF, nenhum texto manual será usado como fallback.`,
           variant: "destructive",
         });
         navigate(`/admin/eventos/${savedEvent.id}`);
@@ -937,30 +1094,28 @@ export default function AdminEventoForm() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <DateRangePicker
-                label="Período do evento"
-                value={selectedDateRange}
-                onChange={handleEventPeriodChange}
-                placeholder="Clique para escolher o período do evento"
-                fallbackLabel={form.date}
-              />
-              <p className="text-xs text-muted-foreground">
-                Ao escolher o calendário, o sistema salva automaticamente o ano
-                do evento como <strong>{form.year}</strong>.
-              </p>
-            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:items-end">
+              <div className="flex flex-col gap-2 [&>div>button]:h-10! [&>div>button]:min-h-10! [&>div>button]:rounded-md! [&>div>button]:border-border! [&>div>button]:bg-background! [&>div>button]:py-2! [&>div>button]:shadow-none! [&>div>button_svg]:h-4 [&>div>button_svg]:w-4">
+                <DateRangePicker
+                  label="Período do evento"
+                  value={selectedDateRange}
+                  onChange={handleEventPeriodChange}
+                  placeholder="Clique para escolher o período do evento"
+                  fallbackLabel={form.date}
+                />
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="event-area">Tema principal</Label>
-              <AreaCombobox
-                id="event-area"
-                value={form.area}
-                options={areas.map((area) => area.name)}
-                onValueChange={(area) =>
-                  setForm((current) => ({ ...current, area }))
-                }
-              />
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="event-area">Tema principal</Label>
+                <AreaCombobox
+                  id="event-area"
+                  value={form.area}
+                  options={areas.map((area) => area.name)}
+                  onValueChange={(area) =>
+                    setForm((current) => ({ ...current, area }))
+                  }
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -1047,7 +1202,7 @@ export default function AdminEventoForm() {
           <FormAccordionSection
             value="ficha"
             title="Ficha Catalográfica"
-            description="Cole manualmente a ficha completa ou leia o texto a partir de um PDF."
+            description="Cole manualmente a ficha completa ou envie o PDF para gerar a imagem da ficha."
           >
             <SegmentedControl
               ariaLabel="Origem da ficha catalográfica"
@@ -1077,38 +1232,27 @@ export default function AdminEventoForm() {
             />
 
             {catalogInputMode === "pdf" ? (
-              <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3">
-                <div className="flex flex-col gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">
-                      Ler ficha a partir de PDF
-                    </div>
-                    <div className="text-xs leading-relaxed text-muted-foreground">
-                      Envie o PDF da ficha para preencher automaticamente o
-                      texto e detectar o ISBN. Revise o resultado antes de
-                      salvar o evento.
-                    </div>
-                  </div>
-
-                  <PdfFilePicker
-                    title="Selecionar PDF da ficha"
-                    description="Envie o PDF da ficha catalográfica para preencher o texto automaticamente."
-                    disabled={isReadingCatalogPdf}
-                    selectedFile={catalogPdfFile}
-                    onFilesChange={handleCatalogPdfFilesChange}
-                    onRemove={() => {
-                      setCatalogPdfFile(null);
-                      setHasCatalogPdfResult(false);
-                    }}
-                  />
-
-                  {isReadingCatalogPdf ? (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Upload className="h-3.5 w-3.5 animate-pulse" />
-                      Lendo PDF da ficha catalográfica...
-                    </div>
-                  ) : null}
-                </div>
+              <div className="flex flex-col gap-3">
+                <EventCatalogFilePicker
+                  currentImageUrl={form.catalogImageUrl || undefined}
+                  currentPdfUrl={form.catalogPdfUrl || undefined}
+                  disabled={isReadingCatalogPdf || isSubmitting}
+                  previewDataUrl={form.catalogImagePreviewDataUrl || undefined}
+                  selectedPdfFile={catalogPdfFile}
+                  detectedIsbn={
+                    catalogPdfFile ||
+                    form.catalogImagePreviewDataUrl ||
+                    form.catalogImageUrl ||
+                    form.catalogPdfUrl ||
+                    isReadingCatalogPdf
+                      ? form.catalogIsbn || undefined
+                      : undefined
+                  }
+                  isReading={isReadingCatalogPdf}
+                  onFilesChange={handleCatalogPdfFilesChange}
+                  onRemove={removeCatalogPdfFromForm}
+                  onCancelTemporarySelection={clearSelectedCatalogPdf}
+                />
               </div>
             ) : null}
 

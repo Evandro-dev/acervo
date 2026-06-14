@@ -57,7 +57,7 @@ export function EventCoverImagePicker({
       />
 
       {previewUrl ? (
-        <div className="group relative h-40 w-full overflow-hidden rounded-xl border border-border/60 bg-muted shadow-card sm:h-48">
+        <div className="group relative h-40 w-full overflow-hidden rounded-xl border border-border/60 bg-muted shadow-card transition-colors hover:border-[#d00012] sm:h-48">
           <ProtectedImage src={previewUrl} alt="Preview da imagem do evento" className="h-full w-full object-contain" />
           <label
             htmlFor={inputId}
@@ -90,13 +90,13 @@ export function EventCoverImagePicker({
         <label
           htmlFor={inputId}
           className={cn(
-            "flex h-40 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 px-3 text-center text-sm text-muted-foreground transition-colors hover:bg-muted/50 sm:h-48",
+            "group flex h-40 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 px-3 text-center text-sm text-muted-foreground transition-colors hover:border-[#d00012] hover:bg-[#fff5f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d00012]/25 sm:h-48",
             disabled && "pointer-events-none opacity-50",
           )}
         >
-          <ImagePlus className="h-6 w-6" />
+          <ImagePlus className="h-6 w-6 transition-colors group-hover:text-[#d00012]" />
           <div>
-            <div className="font-semibold text-foreground">Selecionar imagem do evento</div>
+            <div className="font-semibold text-foreground transition-colors group-hover:text-[#d00012]">Selecionar imagem do evento</div>
             <div className="text-[11px]">Envie uma imagem JPG, PNG, WEBP ou GIF para destacar o evento.</div>
             <div className="mt-1 text-[11px]">{fallbackHint}</div>
           </div>

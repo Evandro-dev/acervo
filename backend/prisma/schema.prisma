@@ -161,6 +161,8 @@ model Event {
   isbn             String?
   doi              String?
   catalogText      String?   @map("catalog_text")
+  catalogPdfUrl    String?   @map("catalog_pdf_url")
+  catalogImageUrl  String?   @map("catalog_image_url")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
   articles         Article[]

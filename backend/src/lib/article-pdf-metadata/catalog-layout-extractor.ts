@@ -30,6 +30,7 @@ export type ExtractedCatalogLayoutPage = {
   text: string;
 };
 
+
 export type ExtractedCatalogLayout = {
   text: string;
   isbn?: string;
@@ -96,6 +97,7 @@ function median(values: number[]) {
 
   return (sorted[middle - 1] + sorted[middle]) / 2;
 }
+
 
 function estimateCharacterWidth(items: LayoutTextItem[]) {
   const widths = items
@@ -319,7 +321,12 @@ export async function extractCatalogLayoutFromPdf(
   data: Uint8Array,
   options: ExtractCatalogLayoutOptions = {},
 ): Promise<ExtractedCatalogLayout> {
-  const task = pdfjs.getDocument({ data, standardFontDataUrl });
+  const task = pdfjs.getDocument({
+    data,
+    standardFontDataUrl,
+    disableFontFace: true,
+    useSystemFonts: true,
+  });
 
   try {
     const document = await task.promise;
@@ -331,7 +338,6 @@ export async function extractCatalogLayoutFromPdf(
       const pageSeparator = options.pageSeparator ?? DEFAULT_PAGE_SEPARATOR;
       const warnings: string[] = [];
       const pages: ExtractedCatalogLayoutPage[] = [];
-
       for (let pageNumber = 1; pageNumber <= pageLimit; pageNumber += 1) {
         const text = await extractPageLayoutText(document, pageNumber, {
           yTolerance: options.yTolerance ?? DEFAULT_Y_TOLERANCE,
@@ -347,6 +353,7 @@ export async function extractCatalogLayoutFromPdf(
           });
         }
       }
+
 
       const text = normalizeFinalCatalogText(
         pages.map((page) => page.text).join(pageSeparator),

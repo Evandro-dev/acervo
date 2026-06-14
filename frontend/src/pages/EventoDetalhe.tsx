@@ -172,6 +172,8 @@ export default function EventoDetalhe() {
   const groupedCommittee = groupCommitteeMembers(event.committee);
   const catalogIsbn = event.catalog?.isbn?.trim();
   const catalogText = event.catalog?.text?.trim();
+  const catalogPdfUrl = event.catalog?.pdfUrl?.trim();
+  const catalogImageUrl = event.catalog?.imageUrl?.trim();
 
   return (
     <AppShell>
@@ -327,7 +329,34 @@ export default function EventoDetalhe() {
                   </AccordionTrigger>
                   <AccordionContent>
                     <Card className="border-border/60 p-4 shadow-card">
-                      {catalogText ? (
+                      {catalogImageUrl ? (
+                        <div className="flex flex-col gap-3">
+                          <div className="max-h-180 overflow-auto rounded-md border bg-white p-2">
+                            <img
+                              src={getApiResourceUrl(catalogImageUrl)}
+                              alt="Ficha catalográfica"
+                              className="mx-auto max-w-full object-contain"
+                            />
+                          </div>
+                        </div>
+                      ) : catalogPdfUrl ? (
+                        <div className="flex flex-col gap-3">
+                          <StatePanel>
+                            A ficha catalográfica está vinculada como PDF.
+                          </StatePanel>
+
+                          <div>
+                            <a
+                              href={getApiResourceUrl(catalogPdfUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-primary underline"
+                            >
+                              Abrir PDF
+                            </a>
+                          </div>
+                        </div>
+                      ) : catalogText ? (
                         <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
                           {catalogText}
                         </div>

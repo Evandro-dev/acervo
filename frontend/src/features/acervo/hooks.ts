@@ -8,9 +8,9 @@ import {
   fetchArticle,
   fetchArticles,
   fetchAreas,
-  fetchCourses,
   fetchAuthor,
   fetchAuthors,
+  fetchCourses,
   fetchEvent,
   fetchEvents,
   fetchGlobalSearch,
@@ -22,10 +22,15 @@ import {
   updateArticleStatus,
   updateEvent,
   uploadArticlePdf,
+  uploadEventCatalogPdf,
   uploadEventCoverImage,
   uploadEventRuleFile,
 } from "./api";
-import type { ArticleUpdateInput, EventMutationInput, ImportArticleInput } from "@/types/acervo";
+import type {
+  ArticleUpdateInput,
+  EventMutationInput,
+  ImportArticleInput,
+} from "@/types/acervo";
 
 type EventQueryOptions = {
   staleTime?: number;
@@ -35,21 +40,29 @@ type EventQueryOptions = {
 
 function normalizeLookupValue(value?: string) {
   const trimmed = value?.trim();
-  if (!trimmed || trimmed === "undefined" || trimmed === "null") return undefined;
+  if (!trimmed || trimmed === "undefined" || trimmed === "null") {
+    return undefined;
+  }
+
   return trimmed;
 }
 
 const acervoKeys = {
   root: ["acervo"] as const,
   events: (scope: string) => ["acervo", "events", scope] as const,
-  event: (idOrSlug: string, scope: string) => ["acervo", "event", idOrSlug, scope] as const,
-  articles: (scope: string, filters?: Record<string, unknown>) => ["acervo", "articles", scope, filters ?? {}] as const,
+  event: (idOrSlug: string, scope: string) =>
+    ["acervo", "event", idOrSlug, scope] as const,
+  articles: (scope: string, filters?: Record<string, unknown>) =>
+    ["acervo", "articles", scope, filters ?? {}] as const,
   article: (id: string) => ["acervo", "article", id] as const,
-  areas: (includeEmpty: boolean, search = "") => ["acervo", "areas", includeEmpty, search] as const,
-  courses: (includeEmpty: boolean, search = "") => ["acervo", "courses", includeEmpty, search] as const,
+  areas: (includeEmpty: boolean, search = "") =>
+    ["acervo", "areas", includeEmpty, search] as const,
+  courses: (includeEmpty: boolean, search = "") =>
+    ["acervo", "courses", includeEmpty, search] as const,
   authors: (search = "") => ["acervo", "authors", search] as const,
   author: (idOrSlug: string) => ["acervo", "author", idOrSlug] as const,
-  globalSearch: (query: string, limit: number) => ["acervo", "global-search", query, limit] as const,
+  globalSearch: (query: string, limit: number) =>
+    ["acervo", "global-search", query, limit] as const,
 };
 
 export function usePublicEventsQuery() {
@@ -107,7 +120,10 @@ export function useArticleQuery(id?: string) {
   });
 }
 
-export function useAreasQuery(options?: { includeEmpty?: boolean; search?: string }) {
+export function useAreasQuery(options?: {
+  includeEmpty?: boolean;
+  search?: string;
+}) {
   const includeEmpty = options?.includeEmpty ?? false;
   const search = options?.search ?? "";
 
@@ -117,7 +133,10 @@ export function useAreasQuery(options?: { includeEmpty?: boolean; search?: strin
   });
 }
 
-export function useCoursesQuery(options?: { includeEmpty?: boolean; search?: string }) {
+export function useCoursesQuery(options?: {
+  includeEmpty?: boolean;
+  search?: string;
+}) {
   const includeEmpty = options?.includeEmpty ?? false;
   const search = options?.search ?? "";
 
@@ -144,7 +163,10 @@ export function useAuthorQuery(idOrSlug?: string) {
   });
 }
 
-export function useGlobalSearchQuery(query: string, options?: { limit?: number }) {
+export function useGlobalSearchQuery(
+  query: string,
+  options?: { limit?: number },
+) {
   const normalizedQuery = query.trim();
   const limit = options?.limit ?? 5;
 
@@ -177,7 +199,13 @@ export function useUpdateEventMutation() {
   const invalidate = useInvalidateAcervoData();
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<EventMutationInput> }) => updateEvent(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Partial<EventMutationInput>;
+    }) => updateEvent(id, payload),
     onSuccess: invalidate,
   });
 }
@@ -195,14 +223,16 @@ export function useUploadEventRuleFileMutation() {
   const invalidate = useInvalidateAcervoData();
 
   return useMutation({
-    mutationFn: ({ id, file }: { id: string; file: File }) => uploadEventRuleFile(id, file),
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      uploadEventRuleFile(id, file),
     onSuccess: invalidate,
   });
 }
 
 export function useRemoveUploadedEventRuleFileMutation() {
   return useMutation({
-    mutationFn: ({ id, fileUrl }: { id: string; fileUrl: string }) => removeUploadedEventRuleFile(id, fileUrl),
+    mutationFn: ({ id, fileUrl }: { id: string; fileUrl: string }) =>
+      removeUploadedEventRuleFile(id, fileUrl),
   });
 }
 
@@ -210,7 +240,25 @@ export function useUploadEventCoverImageMutation() {
   const invalidate = useInvalidateAcervoData();
 
   return useMutation({
-    mutationFn: ({ id, file }: { id: string; file: File }) => uploadEventCoverImage(id, file),
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      uploadEventCoverImage(id, file),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUploadEventCatalogPdfMutation() {
+  const invalidate = useInvalidateAcervoData();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      pdfFile,
+      imageFile,
+    }: {
+      id: string;
+      pdfFile: File;
+      imageFile: File;
+    }) => uploadEventCatalogPdf(id, pdfFile, imageFile),
     onSuccess: invalidate,
   });
 }
@@ -219,8 +267,13 @@ export function useUpdateArticleStatusMutation() {
   const invalidate = useInvalidateAcervoData();
 
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED" }) =>
-      updateArticleStatus(id, status),
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+    }) => updateArticleStatus(id, status),
     onSuccess: invalidate,
   });
 }
@@ -229,7 +282,13 @@ export function useUpdateArticleMutation() {
   const invalidate = useInvalidateAcervoData();
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: ArticleUpdateInput }) => updateArticle(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: ArticleUpdateInput;
+    }) => updateArticle(id, payload),
     onSuccess: invalidate,
   });
 }
@@ -247,7 +306,14 @@ export function useUploadArticlePdfMutation() {
   const invalidate = useInvalidateAcervoData();
 
   return useMutation({
-    mutationFn: ({ id, file }: { id: string; file: File; invalidateOnSuccess?: boolean }) => uploadArticlePdf(id, file),
+    mutationFn: ({
+      id,
+      file,
+    }: {
+      id: string;
+      file: File;
+      invalidateOnSuccess?: boolean;
+    }) => uploadArticlePdf(id, file),
     onSuccess: async (_article, variables) => {
       if (variables.invalidateOnSuccess !== false) await invalidate();
     },
@@ -256,7 +322,13 @@ export function useUploadArticlePdfMutation() {
 
 export function useExtractArticlePdfMetadataMutation() {
   return useMutation({
-    mutationFn: ({ file, eventId }: { file: File; eventId?: string }) => extractArticlePdfMetadata(file, { eventId }),
+    mutationFn: ({
+      file,
+      eventId,
+    }: {
+      file: File;
+      eventId?: string;
+    }) => extractArticlePdfMetadata(file, { eventId }),
   });
 }
 

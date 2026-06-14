@@ -86,6 +86,8 @@ export type EventCatalog = {
   isbn?: string;
   doi?: string;
   text?: string;
+  pdfUrl?: string;
+  imageUrl?: string;
 };
 
 export type Event = {

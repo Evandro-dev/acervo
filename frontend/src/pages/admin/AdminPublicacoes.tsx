@@ -321,11 +321,11 @@ export default function AdminPublicacoes() {
 
   return (
     <AdminShell title="Publicações">
-      <SegmentedControl<ArticleStatus>
+      <SegmentedControl
         ariaLabel="Status das publicações"
         className="mb-3 grid-cols-3"
         value={tab}
-        onValueChange={setTab}
+        onValueChange={(value) => setTab(value as ArticleStatus)}
         options={tabs.map((currentTab) => ({
           value: currentTab.key,
           label: (

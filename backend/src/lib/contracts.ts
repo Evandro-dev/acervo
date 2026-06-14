@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { isSafeResourceReference } from "./resource-reference.js";
 
-export const eventTypeValues = ["Congresso", "Simpósio", "Seminário", "Workshop", "Expo"] as const;
+export const eventTypeValues = [
+  "Congresso",
+  "Simpósio",
+  "Seminário",
+  "Workshop",
+  "Expo",
+] as const;
+
 export const eventTypeSchema = z.enum(eventTypeValues);
 
 export const eventCommitteeMemberSchema = z.object({
@@ -18,7 +25,10 @@ export const eventRuleSchema = z.object({
     .trim()
     .min(1)
     .max(500)
-    .refine(isSafeResourceReference, "Informe um caminho interno ou uma URL HTTP/HTTPS válida"),
+    .refine(
+      isSafeResourceReference,
+      "Informe um caminho interno ou uma URL HTTP/HTTPS válida",
+    ),
 });
 
 export const eventRulesSchema = z.array(eventRuleSchema);
@@ -29,19 +39,23 @@ export const eventPreviousEditionSchema = z.object({
   year: z.number().int().min(1900).max(3000),
   eventId: z.string().min(1).max(120).optional(),
   eventSlug: z.string().min(1).max(160).optional(),
-  externalUrl: z.string().url().max(500).optional(),
+  externalUrl: z.url().max(500).optional(),
 });
 
-export const eventPreviousEditionsSchema = z.array(eventPreviousEditionSchema);
+export const eventPreviousEditionsSchema = z.array(
+  eventPreviousEditionSchema,
+);
 
 export const eventCatalogSchema = z.object({
   isbn: z.string().trim().max(80).optional(),
-  doi: z.string().trim().max(120).optional(),
-  text: z.string().trim().max(10000).optional(),
+  doi: z.string().trim().max(160).optional(),
+  text: z.string().max(20000).optional(),
+  pdfUrl: z.url().nullable().optional(),
+  imageUrl: z.url().nullable().optional(),
 });
 
 export const eventContactSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   phone: z.string().max(40).optional(),
 });
 
@@ -52,7 +66,7 @@ export const authorPayloadSchema = z.union([
     name: z.string().min(2).max(160),
     bio: z.string().max(500).optional(),
     area: z.string().max(120).optional(),
-    avatarUrl: z.string().url().optional(),
+    avatarUrl: z.url().optional(),
   }),
 ]);
 
@@ -64,7 +78,9 @@ export type IncomingAuthorInput = {
   avatarUrl?: string;
 };
 
-export function normalizeAuthorPayload(payload: z.infer<typeof authorPayloadSchema>): IncomingAuthorInput {
+export function normalizeAuthorPayload(
+  payload: z.infer<typeof authorPayloadSchema>,
+): IncomingAuthorInput {
   if (typeof payload === "string") {
     return { name: payload };
   }

@@ -50,7 +50,8 @@ await app.register(cors, {
   allowedHeaders: ["Content-Type", "Authorization"],
 });
 await app.register(jwt, { secret: env.JWT_SECRET });
-await app.register(multipart, { limits: { fileSize: FILE_UPLOAD_LIMIT_BYTES, files: 1 } });
+// Allow up to 2 files in multipart requests (used by endpoints that send a PDF + image)
+await app.register(multipart, { limits: { fileSize: FILE_UPLOAD_LIMIT_BYTES, files: 2 } });
 await app.register(authPlugin);
 
 app.addHook("onSend", async (req, reply, payload) => {
