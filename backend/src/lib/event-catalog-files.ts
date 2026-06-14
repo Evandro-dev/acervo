@@ -4,7 +4,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import { env } from "../env.js";
-import { removePublicBlob } from "./public-blob-storage.js";
+import { removePublicBlob, uploadPublicBlob } from "./public-blob-storage.js";
 import { slugify } from "./slug.js";
 import {
   escapeRegExp,
@@ -123,13 +123,39 @@ async function saveEventCatalogFile(
 ): Promise<SavedEventCatalogFile> {
   const fileName = buildEventCatalogFileName(originalFileName, kind);
   const buffer = toStorageBuffer(data);
-  const filePath = getEventCatalogFilePath(fileName);
+  const contentType = getEventCatalogContentType(fileName);
 
   if (buffer.byteLength <= 0) {
     throw new Error(
       `Arquivo da ficha catalográfica veio vazio antes de salvar: ${originalFileName}`,
     );
   }
+
+  const blobUrl = await uploadPublicBlob(
+    `acervo/events/catalog/${fileName}`,
+    buffer,
+    contentType,
+  );
+
+  if (blobUrl) {
+    request.log.info(
+      {
+        fileName,
+        kind,
+        bytes: buffer.byteLength,
+        blobUrl,
+      },
+      "Ficha catalográfica salva no Vercel Blob",
+    );
+
+    return {
+      fileName,
+      fileUrl: blobUrl,
+      blobUrl,
+    };
+  }
+
+  const filePath = getEventCatalogFilePath(fileName);
 
   await mkdir(eventCatalogDirectory, { recursive: true });
   await writeFile(filePath, buffer);
