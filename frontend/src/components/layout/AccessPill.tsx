@@ -63,9 +63,9 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
     if (previousPathnameRef.current === pathname) return;
     previousPathnameRef.current = pathname;
 
-    const frame = window.requestAnimationFrame(() => setOpen(false));
+    const frame = window.requestAnimationFrame(() => closeMenu());
     return () => window.cancelAnimationFrame(frame);
-  }, [pathname]);
+  }, [closeMenu, pathname]);
 
   if (!isAuthenticated) {
     return (
@@ -105,7 +105,7 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
               tabIndex={open ? 0 : -1}
               className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors"
               style={{ color: brandRed }}
-              onClick={() => setOpen(false)}
+              onClick={closeMenu}
             >
               <LayoutDashboard className="h-3.5 w-3.5" style={{ color: brandRed }} />
               <span>Painel</span>
@@ -118,7 +118,7 @@ export function AccessPill({ isAuthenticated, isPrivileged, onLogout }: AccessPi
             className="inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors"
             style={{ color: brandRed }}
             onClick={() => {
-              setOpen(false);
+              closeMenu();
               onLogout();
             }}
           >
