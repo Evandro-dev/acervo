@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosRequestConfig } from "axios";
 import {
   getBearerTokenFromHeaders,
   hasAuthorizationHeader,
@@ -23,12 +23,27 @@ export const api = axios.create({
   baseURL: apiBaseURL,
 });
 
+type RequestConfigForAuthHeader = Pick<
+  AxiosRequestConfig,
+  "method" | "params" | "url"
+>;
+
 type ApiErrorData = ApiValidationErrorData & {
   error?: string;
   code?: string;
   retryAfterSeconds?: number;
   blockedUntil?: string;
 };
+
+const pathsThatAlwaysRequireAuth = new Set([
+  "/auth/logout",
+  "/auth/me",
+  "/events/dashboard-summary",
+]);
+
+const pathsThatNeverRequireAuth = new Set(["/auth/login", "/auth/register"]);
+
+const protectedPathPrefixes = ["/reports", "/users"];
 
 function canUseLocalStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -38,6 +53,113 @@ function getStoredAuthToken() {
   if (!canUseLocalStorage()) return null;
 
   return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+}
+
+function normalizeRequestMethod(method: string | undefined) {
+  return (method ?? "get").toUpperCase();
+}
+
+function getRequestUrl(url: string | undefined) {
+  const requestUrl = url || "/";
+
+  try {
+    return new URL(requestUrl, apiBaseURL);
+  } catch {
+    return new URL(
+      requestUrl.startsWith("/") ? requestUrl : `/${requestUrl}`,
+      apiBaseURL,
+    );
+  }
+}
+
+function appendSearchParam(
+  searchParams: URLSearchParams,
+  key: string,
+  value: unknown,
+) {
+  if (value === null || value === undefined || value === "") return;
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => appendSearchParam(searchParams, key, item));
+    return;
+  }
+
+  searchParams.append(key, String(value));
+}
+
+function appendConfigParams(searchParams: URLSearchParams, params: unknown) {
+  if (!params) return;
+
+  if (params instanceof URLSearchParams) {
+    params.forEach((value, key) => searchParams.append(key, value));
+    return;
+  }
+
+  if (Array.isArray(params)) {
+    params.forEach((entry) => {
+      if (Array.isArray(entry) && entry.length >= 2) {
+        appendSearchParam(searchParams, String(entry[0]), entry[1]);
+      }
+    });
+    return;
+  }
+
+  if (typeof params === "object") {
+    Object.entries(params as Record<string, unknown>).forEach(([key, value]) => {
+      appendSearchParam(searchParams, key, value);
+    });
+  }
+}
+
+function getRequestTarget(config: RequestConfigForAuthHeader) {
+  const url = getRequestUrl(config.url);
+  const searchParams = new URLSearchParams(url.search);
+
+  appendConfigParams(searchParams, config.params);
+
+  return {
+    pathname: url.pathname,
+    searchParams,
+  };
+}
+
+function hasProtectedPathPrefix(pathname: string) {
+  return protectedPathPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+function isSingleEventResource(pathname: string) {
+  return /^\/events\/[^/]+$/.test(pathname);
+}
+
+export function shouldAttachAuthorizationHeader(
+  config: RequestConfigForAuthHeader,
+) {
+  const method = normalizeRequestMethod(config.method);
+  const { pathname, searchParams } = getRequestTarget(config);
+
+  if (pathsThatNeverRequireAuth.has(pathname)) return false;
+
+  if (
+    pathsThatAlwaysRequireAuth.has(pathname) ||
+    hasProtectedPathPrefix(pathname)
+  ) {
+    return true;
+  }
+
+  if (method !== "GET" && method !== "HEAD") return true;
+
+  if (pathname === "/events" || isSingleEventResource(pathname)) {
+    return searchParams.get("includeArticles") === "all";
+  }
+
+  if (pathname === "/articles") {
+    const status = searchParams.get("status");
+    return Boolean(status && status !== "published");
+  }
+
+  return false;
 }
 
 function getHeaderValue(headers: unknown, name: string) {
@@ -76,7 +198,11 @@ function getUnauthorizedSessionNotice(data: ApiErrorData | undefined) {
 api.interceptors.request.use((config) => {
   const token = getStoredAuthToken();
 
-  if (token && !hasAuthorizationHeader(config.headers)) {
+  if (
+    token &&
+    shouldAttachAuthorizationHeader(config) &&
+    !hasAuthorizationHeader(config.headers)
+  ) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
