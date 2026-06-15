@@ -20,6 +20,7 @@ import type {
   GlobalSearchResponse,
   ImportArticleInput,
 } from "@/types/acervo";
+import { normalizeEventType } from "@/types/acervo";
 import {
   createQueryParams,
   normalizeFilterValues,
@@ -49,6 +50,7 @@ export type AdminDashboardSummary = {
 function normalizeEvent(event: Event): Event {
   return {
     ...event,
+    type: normalizeEventType(event.type) ?? "Congresso",
     articles: event.articles ?? [],
   };
 }

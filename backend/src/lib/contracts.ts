@@ -9,7 +9,34 @@ export const eventTypeValues = [
   "Expo",
 ] as const;
 
-export const eventTypeSchema = z.enum(eventTypeValues);
+export type EventTypeValue = (typeof eventTypeValues)[number];
+
+function normalizeEventTypeKey(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+const eventTypeByNormalizedValue = new Map<string, EventTypeValue>([
+  ...eventTypeValues.map((type) => [normalizeEventTypeKey(type), type] as const),
+  ["simposio", "Simpósio"],
+  ["simpasio", "Simpósio"],
+  ["seminario", "Seminário"],
+]);
+
+export function normalizeEventType(value: unknown): EventTypeValue | undefined {
+  if (typeof value !== "string") return undefined;
+
+  return eventTypeByNormalizedValue.get(normalizeEventTypeKey(value));
+}
+
+export const eventTypeSchema = z.preprocess(
+  (value) => normalizeEventType(value) ?? value,
+  z.enum(eventTypeValues),
+);
 
 export const eventCommitteeMemberSchema = z.object({
   role: z.string().min(1).max(120),

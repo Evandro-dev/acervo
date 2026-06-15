@@ -5,6 +5,7 @@ import {
 } from "@/lib/file-links";
 import {
   eventTypes,
+  normalizeEventType,
   type Event,
   type EventMutationInput,
   type EventRule,
@@ -243,7 +244,7 @@ export function mapEventToForm(event: Event): FormState {
     year: event.year,
     date: event.date,
     area: event.area,
-    type: event.type,
+    type: normalizeEventType(event.type) ?? "Congresso",
     coverUrl: event.cover ?? "",
     coverFile: null,
     removeCoverOnSave: false,
@@ -339,8 +340,8 @@ export function validateAndPrepare(
     throw new Error("Contato > E-mail: informe um e-mail válido.");
   }
 
-  const eventType = form.type?.toString().trim() ?? "";
-  if (!eventType || !eventTypes.includes(eventType as EventType)) {
+  const eventType = normalizeEventType(form.type?.toString());
+  if (!eventType || !eventTypes.includes(eventType)) {
     throw new Error("Identificação > Tipo: selecione um tipo válido para o evento.");
   }
 
@@ -494,7 +495,7 @@ export function validateAndPrepare(
     year: form.year,
     date,
     area,
-    type: eventType as EventType,
+    type: eventType,
     coverUrl: coverUrl || (form.removeCoverOnSave ? null : undefined),
     presentation,
     themes,

@@ -323,6 +323,59 @@ describe("AdminEventoForm", () => {
     expect(uploadCoverMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("shows the normalized event type when editing an event saved with legacy casing", async () => {
+    mockedUseEventQuery.mockReturnValue({
+      data: {
+        id: "event-1",
+        slug: "expo-una-2025-2",
+        title: "EXPO UNA 2025/2",
+        edition: "1ª Edição",
+        year: 2025,
+        date: "1 a 5 de dezembro de 2025",
+        area: "Troca, inovação e impacto social",
+        type: "expo",
+        cover: null,
+        presentation: "Apresentação completa do evento com detalhes suficientes.",
+        themes: [],
+        committee: [],
+        rules: [],
+        previousEditions: [],
+        contact: { email: "expo@ulife.com.br" },
+        catalog: {},
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseCreateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUpdateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCoverImageMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventRuleFileMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+
+    const { container } = render(
+      <MemoryRouter initialEntries={["/admin/eventos/event-1"]}>
+        <Routes>
+          <Route path="/admin/eventos/:id" element={<AdminEventoForm />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(container.querySelector("#event-type")).toHaveTextContent("Expo"),
+    );
+  });
+
   it("cleans newly uploaded rule documents when the final event update fails", async () => {
     const fileUrl = "http://localhost:10000/events/event-1/files/template-apresentacao.pptx";
     const cleanupMutateAsync = vi.fn().mockResolvedValue(undefined);
@@ -392,6 +445,170 @@ describe("AdminEventoForm", () => {
       expect.objectContaining({
         title: "Evento salvo parcialmente",
         variant: "destructive",
+      }),
+    );
+  });
+
+  it("shows persisted rule documents in edit mode and keeps them without uploading when unchanged", async () => {
+    const ruleFileUrl =
+      "http://localhost:10000/events/event-1/files/1780355176739-edital-a1b2c3d4.pdf";
+    const updateMutateAsync = vi.fn().mockResolvedValue({
+      id: "event-1",
+      title: "Congresso Completo",
+    });
+    const uploadRuleMutateAsync = vi.fn();
+
+    mockedUseEventQuery.mockReturnValue({
+      data: {
+        id: "event-1",
+        slug: "congresso-completo",
+        title: "Congresso Completo",
+        edition: "1ª Edição",
+        year: 2026,
+        date: "15 de junho de 2026",
+        area: "Tecnologia",
+        type: "Congresso",
+        cover: null,
+        presentation: "Apresentação completa do evento com detalhes suficientes.",
+        themes: [],
+        committee: [],
+        rules: [{ title: "Edital", file: ruleFileUrl }],
+        previousEditions: [],
+        contact: { email: "congresso@ulife.com.br" },
+        catalog: {},
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseCreateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUpdateEventMutation.mockReturnValue({
+      mutateAsync: updateMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCoverImageMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventRuleFileMutation.mockReturnValue({
+      mutateAsync: uploadRuleMutateAsync,
+      isPending: false,
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/admin/eventos/event-1"]}>
+        <Routes>
+          <Route path="/admin/eventos/:id" element={<AdminEventoForm />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("edital.pdf")).toBeInTheDocument();
+    expect(screen.getByText("Arquivo atual vinculado.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Abrir/i })).toHaveAttribute(
+      "href",
+      ruleFileUrl,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar evento completo" }));
+
+    await waitFor(() =>
+      expect(updateMutateAsync).toHaveBeenCalledWith({
+        id: "event-1",
+        payload: expect.objectContaining({
+          rules: [{ title: "Edital", file: ruleFileUrl }],
+        }),
+      }),
+    );
+    expect(uploadRuleMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("uploads a replacement rule document only after saving the edited event", async () => {
+    const ruleFileUrl =
+      "http://localhost:10000/events/event-1/files/1780355176739-edital-a1b2c3d4.pdf";
+    const replacementFileUrl =
+      "http://localhost:10000/events/event-1/files/1780355176740-edital-atualizado-b2c3d4e5.pdf";
+    const replacementFile = new File(["novo edital"], "edital-atualizado.pdf", {
+      type: "application/pdf",
+    });
+    const updateMutateAsync = vi.fn().mockResolvedValue({
+      id: "event-1",
+      title: "Congresso Completo",
+    });
+    const uploadRuleMutateAsync = vi.fn().mockResolvedValue({
+      fileUrl: replacementFileUrl,
+    });
+
+    mockedUseEventQuery.mockReturnValue({
+      data: {
+        id: "event-1",
+        slug: "congresso-completo",
+        title: "Congresso Completo",
+        edition: "1ª Edição",
+        year: 2026,
+        date: "15 de junho de 2026",
+        area: "Tecnologia",
+        type: "Congresso",
+        cover: null,
+        presentation: "Apresentação completa do evento com detalhes suficientes.",
+        themes: [],
+        committee: [],
+        rules: [{ title: "Edital", file: ruleFileUrl }],
+        previousEditions: [],
+        contact: { email: "congresso@ulife.com.br" },
+        catalog: {},
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseCreateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUpdateEventMutation.mockReturnValue({
+      mutateAsync: updateMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCoverImageMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventRuleFileMutation.mockReturnValue({
+      mutateAsync: uploadRuleMutateAsync,
+      isPending: false,
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/admin/eventos/event-1"]}>
+        <Routes>
+          <Route path="/admin/eventos/:id" element={<AdminEventoForm />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(await screen.findByLabelText("Trocar arquivo da norma"), {
+      target: { files: [replacementFile] },
+    });
+
+    expect(screen.getByText("edital-atualizado.pdf")).toBeInTheDocument();
+    expect(uploadRuleMutateAsync).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar evento completo" }));
+
+    await waitFor(() =>
+      expect(uploadRuleMutateAsync).toHaveBeenCalledWith({
+        id: "event-1",
+        file: replacementFile,
+      }),
+    );
+    await waitFor(() =>
+      expect(updateMutateAsync).toHaveBeenLastCalledWith({
+        id: "event-1",
+        payload: expect.objectContaining({
+          rules: [{ title: "Edital", file: replacementFileUrl }],
+        }),
       }),
     );
   });

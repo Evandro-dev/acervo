@@ -67,6 +67,7 @@ import { formatDateRangeLabel } from "@/lib/date-range";
 import { cn } from "@/lib/utils";
 import {
   eventTypes,
+  normalizeEventType,
   type Event,
   type EventMutationInput,
   type EventType,
@@ -93,7 +94,7 @@ export default function AdminEventoForm() {
   const uploadEventRuleFileMutation = useUploadEventRuleFileMutation();
   const removeUploadedEventRuleFileMutation =
     useRemoveUploadedEventRuleFileMutation();
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<FormState>(() => emptyForm());
   const [catalogInputMode, setCatalogInputMode] =
     useState<CatalogInputMode>("manual");
   const [catalogPdfFile, setCatalogPdfFile] = useState<File | null>(null);
@@ -131,6 +132,7 @@ export default function AdminEventoForm() {
     removeUploadedEventRuleFileMutation.isPending;
   const isSaveDisabled = isSubmitting || isReadingCatalogPdf;
   const shouldShowCatalogTextField = catalogInputMode === "manual";
+  const selectedEventType = normalizeEventType(form.type) ?? "";
   const defaultOpenSections = [
     "identificacao",
     "contato",
@@ -496,16 +498,26 @@ export default function AdminEventoForm() {
                 <Label htmlFor="event-type">Tipo</Label>
                 <Select
                   name="event-type"
-                  value={form.type}
-                  onValueChange={(value) =>
+                  value={selectedEventType}
+                  onValueChange={(value) => {
+                    const nextEventType = normalizeEventType(value);
+                    if (!nextEventType) return;
+
                     setForm((current) => ({
                       ...current,
-                      type: value as EventType,
-                    }))
-                  }
+                      type: nextEventType,
+                    }));
+                  }}
                 >
                   <SelectTrigger id="event-type">
-                    <SelectValue />
+                    <span
+                      className={cn(
+                        "truncate",
+                        !selectedEventType && "text-muted-foreground",
+                      )}
+                    >
+                      {selectedEventType || "Selecione o tipo"}
+                    </span>
                   </SelectTrigger>
                   <SelectContent>
                     {eventTypes.map((type) => (

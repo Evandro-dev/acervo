@@ -7,6 +7,33 @@ export const eventTypes = [
 ] as const;
 
 export type EventType = (typeof eventTypes)[number];
+
+function normalizeEventTypeKey(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+const eventTypeByNormalizedValue = new Map<string, EventType>([
+  ...eventTypes.map((type) => [normalizeEventTypeKey(type), type] as const),
+  ["simposio", "Simpósio"],
+  ["simpasio", "Simpósio"],
+  ["seminario", "Seminário"],
+]);
+
+export function normalizeEventType(value?: string | null): EventType | undefined {
+  if (!value) return undefined;
+
+  return eventTypeByNormalizedValue.get(normalizeEventTypeKey(value));
+}
+
+export function isEventType(value?: string | null): value is EventType {
+  return normalizeEventType(value) === value;
+}
+
 export type ArticleStatus = "draft" | "published" | "archived";
 export type UserRole = "ADMIN" | "COORDENADOR";
 

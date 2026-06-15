@@ -27,4 +27,44 @@ describe("DocumentFilePicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remover arquivo selecionado" }));
     expect(onRemove).toHaveBeenCalledOnce();
   });
+
+  it("shows a current persisted document with open, replace and remove actions", () => {
+    const onFilesChange = vi.fn();
+    const onRemoveCurrent = vi.fn();
+    const { container } = render(
+      <DocumentFilePicker
+        accept={eventRuleDocumentAccept}
+        title="Trocar arquivo da norma"
+        description="Envie um documento."
+        currentFile={{
+          description: "Arquivo atual vinculado.",
+          href: "http://localhost:10000/events/event-1/files/edital.pdf",
+          name: "edital.pdf",
+        }}
+        currentRemoveAriaLabel="Remover arquivo atual da norma"
+        onFilesChange={onFilesChange}
+        onRemoveCurrent={onRemoveCurrent}
+      />,
+    );
+
+    expect(screen.getByText("edital.pdf")).toBeInTheDocument();
+    expect(screen.getByText("Arquivo atual vinculado.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Abrir/i })).toHaveAttribute(
+      "href",
+      "http://localhost:10000/events/event-1/files/edital.pdf",
+    );
+
+    const replacementFile = new File(["novo"], "edital-novo.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(container.querySelector('input[type="file"]')!, {
+      target: { files: [replacementFile] },
+    });
+    expect(onFilesChange).toHaveBeenCalledWith([replacementFile]);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remover arquivo atual da norma" }),
+    );
+    expect(onRemoveCurrent).toHaveBeenCalledOnce();
+  });
 });

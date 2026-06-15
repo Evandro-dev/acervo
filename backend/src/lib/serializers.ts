@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { eventCommitteeSchema, eventPreviousEditionsSchema } from "./contracts.js";
+import {
+  eventCommitteeSchema,
+  eventPreviousEditionsSchema,
+  normalizeEventType,
+} from "./contracts.js";
 import { parseStoredEventRules } from "./event-rules.js";
 
 type ArticleStatus = string;
@@ -179,7 +183,7 @@ export function serializeEvent(event: EventShape, options?: { includeArticles?: 
     year: event.year,
     date: event.date,
     area: event.area,
-    type: event.type,
+    type: normalizeEventType(event.type) ?? "Congresso",
     viewCount: event.viewCount,
     cover: event.coverUrl ?? undefined,
     presentation: event.presentation,

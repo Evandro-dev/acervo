@@ -1,16 +1,25 @@
 import { useId } from "react";
-import { FileText, Trash2, Upload } from "lucide-react";
+import { ExternalLink, FileText, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatFileSize } from "@/lib/file-size";
 import { cn } from "@/lib/utils";
 
+export type CurrentDocumentFile = {
+  description?: string;
+  href?: string;
+  name: string;
+};
+
 export type DocumentFilePickerProps = {
   accept: string;
+  currentFile?: CurrentDocumentFile | null;
+  currentRemoveAriaLabel?: string;
   description: string;
   disabled?: boolean;
   multiple?: boolean;
   onFilesChange: (files: File[]) => void;
   onRemove?: () => void;
+  onRemoveCurrent?: () => void;
   removeAriaLabel?: string;
   replaceLabel?: string;
   selectedFile?: File | null;
@@ -19,17 +28,39 @@ export type DocumentFilePickerProps = {
 
 export function DocumentFilePicker({
   accept,
+  currentFile,
+  currentRemoveAriaLabel,
   description,
   disabled = false,
   multiple = false,
   onFilesChange,
   onRemove,
+  onRemoveCurrent,
   removeAriaLabel = "Remover arquivo selecionado",
   replaceLabel = "Trocar arquivo",
   selectedFile,
   title,
 }: DocumentFilePickerProps) {
   const inputId = useId();
+  const displayedFile = selectedFile
+    ? {
+        description: formatFileSize(selectedFile.size),
+        href: undefined,
+        isSelected: true,
+        name: selectedFile.name,
+      }
+    : currentFile
+      ? {
+          description: currentFile.description,
+          href: currentFile.href,
+          isSelected: false,
+          name: currentFile.name,
+        }
+      : null;
+  const removeHandler = displayedFile?.isSelected ? onRemove : onRemoveCurrent;
+  const displayedRemoveAriaLabel = displayedFile?.isSelected
+    ? removeAriaLabel
+    : currentRemoveAriaLabel || removeAriaLabel;
 
   return (
     <div>
@@ -49,18 +80,41 @@ export function DocumentFilePicker({
         }}
       />
 
-      {selectedFile ? (
+      {displayedFile ? (
         <div className="group flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3 transition-colors hover:border-[#d00012] hover:bg-[#fff5f6]">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-primary-dark transition-colors group-hover:bg-[#d00012]/10 group-hover:text-[#d00012]">
               <FileText className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-[#d00012]">{selectedFile.name}</div>
-              <div className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</div>
+              <div className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-[#d00012]">
+                {displayedFile.name}
+              </div>
+              {displayedFile.description ? (
+                <div className="text-xs text-muted-foreground">
+                  {displayedFile.description}
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {displayedFile.href ? (
+              <Button
+                asChild
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5 rounded-md hover:border-[#d00012] hover:bg-[#fff5f6] hover:text-[#d00012]"
+              >
+                <a
+                  href={displayedFile.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Abrir <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </Button>
+            ) : null}
             <label
               htmlFor={inputId}
               className={cn(
@@ -70,15 +124,15 @@ export function DocumentFilePicker({
             >
               <Upload className="h-4 w-4" /> {replaceLabel}
             </label>
-            {onRemove ? (
+            {removeHandler ? (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 disabled={disabled}
                 className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
-                aria-label={removeAriaLabel}
-                onClick={onRemove}
+                aria-label={displayedRemoveAriaLabel}
+                onClick={removeHandler}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

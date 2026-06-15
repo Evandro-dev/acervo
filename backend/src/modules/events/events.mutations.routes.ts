@@ -461,5 +461,3 @@ export async function eventMutationRoutes(app: FastifyInstance) {
     },
   );
 }
-
-
