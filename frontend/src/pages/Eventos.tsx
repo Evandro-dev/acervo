@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Filter } from "lucide-react";
 import { PublicEventCard } from "@/components/events/PublicEventCard";
 import { AppShell } from "@/components/layout/AppShell";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { QueryState } from "@/components/ui/query-state";
 import {
   Sheet,
@@ -19,58 +20,100 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAreasQuery, usePublicEventsQuery } from "@/features/acervo/hooks";
-import { includesSearch } from "@/lib/search";
-import { eventTypes } from "@/types/acervo";
+import { eventTypes, type EventType } from "@/types/acervo";
+
+const EVENTS_PAGE_SIZE = 12;
+
+function normalizeYear(value: string) {
+  const year = Number(value);
+
+  if (!Number.isInteger(year) || year < 1900 || year > 3000) {
+    return undefined;
+  }
+
+  return year;
+}
+
+function toFilterId(prefix: string, value: string) {
+  return `${prefix}-${encodeURIComponent(value)}`;
+}
+
+function toggleValue<T extends string>(
+  values: T[],
+  value: T,
+  setValues: (next: T[]) => void,
+) {
+  setValues(
+    values.includes(value)
+      ? values.filter((item) => item !== value)
+      : [...values, value],
+  );
+}
 
 export default function Eventos() {
-  const { data: events = [], isLoading, isError } = usePublicEventsQuery();
-  const { data: registeredAreas = [] } = useAreasQuery({ includeEmpty: true });
+  const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [types, setTypes] = useState<string[]>([]);
+  const [eventYear, setEventYear] = useState("");
+  const [types, setTypes] = useState<EventType[]>([]);
   const [areas, setAreas] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
+
   const deferredQuery = useDeferredValue(query);
+  const selectedYear = normalizeYear(eventYear);
+
+  const selectedTypes = useMemo(
+    () => [...types].sort((left, right) => left.localeCompare(right)),
+    [types],
+  );
+  const selectedAreas = useMemo(
+    () => [...areas].sort((left, right) => left.localeCompare(right)),
+    [areas],
+  );
+
+  const typesKey = selectedTypes.join("|");
+  const areasKey = selectedAreas.join("|");
+
+  useEffect(() => {
+    setPage(1);
+  }, [deferredQuery, eventYear, typesKey, areasKey]);
+
+  const {
+    data: eventsResponse,
+    isLoading,
+    isError,
+  } = usePublicEventsQuery({
+    page,
+    pageSize: EVENTS_PAGE_SIZE,
+    q: deferredQuery || undefined,
+    year: selectedYear,
+    type: selectedTypes.length > 0 ? selectedTypes : undefined,
+    area: selectedAreas.length > 0 ? selectedAreas : undefined,
+  });
+
+  const { data: registeredAreas = [] } = useAreasQuery({ includeEmpty: true });
+  const events = eventsResponse?.items ?? [];
 
   const allAreas = useMemo(
     () =>
-      Array.from(
-        new Set([
-          ...registeredAreas.map((area) => area.name),
-          ...events.map((event) => event.area).filter(Boolean),
-        ]),
-      ).sort((left, right) => left.localeCompare(right)),
-    [events, registeredAreas],
+      registeredAreas
+        .map((area) => area.name)
+        .filter(Boolean)
+        .sort((left, right) => left.localeCompare(right)),
+    [registeredAreas],
   );
 
-  const filtered = useMemo(() => {
-    const selectedYear = eventDate ? Number(eventDate.slice(0, 4)) : null;
-
-    return events.filter((event) => {
-      if (deferredQuery && !includesSearch(`${event.title} ${event.area} ${event.themes.join(" ")}`, deferredQuery)) {
-        return false;
-      }
-
-      if (selectedYear && event.year !== selectedYear) return false;
-      if (types.length && !types.includes(event.type)) return false;
-      if (areas.length && !areas.includes(event.area)) return false;
-
-      return true;
-    });
-  }, [areas, deferredQuery, eventDate, events, types]);
-
-  const toggle = (values: string[], value: string, setValues: (next: string[]) => void) =>
-    setValues(values.includes(value) ? values.filter((item) => item !== value) : [...values, value]);
-
-  const activeCount = (eventDate ? 1 : 0) + types.length + areas.length;
-  const toFilterId = (prefix: string, value: string) => `${prefix}-${encodeURIComponent(value)}`;
+  const activeCount =
+    (selectedYear ? 1 : 0) + selectedTypes.length + selectedAreas.length;
+  const totalResults = eventsResponse?.total ?? 0;
 
   return (
     <AppShell>
       <section className="bg-brand text-primary-foreground">
         <SiteContainer className="pb-5 pt-3">
           <h1 className="text-xl font-bold">Eventos</h1>
-          <p className="text-xs opacity-90">{isLoading ? "Carregando..." : `${filtered.length} resultados`}</p>
+          <p className="text-xs opacity-90">
+            {isLoading ? "Carregando..." : `${totalResults} resultados`}
+          </p>
 
           <Sheet open={open} onOpenChange={setOpen}>
             <GlobalSearchBox
@@ -104,38 +147,55 @@ export default function Eventos() {
               className="h-[92vh] overflow-y-auto rounded-t-[28px] border-0 bg-white px-5 pb-6 pt-4 shadow-2xl md:bottom-auto md:left-1/2 md:right-auto md:top-1/2 md:h-auto md:max-h-[90vh] md:w-[min(92vw,720px)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl"
             >
               <SheetHeader className="mb-6 flex flex-row items-center justify-between space-y-0 text-left">
-                <SheetTitle className="text-2xl font-bold text-[#E30613]">Filtros</SheetTitle>
+                <SheetTitle className="text-2xl font-bold text-[#E30613]">
+                  Filtros
+                </SheetTitle>
                 <SheetDescription className="sr-only">
-                  Filtre a lista de eventos por data, tipo e área temática.
+                  Filtre a lista de eventos por ano, tipo e área temática.
                 </SheetDescription>
               </SheetHeader>
 
               <div className="mb-6">
-                <Label htmlFor="event-date-filter" className="mb-2 block text-sm font-semibold text-black">
-                  Data
+                <Label
+                  htmlFor="event-year-filter"
+                  className="mb-2 block text-sm font-semibold text-black"
+                >
+                  Ano
                 </Label>
                 <Input
-                  id="event-date-filter"
-                  type="date"
-                  value={eventDate}
-                  onChange={(event) => setEventDate(event.target.value)}
+                  id="event-year-filter"
+                  type="number"
+                  inputMode="numeric"
+                  min={1900}
+                  max={3000}
+                  placeholder="Ex.: 2026"
+                  value={eventYear}
+                  onChange={(event) => setEventYear(event.target.value)}
                   className="h-11 rounded-xl border-zinc-300 bg-white text-sm shadow-none"
                 />
               </div>
 
               <div className="mb-7">
-                <div className="mb-4 block text-sm font-semibold text-black">Tipo de Evento</div>
+                <div className="mb-4 block text-sm font-semibold text-black">
+                  Tipo de Evento
+                </div>
 
                 <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:grid-cols-3">
                   {eventTypes.map((type) => {
                     const id = toFilterId("event-type", type);
 
                     return (
-                      <label key={type} htmlFor={id} className="flex items-center gap-2 text-sm">
+                      <label
+                        key={type}
+                        htmlFor={id}
+                        className="flex items-center gap-2 text-sm"
+                      >
                         <Checkbox
                           id={id}
                           checked={types.includes(type)}
-                          onCheckedChange={() => toggle(types, type, setTypes)}
+                          onCheckedChange={() =>
+                            toggleValue(types, type, setTypes)
+                          }
                         />
                         <span>{type}</span>
                       </label>
@@ -145,7 +205,9 @@ export default function Eventos() {
               </div>
 
               <div className="mb-8">
-                <div className="mb-4 block text-sm font-semibold text-black">Área</div>
+                <div className="mb-4 block text-sm font-semibold text-black">
+                  Área
+                </div>
 
                 {allAreas.length > 0 ? (
                   <div className="grid gap-3">
@@ -153,11 +215,17 @@ export default function Eventos() {
                       const id = toFilterId("event-area", area);
 
                       return (
-                        <label key={area} htmlFor={id} className="flex items-center gap-2 text-sm">
+                        <label
+                          key={area}
+                          htmlFor={id}
+                          className="flex items-center gap-2 text-sm"
+                        >
                           <Checkbox
                             id={id}
                             checked={areas.includes(area)}
-                            onCheckedChange={() => toggle(areas, area, setAreas)}
+                            onCheckedChange={() =>
+                              toggleValue(areas, area, setAreas)
+                            }
                           />
                           <span>{area}</span>
                         </label>
@@ -165,7 +233,9 @@ export default function Eventos() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Nenhuma área cadastrada ainda.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma área cadastrada ainda.
+                  </p>
                 )}
               </div>
 
@@ -174,7 +244,7 @@ export default function Eventos() {
                   variant="outline"
                   className="h-12 rounded-xl border-zinc-300 text-base font-semibold"
                   onClick={() => {
-                    setEventDate("");
+                    setEventYear("");
                     setTypes([]);
                     setAreas([]);
                   }}
@@ -199,16 +269,25 @@ export default function Eventos() {
           <QueryState
             isLoading={isLoading}
             isError={isError}
-            isEmpty={filtered.length === 0}
+            isEmpty={events.length === 0}
             loadingMessage="Carregando eventos..."
             errorMessage="Não foi possível carregar os eventos."
             emptyMessage="Nenhum evento encontrado."
           >
             <div className="grid auto-rows-fr gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-              {filtered.map((event) => (
+              {events.map((event) => (
                 <PublicEventCard key={event.id} event={event} />
               ))}
             </div>
+
+            <ListPagination
+              className="mt-6"
+              page={eventsResponse?.page ?? page}
+              pageCount={eventsResponse?.pageCount ?? 1}
+              total={eventsResponse?.total}
+              pageSize={eventsResponse?.pageSize ?? EVENTS_PAGE_SIZE}
+              onPageChange={setPage}
+            />
           </QueryState>
         </SiteContainer>
       </section>

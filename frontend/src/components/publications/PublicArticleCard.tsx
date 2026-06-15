@@ -3,6 +3,7 @@ import { BookMarked, ChevronRight, FileText } from "lucide-react";
 import { PublicationMetaRow } from "@/components/publications/PublicationMetaRow";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { publicMutedBadgeClassName } from "../../lib/public-badge-styles";
 
 type PublicArticleCardArticle = {
   id?: string;
@@ -52,13 +53,15 @@ export function PublicArticleCard({
             <div className="min-w-0 flex-1">
               <PublicationMetaRow
                 eventTitle={eventTitle}
-                viewCount={article.viewCount}
-                downloadCount={showDownloads ? article.downloadCount : undefined}
+                viewCount={article.viewCount ?? 0}
+                downloadCount={showDownloads ? article.downloadCount ?? 0 : undefined}
+                showDownloads={showDownloads}
                 titleClassName="text-[11px]"
-                metricsClassName="text-[11px]"
+                metricsClassName="gap-1.5 text-[11px]"
+                itemClassName={publicMutedBadgeClassName("h-5 px-1.5 text-[10px]")}
               />
 
-              <h3 className="text-sm font-bold leading-tight transition group-hover:text-primary">
+              <h3 className="text-sm font-bold leading-tight text-foreground transition group-hover:text-primary">
                 {article.title}
               </h3>
 
@@ -69,9 +72,14 @@ export function PublicArticleCard({
               ) : null}
 
               {article.area && (
-                <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                    {article.area}
+                <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={publicMutedBadgeClassName(
+                      "h-auto min-h-5 max-w-full min-w-0 whitespace-normal px-2 py-0.5 text-left leading-tight",
+                    )}
+                  >
+                    <span className="line-clamp-2 min-w-0 wrap-break-word">{article.area}</span>
                   </Badge>
                 </div>
               )}

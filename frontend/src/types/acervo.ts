@@ -1,8 +1,55 @@
-export const eventTypes = ["Congresso", "Simpósio", "Seminário", "Workshop", "Expo"] as const;
+export const eventTypes = [
+  "Congresso",
+  "Simpósio",
+  "Seminário",
+  "Workshop",
+  "Expo",
+] as const;
 
 export type EventType = (typeof eventTypes)[number];
 export type ArticleStatus = "draft" | "published" | "archived";
 export type UserRole = "ADMIN" | "COORDENADOR";
+
+export type FilterValue<T> = T | readonly T[];
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+};
+
+export type PaginationParams = {
+  page?: number;
+  pageSize?: number;
+};
+
+export type ArticleListStatus = ArticleStatus | "all";
+
+export type ArticleListFilters = PaginationParams & {
+  status?: ArticleListStatus;
+  area?: string;
+  course?: string;
+  q?: string;
+  eventId?: string;
+  author?: string;
+};
+
+export type EventIncludeArticlesMode = "published" | "all" | "none";
+
+export type EventListFilters = PaginationParams & {
+  q?: string;
+  year?: number;
+  type?: FilterValue<EventType>;
+  area?: FilterValue<string>;
+  includeArticles?: EventIncludeArticlesMode;
+};
+
+export type AuthorListFilters = PaginationParams & {
+  q?: string;
+  area?: FilterValue<string>;
+};
 
 export type AuthorSummary = {
   id: string;
@@ -30,6 +77,13 @@ export type ArticleEventSummary = {
   slug: string;
   title: string;
   year: number;
+};
+
+export type EventOption = {
+  id: string;
+  title: string;
+  year: number;
+  themes: string[];
 };
 
 export type Article = {
@@ -90,6 +144,14 @@ export type EventCatalog = {
   imageUrl?: string;
 };
 
+export type EventCatalogInput = {
+  isbn?: string | null;
+  doi?: string | null;
+  text?: string | null;
+  pdfUrl?: string | null;
+  imageUrl?: string | null;
+};
+
 export type Event = {
   id: string;
   slug: string;
@@ -120,6 +182,10 @@ export type Author = AuthorSummary & {
   areas: string[];
   works?: Article[];
 };
+
+export type ArticleListResponse = PaginatedResponse<Article>;
+export type EventListResponse = PaginatedResponse<Event>;
+export type AuthorListResponse = PaginatedResponse<Author>;
 
 export type UserAccount = {
   id: string;
@@ -210,7 +276,7 @@ export type EventMutationInput = {
   rules: EventRule[];
   previousEditions: EventPreviousEdition[];
   contact: EventContact;
-  catalog: EventCatalog;
+  catalog: EventCatalogInput;
 };
 
 export type ImportArticleInput = {
@@ -241,7 +307,12 @@ export type ArticleReportFilters = {
   dateTo?: string;
 };
 
-export type GlobalSearchType = "article" | "event" | "author" | "area" | "course";
+export type GlobalSearchType =
+  | "article"
+  | "event"
+  | "author"
+  | "area"
+  | "course";
 
 export type GlobalSearchResult = {
   id: string;

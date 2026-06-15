@@ -14,6 +14,7 @@ type PublicationMetaRowProps = PublicationEngagementIndicatorsProps & {
   eventTitle?: string;
   eventHref?: string;
   titleClassName?: string;
+  metricsClassName?: string;
 };
 
 export function PublicationEngagementIndicators({
@@ -24,10 +25,11 @@ export function PublicationEngagementIndicators({
   itemClassName,
 }: PublicationEngagementIndicatorsProps) {
   return (
-    <div className={cn("flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground", className)}>
+    <div className={cn("flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground", className)}>
       <span className={cn("inline-flex items-center gap-1", itemClassName)}>
         <Eye className="h-3.5 w-3.5" /> {viewCount}
       </span>
+
       {showDownloads && (
         <span className={cn("inline-flex items-center gap-1", itemClassName)}>
           <FileDown className="h-3.5 w-3.5" /> {downloadCount}
@@ -46,12 +48,16 @@ export function PublicationMetaRow({
   className,
   titleClassName,
   metricsClassName,
-}: PublicationMetaRowProps & { metricsClassName?: string }) {
+  itemClassName,
+}: PublicationMetaRowProps) {
   return (
     <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1", className)}>
       {eventTitle ? (
         eventHref ? (
-          <Link to={eventHref} className={cn("text-[10px] font-semibold uppercase tracking-wider text-primary", titleClassName)}>
+          <Link
+            to={eventHref}
+            className={cn("text-[10px] font-semibold uppercase tracking-wider text-primary", titleClassName)}
+          >
             {eventTitle}
           </Link>
         ) : (
@@ -68,6 +74,7 @@ export function PublicationMetaRow({
         downloadCount={downloadCount}
         showDownloads={showDownloads}
         className={metricsClassName}
+        itemClassName={itemClassName}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -35,6 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { QueryState } from "@/components/ui/query-state";
 import {
   useAdminArticlesQuery,
@@ -67,6 +68,8 @@ const tabs: { key: ArticleStatus; label: string }[] = [
   { key: "published", label: "Publicados" },
   { key: "archived", label: "Arquivados" },
 ];
+
+const ADMIN_ARTICLES_PAGE_SIZE = 12;
 
 const toApiStatus = {
   draft: "DRAFT",
@@ -130,7 +133,42 @@ type PdfReviewState = {
 export default function AdminPublicacoes() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const { data: articles = [], isLoading, isError } = useAdminArticlesQuery(isAuthenticated);
+  const [tab, setTab] = useState<ArticleStatus>("draft");
+  const [q, setQ] = useState("");
+  const deferredQuery = useDeferredValue(q);
+  const [page, setPage] = useState(1);
+
+  const {
+    data: articlesResponse,
+    isLoading,
+    isError,
+  } = useAdminArticlesQuery(isAuthenticated, {
+    status: tab,
+    q: deferredQuery || undefined,
+    page,
+    pageSize: ADMIN_ARTICLES_PAGE_SIZE,
+  });
+  const { data: draftArticlesResponse } = useAdminArticlesQuery(isAuthenticated, {
+    status: "draft",
+    page: 1,
+    pageSize: 1,
+  });
+  const { data: publishedArticlesResponse } = useAdminArticlesQuery(
+    isAuthenticated,
+    {
+      status: "published",
+      page: 1,
+      pageSize: 1,
+    },
+  );
+  const { data: archivedArticlesResponse } = useAdminArticlesQuery(
+    isAuthenticated,
+    {
+      status: "archived",
+      page: 1,
+      pageSize: 1,
+    },
+  );
   const { data: areas = [] } = useAreasQuery({ includeEmpty: true });
   const { data: courses = [] } = useCoursesQuery({ includeEmpty: true });
   const updateStatusMutation = useUpdateArticleStatusMutation();
@@ -138,9 +176,6 @@ export default function AdminPublicacoes() {
   const deleteArticleMutation = useDeleteArticleMutation();
   const uploadPdfMutation = useUploadArticlePdfMutation();
   const extractPdfMutation = useExtractArticlePdfMetadataMutation();
-  const [tab, setTab] = useState<ArticleStatus>("draft");
-  const [q, setQ] = useState("");
-  const deferredQuery = useDeferredValue(q);
   const [managingId, setManagingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<ArticleFormValue | null>(null);
@@ -149,31 +184,24 @@ export default function AdminPublicacoes() {
   const [uploadingArticleId, setUploadingArticleId] = useState<string | null>(null);
   const [downloadingArticleId, setDownloadingArticleId] = useState<string | null>(null);
 
-  const items = useMemo(
-    () => articles.filter((article) => article.status === tab),
-    [articles, tab],
-  );
+  const articles = articlesResponse?.items ?? [];
+  const totalArticles = articlesResponse?.total ?? 0;
+  const pageCount = articlesResponse?.pageCount ?? 1;
+  const counts = {
+    draft: draftArticlesResponse?.total ?? 0,
+    published: publishedArticlesResponse?.total ?? 0,
+    archived: archivedArticlesResponse?.total ?? 0,
+  };
 
-  const filtered = useMemo(() => {
-    const search = deferredQuery.toLowerCase().trim();
-    if (!search) return items;
+  useEffect(() => {
+    setPage(1);
+  }, [tab, deferredQuery]);
 
-    return items.filter((article) =>
-      `${article.title} ${article.authors.join(" ")} ${article.area} ${article.eventTitle ?? ""} ${article.externalId ?? ""}`
-        .toLowerCase()
-        .includes(search),
-    );
-  }, [deferredQuery, items]);
-
-  const counts = useMemo(() => {
-    return articles.reduce(
-      (summary, article) => {
-        summary[article.status] += 1;
-        return summary;
-      },
-      { draft: 0, published: 0, archived: 0 },
-    );
-  }, [articles]);
+  useEffect(() => {
+    if (!isLoading && page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [isLoading, page, pageCount]);
 
   const areaSuggestions = useMemo(() => areas.map((area) => area.name), [areas]);
   const courseSuggestions = useMemo(() => courses.map((course) => course.name), [courses]);
@@ -350,94 +378,105 @@ export default function AdminPublicacoes() {
       <QueryState
         isLoading={isLoading}
         isError={isError}
-        isEmpty={filtered.length === 0}
+        isEmpty={totalArticles === 0}
         loadingMessage="Carregando publicações administrativas..."
         errorMessage="Não foi possível carregar as publicações administrativas."
         emptyMessage={q.trim() ? "Nenhum trabalho corresponde a busca atual." : "Nenhum trabalho nesta categoria."}
       >
-        <div className="space-y-3">
-          {filtered.map((article) => (
-            <Card key={article.id} className="border-border/60 p-3 shadow-card">
-              <PublicationMetaRow
-                eventTitle={article.eventTitle}
-                viewCount={article.viewCount}
-                downloadCount={article.downloadCount}
-              />
-              <h3 className="mt-0.5 text-sm font-bold leading-tight">{article.title}</h3>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {article.authors.join(" · ")} · pp. {article.pages}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1">
-                <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                  {article.area}
-                </Badge>
-                {article.importedFrom && (
-                  <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px]">
-                    <ExternalLink className="h-2.5 w-2.5" />
-                    {article.importedFrom}
+        <>
+          <div className="space-y-3">
+            {articles.map((article) => (
+              <Card key={article.id} className="border-border/60 p-3 shadow-card">
+                <PublicationMetaRow
+                  eventTitle={article.eventTitle}
+                  viewCount={article.viewCount}
+                  downloadCount={article.downloadCount}
+                />
+                <h3 className="mt-0.5 text-sm font-bold leading-tight">{article.title}</h3>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {article.authors.join(" · ")} · pp. {article.pages}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                    {article.area}
                   </Badge>
-                )}
-                {article.externalId && (
-                  <Badge variant="outline" className="h-5 px-1.5 font-mono text-[10px]">
-                    {article.externalId}
-                  </Badge>
-                )}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => setManagingId(article.id)}>
-                  <Settings2 className="h-3.5 w-3.5" /> Gerenciar
-                </Button>
-
-                <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => openEditDialog(article)}>
-                  <Pencil className="h-3.5 w-3.5" /> Editar
-                </Button>
-
-                {tab === "draft" && (
-                  <Button
-                    size="sm"
-                    className="flex-1 gap-1 bg-success text-success-foreground hover:bg-success/90"
-                    onClick={() => changeStatus(article, "published", "Trabalho publicado no Acervo")}
-                  >
-                    <Send className="h-3.5 w-3.5" /> Publicar
+                  {article.importedFrom && (
+                    <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px]">
+                      <ExternalLink className="h-2.5 w-2.5" />
+                      {article.importedFrom}
+                    </Badge>
+                  )}
+                  {article.externalId && (
+                    <Badge variant="outline" className="h-5 px-1.5 font-mono text-[10px]">
+                      {article.externalId}
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => setManagingId(article.id)}>
+                    <Settings2 className="h-3.5 w-3.5" /> Gerenciar
                   </Button>
-                )}
 
-                {tab === "published" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 gap-1"
-                    onClick={() => changeStatus(article, "archived", "Trabalho arquivado")}
-                  >
-                    <Archive className="h-3.5 w-3.5" /> Arquivar
+                  <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => openEditDialog(article)}>
+                    <Pencil className="h-3.5 w-3.5" /> Editar
                   </Button>
-                )}
 
-                {tab === "archived" && (
+                  {tab === "draft" && (
+                    <Button
+                      size="sm"
+                      className="flex-1 gap-1 bg-success text-success-foreground hover:bg-success/90"
+                      onClick={() => changeStatus(article, "published", "Trabalho publicado no Acervo")}
+                    >
+                      <Send className="h-3.5 w-3.5" /> Publicar
+                    </Button>
+                  )}
+
+                  {tab === "published" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 gap-1"
+                      onClick={() => changeStatus(article, "archived", "Trabalho arquivado")}
+                    >
+                      <Archive className="h-3.5 w-3.5" /> Arquivar
+                    </Button>
+                  )}
+
+                  {tab === "archived" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 gap-1"
+                      onClick={() => changeStatus(article, "draft", "Trabalho restaurado para rascunho")}
+                    >
+                      <ArchiveRestore className="h-3.5 w-3.5" /> Restaurar
+                    </Button>
+                  )}
+
                   <Button
+                    aria-label={`Remover ${article.title}`}
+                    title={`Remover ${article.title}`}
                     size="sm"
-                    variant="outline"
-                    className="flex-1 gap-1"
-                    onClick={() => changeStatus(article, "draft", "Trabalho restaurado para rascunho")}
+                    variant="ghost"
+                    className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setConfirmDelete({ articleId: article.id, title: article.title })}
                   >
-                    <ArchiveRestore className="h-3.5 w-3.5" /> Restaurar
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
-                )}
+                </div>
+              </Card>
+            ))}
+          </div>
 
-                <Button
-                  aria-label={`Remover ${article.title}`}
-                  title={`Remover ${article.title}`}
-                  size="sm"
-                  variant="ghost"
-                  className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => setConfirmDelete({ articleId: article.id, title: article.title })}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+          <ListPagination
+            className="mt-6"
+            page={articlesResponse?.page ?? page}
+            pageCount={pageCount}
+            total={articlesResponse?.total}
+            pageSize={articlesResponse?.pageSize ?? ADMIN_ARTICLES_PAGE_SIZE}
+            onPageChange={setPage}
+          />
+        </>
       </QueryState>
 
       <Dialog open={Boolean(managingId)} onOpenChange={(open) => !open && setManagingId(null)}>

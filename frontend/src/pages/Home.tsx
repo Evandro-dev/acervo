@@ -1,34 +1,72 @@
 import { Link } from "react-router-dom";
-import { Users, Tag, Library } from "lucide-react";
+import { ChevronRight, Library, Tag, Users } from "lucide-react";
 import { PublicEventCard } from "@/components/events/PublicEventCard";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
 import { PublicArticleCard } from "@/components/publications/PublicArticleCard";
 import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
 import { QueryState } from "@/components/ui/query-state";
-import { usePublicEventsQuery } from "@/features/acervo/hooks";
+import {
+  usePublicEventsQuery,
+  usePublishedArticlesQuery,
+} from "@/features/acervo/hooks";
+
+function SectionActionLink({
+  to,
+  children,
+}: {
+  to: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      className="group inline-flex items-center gap-0.5 text-xs font-semibold text-primary transition hover:text-primary-dark"
+    >
+      <span>{children}</span>
+      <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+    </Link>
+  );
+}
 
 export default function Home() {
-  const { data: events = [], isLoading, isError } = usePublicEventsQuery();
+  const {
+    data: eventsResponse,
+    isLoading: isLoadingEvents,
+    isError: isEventsError,
+  } = usePublicEventsQuery({
+    page: 1,
+    pageSize: 3,
+  });
 
-  const recent = events.slice(0, 3);
-  const totalArticles = events.reduce((accumulator, event) => accumulator + event.publishedCount, 0);
-  const featuredEntry = events
-    .flatMap((event) => event.articles.map((article) => ({ article, event })))
-    .find(({ article }) => article.status === "published");
-  const featuredArticle = featuredEntry?.article;
-  const featuredEvent = featuredEntry?.event ?? null;
+  const {
+    data: articlesResponse,
+    isLoading: isLoadingArticles,
+    isError: isArticlesError,
+  } = usePublishedArticlesQuery({
+    page: 1,
+    pageSize: 1,
+  });
+
+  const recent = eventsResponse?.items ?? [];
+  const eventCount = eventsResponse?.total ?? 0;
+  const totalArticles = articlesResponse?.total ?? 0;
+  const featuredArticle = articlesResponse?.items[0] ?? null;
   const featuredArticleHref =
-    featuredArticle && (featuredEvent?.slug ?? featuredArticle.eventSlug ?? featuredArticle.eventId)
-      ? `/eventos/${featuredEvent?.slug ?? featuredArticle.eventSlug ?? featuredArticle.eventId}/artigos/${featuredArticle.id}`
+    featuredArticle && (featuredArticle.eventSlug ?? featuredArticle.eventId)
+      ? `/eventos/${featuredArticle.eventSlug ?? featuredArticle.eventId}/artigos/${featuredArticle.id}`
       : "/publicacoes";
 
   return (
     <AppShell>
       <section className="bg-brand text-primary-foreground">
         <SiteContainer className="pb-6 pt-2 md:pb-10 md:pt-6">
-          <h1 className="text-xl font-bold md:text-3xl">Bem-vindo(a) ao Acervo,</h1>
-          <p className="mt-1 text-sm opacity-90 md:text-base">Repositório Oficial dos Anais da Una Pouso Alegre</p>
+          <h1 className="text-xl font-bold md:text-3xl">
+            Bem-vindo(a) ao Acervo,
+          </h1>
+          <p className="mt-1 text-sm opacity-90 md:text-base">
+            Repositório Oficial dos Anais da Una Pouso Alegre
+          </p>
 
           <GlobalSearchBox
             containerClassName="mt-4"
@@ -39,12 +77,16 @@ export default function Home() {
           <div className="mt-4 grid grid-cols-2 gap-2">
             <div className="rounded-lg bg-white/10 px-3 py-2 backdrop-blur">
               <div className="text-xs opacity-80">Eventos</div>
-              <div className="text-lg font-bold">{isLoading ? "..." : events.length}</div>
+              <div className="text-lg font-bold">
+                {isLoadingEvents ? "..." : eventCount}
+              </div>
             </div>
 
             <div className="rounded-lg bg-white/10 px-3 py-2 backdrop-blur">
               <div className="text-xs opacity-80">Publicações</div>
-              <div className="text-lg font-bold">{isLoading ? "..." : totalArticles}</div>
+              <div className="text-lg font-bold">
+                {isLoadingArticles ? "..." : totalArticles}
+              </div>
             </div>
           </div>
         </SiteContainer>
@@ -66,7 +108,9 @@ export default function Home() {
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft text-primary-dark md:h-12 md:w-12">
                   <Icon className="h-4 w-4 md:h-6 md:w-6" />
                 </div>
-                <span className="text-[11px] font-semibold md:text-sm">{label}</span>
+                <span className="text-[11px] font-semibold md:text-sm">
+                  {label}
+                </span>
               </Link>
             ))}
           </div>
@@ -77,14 +121,12 @@ export default function Home() {
         <SiteContainer>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-base font-bold md:text-xl">Eventos</h2>
-            <Link to="/eventos" className="text-xs font-semibold text-primary">
-              Ver todos
-            </Link>
+            <SectionActionLink to="/eventos">Ver todos</SectionActionLink>
           </div>
 
           <QueryState
-            isLoading={isLoading}
-            isError={isError}
+            isLoading={isLoadingEvents}
+            isError={isEventsError}
             isEmpty={recent.length === 0}
             loadingMessage="Carregando eventos..."
             errorMessage="Não foi possível carregar os eventos."
@@ -103,14 +145,12 @@ export default function Home() {
         <SiteContainer>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-base font-bold">Publicação em destaque</h2>
-            <Link to="/publicacoes" className="text-xs font-semibold text-primary">
-              Explorar
-            </Link>
+            <SectionActionLink to="/publicacoes">Explorar</SectionActionLink>
           </div>
 
           <QueryState
-            isLoading={isLoading}
-            isError={isError}
+            isLoading={isLoadingArticles}
+            isError={isArticlesError}
             isEmpty={!featuredArticle}
             loadingMessage="Carregando publicação em destaque..."
             errorMessage="Não foi possível carregar a publicação em destaque."
@@ -119,7 +159,7 @@ export default function Home() {
             <PublicArticleCard
               article={featuredArticle}
               href={featuredArticleHref}
-              eventTitle={featuredEvent?.title ?? featuredArticle?.eventTitle ?? "Anais"}
+              eventTitle={featuredArticle?.eventTitle ?? "Anais"}
             />
           </QueryState>
         </SiteContainer>

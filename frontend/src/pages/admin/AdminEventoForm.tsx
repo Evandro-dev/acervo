@@ -37,8 +37,8 @@ import { StatePanel } from "@/components/ui/state-panel";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useAreasQuery,
-  useAdminEventsQuery,
   useCreateEventMutation,
+  usePublicEventsQuery,
   useEventQuery,
   useExtractCatalogPdfMetadataMutation,
   useRemoveUploadedEventRuleFileMutation,
@@ -659,7 +659,10 @@ export default function AdminEventoForm() {
     isError,
   } = useEventQuery(isAuthenticated && id ? id : undefined, "all");
   const { data: areas = [] } = useAreasQuery({ includeEmpty: true });
-  const { data: adminEvents = [] } = useAdminEventsQuery(isAuthenticated);
+  const { data: previousEditionEventsResponse } = usePublicEventsQuery({
+    page: 1,
+    pageSize: 100,
+  });
   const createEventMutation = useCreateEventMutation();
   const updateEventMutation = useUpdateEventMutation();
   const extractCatalogPdfMetadataMutation =
@@ -716,7 +719,8 @@ export default function AdminEventoForm() {
     "normas",
     "edicoes",
   ];
-  const previousEditionEventOptions = adminEvents.filter(
+  const previousEditionEvents = previousEditionEventsResponse?.items ?? [];
+  const previousEditionEventOptions = previousEditionEvents.filter(
     (event) => event.id !== id,
   );
 

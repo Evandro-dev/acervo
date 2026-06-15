@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Filter, X } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
@@ -7,6 +7,7 @@ import { PublicArticleCard } from "@/components/publications/PublicArticleCard";
 import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { QueryState } from "@/components/ui/query-state";
 import {
   Sheet,
@@ -29,6 +30,8 @@ function getArticleModality(article: Article) {
   return article.modality?.trim() || "Sem modalidade";
 }
 
+const PUBLICATIONS_PAGE_SIZE = 12;
+
 function getArticleYear(article: Article) {
   return article.eventYear ? String(article.eventYear) : "";
 }
@@ -46,7 +49,7 @@ function toFilterId(prefix: string, value: string) {
 }
 
 export default function Publicacoes() {
-  const { data: articles = [], isLoading, isError } = usePublishedArticlesQuery();
+  const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
@@ -58,6 +61,19 @@ export default function Publicacoes() {
   const areaFilter = searchParams.get("area");
   const courseFilter = searchParams.get("course");
   const deferredQuery = useDeferredValue(q);
+
+  const {
+    data: articlesResponse,
+    isLoading,
+    isError,
+  } = usePublishedArticlesQuery({
+    page,
+    pageSize: PUBLICATIONS_PAGE_SIZE,
+  });
+
+  const articles = articlesResponse?.items ?? [];
+  const totalArticles = articlesResponse?.total ?? 0;
+  const pageCount = articlesResponse?.pageCount ?? 1;
 
   const areaOptions = useMemo(
     () =>
@@ -107,6 +123,23 @@ export default function Publicacoes() {
     selectedModalities.length +
     selectedYears.length +
     (onlyWithPdf ? 1 : 0);
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    activeFilterCount,
+    deferredQuery,
+    selectedAreas,
+    selectedEvents,
+    selectedModalities,
+    selectedYears,
+  ]);
+
+  useEffect(() => {
+    if (!isLoading && page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [isLoading, page, pageCount]);
 
   const filtered = useMemo(() => {
     return articles.filter((article) => {
@@ -167,7 +200,7 @@ export default function Publicacoes() {
       <section className="bg-brand text-primary-foreground">
         <SiteContainer className="pb-5 pt-3">
           <h1 className="text-lg font-bold">Publicações</h1>
-          <p className="text-xs opacity-90">{isLoading ? "Carregando..." : `${filtered.length} artigos disponíveis`}</p>
+          <p className="text-xs opacity-90">{isLoading ? "Carregando..." : `${totalArticles} artigos disponíveis`}</p>
 
           {areaFilter && (
             <button
@@ -375,6 +408,15 @@ export default function Publicacoes() {
                 />
               ))}
             </div>
+
+            <ListPagination
+              className="mt-6"
+              page={articlesResponse?.page ?? page}
+              pageCount={pageCount}
+              total={articlesResponse?.total}
+              pageSize={articlesResponse?.pageSize ?? PUBLICATIONS_PAGE_SIZE}
+              onPageChange={setPage}
+            />
           </QueryState>
         </SiteContainer>
       </section>

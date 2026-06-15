@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { Prisma } from "../../generated/prisma/client.js";
 import { z } from "zod";
 import {
   articlePdfExists,
@@ -13,6 +14,11 @@ import { extractArticlePdfMetadataAnalysis } from "../../lib/article-pdf-metadat
 import { authorPayloadSchema, normalizeAuthorPayload } from "../../lib/contracts.js";
 import { canManageArticle, getOptionalUser, isPrivilegedRole, requirePrivilegedUser } from "../../lib/permissions.js";
 import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
+import {
+  createPaginatedResponse,
+  createPaginationQuerySchema,
+  getPaginationParams,
+} from "../../lib/pagination.js";
 import { prisma } from "../../lib/prisma.js";
 import { isPrismaTransactionExpiredError } from "../../lib/prisma-errors.js";
 import { queryBooleanSchema } from "../../lib/query-boolean.js";
@@ -42,7 +48,7 @@ const articlePayloadSchema = z.object({
   area: z.string().min(1).max(120),
   courses: z.array(z.string().trim().min(2).max(160)).max(20).default([]),
   pages: z.string().max(40).optional(),
-  pdfUrl: z.string().url().optional(),
+  pdfUrl: z.url().optional(),
   eventId: z.string(),
   authors: z.array(authorPayloadSchema).min(1),
   modality: z.string().max(120).optional(),
@@ -54,14 +60,16 @@ const articlePayloadSchema = z.object({
   publishedAt: z.coerce.date().optional(),
 });
 
-const articleQuerySchema = z.object({
-  status: articleStatusQuerySchema.default("published"),
-  area: z.string().trim().optional(),
-  course: z.string().trim().optional(),
-  q: z.string().trim().optional(),
-  eventId: z.string().optional(),
-  author: z.string().trim().optional(),
-});
+const articleQuerySchema = z
+  .object({
+    status: articleStatusQuerySchema.default("published"),
+    area: z.string().trim().optional(),
+    course: z.string().trim().optional(),
+    q: z.string().trim().optional(),
+    eventId: z.string().optional(),
+    author: z.string().trim().optional(),
+  })
+  .merge(createPaginationQuerySchema({ defaultPageSize: 12 }));
 
 function normalizeStatusQuery(status: z.infer<typeof articleStatusQuerySchema>) {
   switch (status) {
@@ -94,6 +102,65 @@ function getArticleInclude() {
   };
 }
 
+type ArticleListQuery = z.infer<typeof articleQuerySchema>;
+
+const articleListOrderBy: Prisma.ArticleOrderByWithRelationInput[] = [
+  { publishedAt: "desc" },
+  { submittedAt: "desc" },
+  { id: "asc" },
+];
+
+function buildArticleWhere(
+  query: ArticleListQuery,
+  status: ReturnType<typeof normalizeStatusQuery>,
+): Prisma.ArticleWhereInput {
+  return {
+    ...(status ? { status } : {}),
+    ...(query.area ? { area: query.area } : {}),
+    ...(query.course
+      ? {
+          courses: {
+            some: {
+              course: {
+                normalizedName: normalizeCourseLookup(query.course),
+              },
+            },
+          },
+        }
+      : {}),
+    ...(query.eventId ? { eventId: query.eventId } : {}),
+    ...(query.author
+      ? {
+          authors: {
+            some: {
+              author: {
+                name: { contains: query.author, mode: "insensitive" },
+              },
+            },
+          },
+        }
+      : {}),
+    ...(query.q
+      ? {
+          OR: [
+            { title: { contains: query.q, mode: "insensitive" } },
+            { abstract: { contains: query.q, mode: "insensitive" } },
+            { externalId: { contains: query.q, mode: "insensitive" } },
+            {
+              authors: {
+                some: {
+                  author: {
+                    name: { contains: query.q, mode: "insensitive" },
+                  },
+                },
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+}
+
 async function resolveArticleArea(tx: any, area: string) {
   const areaRecord = await ensureArea(tx, area);
 
@@ -115,63 +182,31 @@ export async function articleRoutes(app: FastifyInstance) {
   app.get("/", async (req, reply) => {
     const query = articleQuerySchema.parse(req.query ?? {});
     const status = normalizeStatusQuery(query.status);
+    const pagination = getPaginationParams(query);
 
     if (query.status !== "published") {
       const user = await requirePrivilegedUser(req, reply);
       if (!user) return;
     }
 
-    const articles = await prisma.article.findMany({
-      where: {
-        ...(status ? { status } : {}),
-        ...(query.area ? { area: query.area } : {}),
-        ...(query.course
-          ? {
-              courses: {
-                some: {
-                  course: {
-                    normalizedName: normalizeCourseLookup(query.course),
-                  },
-                },
-              },
-            }
-          : {}),
-        ...(query.eventId ? { eventId: query.eventId } : {}),
-        ...(query.author
-          ? {
-              authors: {
-                some: {
-                  author: {
-                    name: { contains: query.author, mode: "insensitive" },
-                  },
-                },
-              },
-            }
-          : {}),
-        ...(query.q
-          ? {
-              OR: [
-                { title: { contains: query.q, mode: "insensitive" } },
-                { abstract: { contains: query.q, mode: "insensitive" } },
-                { externalId: { contains: query.q, mode: "insensitive" } },
-                {
-                  authors: {
-                    some: {
-                      author: {
-                        name: { contains: query.q, mode: "insensitive" },
-                      },
-                    },
-                  },
-                },
-              ],
-            }
-          : {}),
-      },
-      include: getArticleInclude(),
-      orderBy: [{ publishedAt: "desc" }, { submittedAt: "desc" }],
-    });
+    const where = buildArticleWhere(query, status);
 
-    return articles.map((article: any) => serializeArticle(article));
+    const [total, articles] = await prisma.$transaction([
+      prisma.article.count({ where }),
+      prisma.article.findMany({
+        where,
+        include: getArticleInclude(),
+        orderBy: articleListOrderBy,
+        skip: pagination.skip,
+        take: pagination.take,
+      }),
+    ]);
+
+    return createPaginatedResponse(
+      articles.map((article: any) => serializeArticle(article)),
+      total,
+      pagination,
+    );
   });
 
   app.post(

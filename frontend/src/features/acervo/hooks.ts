@@ -1,10 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   createEvent,
   deleteArticle,
   deleteEvent,
   extractArticlePdfMetadata,
   extractCatalogPdfMetadata,
+  fetchAdminDashboardSummary,
   fetchArticle,
   fetchArticles,
   fetchAreas,
@@ -13,6 +19,7 @@ import {
   fetchCourses,
   fetchEvent,
   fetchEvents,
+  fetchEventOptions,
   fetchGlobalSearch,
   importArticles,
   removeUploadedEventRuleFile,
@@ -25,9 +32,18 @@ import {
   uploadEventCatalogPdf,
   uploadEventCoverImage,
   uploadEventRuleFile,
+  type AdminDashboardSummary,
 } from "./api";
 import type {
+  ArticleListFilters,
+  ArticleListResponse,
   ArticleUpdateInput,
+  AuthorListFilters,
+  AuthorListResponse,
+  EventIncludeArticlesMode,
+  EventListFilters,
+  EventOption,
+  EventListResponse,
   EventMutationInput,
   ImportArticleInput,
 } from "@/types/acervo";
@@ -38,8 +54,14 @@ type EventQueryOptions = {
   refetchOnWindowFocus?: boolean | "always";
 };
 
+type PublicEventsFilters = Omit<EventListFilters, "includeArticles">;
+type AdminEventsFilters = Omit<EventListFilters, "includeArticles">;
+type PublishedArticlesFilters = Omit<ArticleListFilters, "status">;
+type AdminArticlesFilters = ArticleListFilters;
+
 function normalizeLookupValue(value?: string) {
   const trimmed = value?.trim();
+
   if (!trimmed || trimmed === "undefined" || trimmed === "null") {
     return undefined;
   }
@@ -47,36 +69,141 @@ function normalizeLookupValue(value?: string) {
   return trimmed;
 }
 
+function normalizeFilterValues<T extends string>(value?: T | readonly T[]) {
+  const values = Array.isArray(value) ? [...value] : value ? [value] : [];
+
+  const normalized = values
+    .map((item) => normalizeLookupValue(item))
+    .filter((item): item is T => Boolean(item));
+
+  const uniqueValues = Array.from(new Set(normalized)).sort((left, right) =>
+    left.localeCompare(right),
+  );
+
+  return uniqueValues.length > 0 ? uniqueValues : undefined;
+}
+
+function compactKey<T extends Record<string, unknown>>(value: T) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => {
+      if (Array.isArray(entry)) return entry.length > 0;
+
+      return entry !== undefined && entry !== null && entry !== "";
+    }),
+  ) as Partial<T>;
+}
+
+function normalizeEventListFilters(
+  filters?: EventListFilters,
+  includeArticles: EventIncludeArticlesMode = "none",
+): EventListFilters {
+  return compactKey({
+    q: normalizeLookupValue(filters?.q),
+    year: filters?.year,
+    type: normalizeFilterValues(filters?.type),
+    area: normalizeFilterValues(filters?.area),
+    includeArticles: filters?.includeArticles ?? includeArticles,
+    page: filters?.page,
+    pageSize: filters?.pageSize,
+  }) as EventListFilters;
+}
+
+function normalizeArticleListFilters(
+  filters?: ArticleListFilters,
+): ArticleListFilters {
+  return compactKey({
+    status: filters?.status,
+    area: normalizeLookupValue(filters?.area),
+    course: normalizeLookupValue(filters?.course),
+    q: normalizeLookupValue(filters?.q),
+    eventId: normalizeLookupValue(filters?.eventId),
+    author: normalizeLookupValue(filters?.author),
+    page: filters?.page,
+    pageSize: filters?.pageSize,
+  }) as ArticleListFilters;
+}
+
+function normalizeAuthorListFilters(
+  filters?: AuthorListFilters,
+): AuthorListFilters {
+  return compactKey({
+    q: normalizeLookupValue(filters?.q),
+    area: normalizeFilterValues(filters?.area),
+    page: filters?.page,
+    pageSize: filters?.pageSize,
+  }) as AuthorListFilters;
+}
+
 const acervoKeys = {
   root: ["acervo"] as const,
-  events: (scope: string) => ["acervo", "events", scope] as const,
+  dashboardSummary: () => ["acervo", "dashboard-summary"] as const,
+  events: (scope: string, filters?: EventListFilters) =>
+    ["acervo", "events", scope, filters ?? {}] as const,
+  eventOptions: () => ["acervo", "events", "options"] as const,
   event: (idOrSlug: string, scope: string) =>
     ["acervo", "event", idOrSlug, scope] as const,
-  articles: (scope: string, filters?: Record<string, unknown>) =>
+  articles: (scope: string, filters?: ArticleListFilters) =>
     ["acervo", "articles", scope, filters ?? {}] as const,
   article: (id: string) => ["acervo", "article", id] as const,
   areas: (includeEmpty: boolean, search = "") =>
     ["acervo", "areas", includeEmpty, search] as const,
   courses: (includeEmpty: boolean, search = "") =>
     ["acervo", "courses", includeEmpty, search] as const,
-  authors: (search = "") => ["acervo", "authors", search] as const,
+  authors: (filters?: AuthorListFilters) =>
+    ["acervo", "authors", filters ?? {}] as const,
   author: (idOrSlug: string) => ["acervo", "author", idOrSlug] as const,
   globalSearch: (query: string, limit: number) =>
     ["acervo", "global-search", query, limit] as const,
 };
 
-export function usePublicEventsQuery() {
+export function useAdminDashboardSummaryQuery(
+  enabled = true,
+): UseQueryResult<AdminDashboardSummary> {
   return useQuery({
-    queryKey: acervoKeys.events("public"),
-    queryFn: () => fetchEvents("published"),
+    enabled,
+    queryKey: acervoKeys.dashboardSummary(),
+    queryFn: fetchAdminDashboardSummary,
   });
 }
 
-export function useAdminEventsQuery(enabled = true) {
+export function useEventOptionsQuery(
+  enabled = true,
+): UseQueryResult<EventOption[]> {
   return useQuery({
     enabled,
-    queryKey: acervoKeys.events("admin"),
-    queryFn: () => fetchEvents("all"),
+    queryKey: acervoKeys.eventOptions(),
+    queryFn: fetchEventOptions,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function usePublicEventsQuery(
+  filters?: PublicEventsFilters,
+): UseQueryResult<EventListResponse> {
+  const queryFilters = normalizeEventListFilters(filters, "none");
+
+  return useQuery({
+    queryKey: acervoKeys.events("public", queryFilters),
+    queryFn: () => fetchEvents(queryFilters),
+  });
+}
+
+export function useAdminEventsQuery(
+  enabled = true,
+  filters?: AdminEventsFilters,
+): UseQueryResult<EventListResponse> {
+  const queryFilters = normalizeEventListFilters(
+    {
+      ...filters,
+      includeArticles: "all",
+    },
+    "all",
+  );
+
+  return useQuery({
+    enabled,
+    queryKey: acervoKeys.events("admin", queryFilters),
+    queryFn: () => fetchEvents(queryFilters),
   });
 }
 
@@ -95,18 +222,33 @@ export function useEventQuery(
   });
 }
 
-export function usePublishedArticlesQuery() {
+export function usePublishedArticlesQuery(
+  filters?: PublishedArticlesFilters,
+): UseQueryResult<ArticleListResponse> {
+  const queryFilters = normalizeArticleListFilters({
+    ...filters,
+    status: "published",
+  });
+
   return useQuery({
-    queryKey: acervoKeys.articles("published"),
-    queryFn: () => fetchArticles({ status: "published" }),
+    queryKey: acervoKeys.articles("published", queryFilters),
+    queryFn: () => fetchArticles(queryFilters),
   });
 }
 
-export function useAdminArticlesQuery(enabled = true) {
+export function useAdminArticlesQuery(
+  enabled = true,
+  filters?: AdminArticlesFilters,
+): UseQueryResult<ArticleListResponse> {
+  const queryFilters = normalizeArticleListFilters({
+    ...filters,
+    status: filters?.status ?? "all",
+  });
+
   return useQuery({
     enabled,
-    queryKey: acervoKeys.articles("admin", { status: "all" }),
-    queryFn: () => fetchArticles({ status: "all" }),
+    queryKey: acervoKeys.articles("admin", queryFilters),
+    queryFn: () => fetchArticles(queryFilters),
   });
 }
 
@@ -125,7 +267,7 @@ export function useAreasQuery(options?: {
   search?: string;
 }) {
   const includeEmpty = options?.includeEmpty ?? false;
-  const search = options?.search ?? "";
+  const search = normalizeLookupValue(options?.search) ?? "";
 
   return useQuery({
     queryKey: acervoKeys.areas(includeEmpty, search),
@@ -138,7 +280,7 @@ export function useCoursesQuery(options?: {
   search?: string;
 }) {
   const includeEmpty = options?.includeEmpty ?? false;
-  const search = options?.search ?? "";
+  const search = normalizeLookupValue(options?.search) ?? "";
 
   return useQuery({
     queryKey: acervoKeys.courses(includeEmpty, search),
@@ -146,10 +288,24 @@ export function useCoursesQuery(options?: {
   });
 }
 
-export function useAuthorsQuery(search = "") {
+export function useAuthorsQuery(
+  search?: string,
+): UseQueryResult<AuthorListResponse>;
+export function useAuthorsQuery(
+  filters?: AuthorListFilters,
+): UseQueryResult<AuthorListResponse>;
+export function useAuthorsQuery(
+  searchOrFilters: string | AuthorListFilters = "",
+): UseQueryResult<AuthorListResponse> {
+  const queryFilters = normalizeAuthorListFilters(
+    typeof searchOrFilters === "string"
+      ? { q: searchOrFilters }
+      : searchOrFilters,
+  );
+
   return useQuery({
-    queryKey: acervoKeys.authors(search),
-    queryFn: () => fetchAuthors(search || undefined),
+    queryKey: acervoKeys.authors(queryFilters),
+    queryFn: () => fetchAuthors(queryFilters),
   });
 }
 

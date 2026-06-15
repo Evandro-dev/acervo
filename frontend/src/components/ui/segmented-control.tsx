@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   segmentedControlActiveItemClassName,
+  segmentedControlInactiveItemClassName,
   segmentedControlItemClassName,
   segmentedControlListClassName,
 } from "@/lib/segmented-control";
@@ -31,7 +32,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="group"
       aria-label={ariaLabel}
-      className={cn("grid", segmentedControlListClassName, className)}
+      className={cn(segmentedControlListClassName, className)}
     >
       {options.map((option) => {
         const isActive = option.value === value;
@@ -42,7 +43,12 @@ export function SegmentedControl<T extends string>({
             type="button"
             aria-pressed={isActive}
             disabled={option.disabled}
-            className={cn(segmentedControlItemClassName, isActive && segmentedControlActiveItemClassName)}
+            className={cn(
+              segmentedControlItemClassName,
+              isActive
+                ? segmentedControlActiveItemClassName
+                : segmentedControlInactiveItemClassName,
+            )}
             onClick={() => onValueChange(option.value)}
           >
             {option.label}

@@ -58,7 +58,7 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Acessar site da UNA Pouso Alegre"
-            className="flex h-6 w-[3.25rem] items-center overflow-hidden md:h-7 md:w-[3.75rem] lg:h-7 lg:w-16"
+            className="flex h-6 w-13 items-center overflow-hidden md:h-7 md:w-15 lg:h-7 lg:w-16"
           >
             <ProtectedImage
               src="/logo_una.svg"
@@ -70,7 +70,7 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
           <div aria-hidden="true" className="hidden h-8 w-px bg-white/25 lg:block" />
 
           <Link to="/" className="hidden items-center lg:flex" aria-label="Ir para o início do Acervo">
-            <span className="flex h-8 w-[5.5rem] items-center overflow-hidden xl:w-24">
+            <span className="flex h-8 w-22 items-center overflow-hidden xl:w-24">
               <ProtectedImage
                 src="/logo_acervo.svg"
                 alt="Acervo"
@@ -86,7 +86,7 @@ export function MobileHeader({ showBack }: MobileHeaderProps) {
           className="absolute left-1/2 -translate-x-1/2 lg:hidden"
           aria-label="Ir para o início do Acervo"
         >
-          <span className="flex h-7 w-[4.75rem] items-center overflow-hidden md:h-8 md:w-[5.5rem]">
+          <span className="flex h-7 w-19 items-center overflow-hidden md:h-8 md:w-22">
             <ProtectedImage
               src="/logo_acervo.svg"
               alt="Acervo"

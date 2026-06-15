@@ -32,9 +32,9 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  useAdminEventsQuery,
   useAreasQuery,
   useCoursesQuery,
+  useEventOptionsQuery,
   useExtractArticlePdfMetadataMutation,
   useImportArticlesMutation,
   useUploadArticlePdfMutation,
@@ -192,7 +192,11 @@ export default function AdminImportar() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
-  const { data: events = [], isLoading, isError } = useAdminEventsQuery(isAuthenticated);
+  const {
+    data: events = [],
+    isLoading,
+    isError,
+  } = useEventOptionsQuery(isAuthenticated);
   const { data: areas = [] } = useAreasQuery({ includeEmpty: true });
   const { data: courses = [] } = useCoursesQuery({ includeEmpty: true });
   const importMutation = useImportArticlesMutation();
@@ -680,14 +684,22 @@ export default function AdminImportar() {
             </div>
           </Card>
 
-          <Card className="border-border/60 p-3 shadow-card" data-testid="import-mode-card">
-            <Tabs defaultValue="manual" className="w-full">
-              <TabsList className={cn("grid w-full grid-cols-2", segmentedControlListClassName)}>
-                <TabsTrigger value="manual" className={cn(segmentedControlItemClassName, segmentedTabsTriggerClassName)}>
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Manual
+          <Card className="overflow-hidden border-border/60 p-3 shadow-card" data-testid="import-mode-card">
+            <Tabs defaultValue="manual" className="w-full min-w-0 overflow-hidden">
+              <TabsList className={cn("w-full grid-cols-2", segmentedControlListClassName)}>
+                <TabsTrigger
+                  value="manual"
+                  className={cn(segmentedControlItemClassName, segmentedTabsTriggerClassName)}
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Manual</span>
                 </TabsTrigger>
-                <TabsTrigger value="pdf" className={cn(segmentedControlItemClassName, segmentedTabsTriggerClassName)}>
-                  <Sparkles className="mr-1 h-3.5 w-3.5" /> PDF
+                <TabsTrigger
+                  value="pdf"
+                  className={cn(segmentedControlItemClassName, segmentedTabsTriggerClassName)}
+                >
+                  <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">PDF</span>
                 </TabsTrigger>
               </TabsList>
 

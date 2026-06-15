@@ -1,18 +1,24 @@
 import { api } from "@/lib/api";
 import type {
   Article,
+  ArticleListFilters,
+  ArticleListResponse,
   ArticleUpdateInput,
   AreaSummary,
   Author,
+  AuthorListFilters,
+  AuthorListResponse,
   CourseSummary,
   Event,
+  EventIncludeArticlesMode,
+  EventListFilters,
+  EventListResponse,
   EventMutationInput,
+  EventOption,
   ExtractedArticlePdfMetadata,
   GlobalSearchResponse,
   ImportArticleInput,
 } from "@/types/acervo";
-
-type IncludeArticlesMode = "published" | "all" | "none";
 
 export type ExtractedCatalogPdfMetadata = {
   text: string;
@@ -26,25 +32,129 @@ export type UploadedEventCatalogPdfMetadata = ExtractedCatalogPdfMetadata & {
   catalogImageUrl?: string;
 };
 
-function compact<T extends Record<string, unknown>>(value: T) {
-  return Object.fromEntries(
-    Object.entries(value).filter(
-      ([, entry]) => entry !== undefined && entry !== null && entry !== "",
-    ),
-  ) as T;
+export type AdminDashboardSummary = {
+  eventCount: number;
+  publishedCount: number;
+  draftCount: number;
+  archivedCount: number;
+};
+
+type QueryParamPrimitive = string | number | boolean;
+type QueryParamValue =
+  | QueryParamPrimitive
+  | readonly QueryParamPrimitive[]
+  | null
+  | undefined;
+
+function normalizeLookupValue(value?: string) {
+  const trimmed = value?.trim();
+
+  if (!trimmed || trimmed === "undefined" || trimmed === "null") {
+    return undefined;
+  }
+
+  return trimmed;
+}
+
+function normalizeFilterValues<T extends string>(value?: T | readonly T[]) {
+  const values = Array.isArray(value) ? [...value] : value ? [value] : [];
+
+  const normalized = values
+    .map((item) => normalizeLookupValue(item))
+    .filter((item): item is T => Boolean(item));
+
+  const uniqueValues = Array.from(new Set(normalized)).sort((left, right) =>
+    left.localeCompare(right),
+  );
+
+  return uniqueValues.length > 0 ? uniqueValues : undefined;
+}
+
+function appendQueryParam(
+  searchParams: URLSearchParams,
+  key: string,
+  value: QueryParamValue,
+) {
+  if (value === undefined || value === null || value === "") return;
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      appendQueryParam(searchParams, key, item);
+    }
+
+    return;
+  }
+
+  searchParams.append(key, String(value));
+}
+
+function createQueryParams(params: Record<string, QueryParamValue>) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    appendQueryParam(searchParams, key, value);
+  }
+
+  return searchParams;
+}
+
+function normalizeEvent(event: Event): Event {
+  return {
+    ...event,
+    articles: event.articles ?? [],
+  };
+}
+
+function normalizeEventListResponse(
+  response: EventListResponse,
+): EventListResponse {
+  return {
+    ...response,
+    items: response.items.map(normalizeEvent),
+  };
+}
+
+export async function fetchAdminDashboardSummary() {
+  const response = await api.get<AdminDashboardSummary>(
+    "/events/dashboard-summary",
+  );
+
+  return response.data;
 }
 
 export async function fetchEvents(
-  includeArticles: IncludeArticlesMode = "published",
-) {
-  const response = await api.get<Event[]>("/events", {
-    params: { includeArticles },
+  includeArticles?: EventIncludeArticlesMode,
+): Promise<EventListResponse>;
+export async function fetchEvents(
+  params?: EventListFilters,
+): Promise<EventListResponse>;
+export async function fetchEvents(
+  paramsOrIncludeArticles: EventListFilters | EventIncludeArticlesMode = "none",
+): Promise<EventListResponse> {
+  const params =
+    typeof paramsOrIncludeArticles === "string"
+      ? { includeArticles: paramsOrIncludeArticles }
+      : paramsOrIncludeArticles;
+
+  const response = await api.get<EventListResponse>("/events", {
+    params: createQueryParams({
+      q: normalizeLookupValue(params.q),
+      year: params.year,
+      type: normalizeFilterValues(params.type),
+      area: normalizeFilterValues(params.area),
+      includeArticles: params.includeArticles ?? "none",
+      page: params.page,
+      pageSize: params.pageSize,
+    }),
   });
 
-  return response.data.map((event) => ({
-    ...event,
-    articles: event.articles ?? [],
-  }));
+  return normalizeEventListResponse(response.data);
+}
+
+export async function fetchEventOptions(): Promise<EventOption[]> {
+  const response = await api.get<EventOption[]>("/events/options");
+
+  return response.data;
 }
 
 export async function fetchEvent(
@@ -52,31 +162,25 @@ export async function fetchEvent(
   includeArticles: "published" | "all" = "published",
 ) {
   const response = await api.get<Event>(`/events/${idOrSlug}`, {
-    params: { includeArticles },
+    params: createQueryParams({ includeArticles }),
   });
 
-  return {
-    ...response.data,
-    articles: response.data.articles ?? [],
-  };
+  return normalizeEvent(response.data);
 }
 
-export async function fetchArticles(params?: {
-  status?: "published" | "draft" | "archived" | "all";
-  area?: string;
-  q?: string;
-  eventId?: string;
-  author?: string;
-  course?: string;
-}) {
-  const response = await api.get<Article[]>("/articles", {
-    params: compact({
+export async function fetchArticles(
+  params?: ArticleListFilters,
+): Promise<ArticleListResponse> {
+  const response = await api.get<ArticleListResponse>("/articles", {
+    params: createQueryParams({
       status: params?.status,
-      area: params?.area,
-      q: params?.q,
-      eventId: params?.eventId,
-      author: params?.author,
-      course: params?.course,
+      area: normalizeLookupValue(params?.area),
+      q: normalizeLookupValue(params?.q),
+      eventId: normalizeLookupValue(params?.eventId),
+      author: normalizeLookupValue(params?.author),
+      course: normalizeLookupValue(params?.course),
+      page: params?.page,
+      pageSize: params?.pageSize,
     }),
   });
 
@@ -92,9 +196,23 @@ export async function trackArticleView(id: string) {
   await api.post(`/articles/${id}/view`);
 }
 
-export async function fetchAuthors(search?: string) {
-  const response = await api.get<Author[]>("/authors", {
-    params: compact({ q: search }),
+export async function fetchAuthors(search?: string): Promise<AuthorListResponse>;
+export async function fetchAuthors(
+  params?: AuthorListFilters,
+): Promise<AuthorListResponse>;
+export async function fetchAuthors(
+  paramsOrSearch?: AuthorListFilters | string,
+): Promise<AuthorListResponse> {
+  const params =
+    typeof paramsOrSearch === "string" ? { q: paramsOrSearch } : paramsOrSearch;
+
+  const response = await api.get<AuthorListResponse>("/authors", {
+    params: createQueryParams({
+      q: normalizeLookupValue(params?.q),
+      area: normalizeFilterValues(params?.area),
+      page: params?.page,
+      pageSize: params?.pageSize,
+    }),
   });
 
   return response.data;
@@ -105,9 +223,9 @@ export async function fetchAreas(params?: {
   q?: string;
 }) {
   const response = await api.get<AreaSummary[]>("/areas", {
-    params: compact({
+    params: createQueryParams({
       includeEmpty: params?.includeEmpty,
-      q: params?.q,
+      q: normalizeLookupValue(params?.q),
     }),
   });
 
@@ -119,9 +237,9 @@ export async function fetchCourses(params?: {
   q?: string;
 }) {
   const response = await api.get<CourseSummary[]>("/courses", {
-    params: compact({
+    params: createQueryParams({
       includeEmpty: params?.includeEmpty,
-      q: params?.q,
+      q: normalizeLookupValue(params?.q),
     }),
   });
 
@@ -138,8 +256,8 @@ export async function fetchGlobalSearch(
   options?: { limit?: number },
 ) {
   const response = await api.get<GlobalSearchResponse>("/search", {
-    params: compact({
-      q: query,
+    params: createQueryParams({
+      q: normalizeLookupValue(query),
       limit: options?.limit,
     }),
   });
@@ -175,9 +293,6 @@ export async function uploadEventRuleFile(id: string, file: File) {
   const response = await api.post<{ fileUrl: string }>(
     `/events/${id}/rules/upload`,
     formData,
-    {
-      headers: { "Content-Type": "multipart/form-data" },
-    },
   );
 
   return response.data;
@@ -197,9 +312,6 @@ export async function uploadEventCoverImage(id: string, file: File) {
   const response = await api.post<{ coverUrl: string }>(
     `/events/${id}/cover/upload`,
     formData,
-    {
-      headers: { "Content-Type": "multipart/form-data" },
-    },
   );
 
   return response.data;
@@ -212,9 +324,6 @@ export async function extractCatalogPdfMetadata(file: File) {
   const response = await api.post<ExtractedCatalogPdfMetadata>(
     "/events/catalog/pdf-metadata",
     formData,
-    {
-      headers: { "Content-Type": "multipart/form-data" },
-    },
   );
 
   return response.data;
@@ -258,9 +367,7 @@ export async function uploadArticlePdf(id: string, file: File) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await api.post<Article>(`/articles/${id}/pdf`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const response = await api.post<Article>(`/articles/${id}/pdf`, formData);
 
   return response.data;
 }
@@ -276,10 +383,9 @@ export async function extractArticlePdfMetadata(
     "/articles/extract-metadata",
     formData,
     {
-      params: compact({
-        eventId: options?.eventId,
+      params: createQueryParams({
+        eventId: normalizeLookupValue(options?.eventId),
       }),
-      headers: { "Content-Type": "multipart/form-data" },
     },
   );
 
@@ -288,7 +394,7 @@ export async function extractArticlePdfMetadata(
 
 export async function downloadArticlePdf(id: string) {
   const response = await api.get<Blob>(`/articles/${id}/pdf`, {
-    params: { download: true },
+    params: createQueryParams({ download: true }),
     responseType: "blob",
   });
 

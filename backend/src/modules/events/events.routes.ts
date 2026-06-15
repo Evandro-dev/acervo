@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { Prisma } from "../../generated/prisma/client.js";
 import { z } from "zod";
 import { removeArticlePdf } from "../../lib/article-pdf.js";
 import { extractCatalogPdfLayoutMetadata } from "../../lib/article-pdf-metadata.js";
@@ -53,6 +54,11 @@ import {
   parseStoredEventRules,
 } from "../../lib/event-rules.js";
 import { requirePrivilegedUser } from "../../lib/permissions.js";
+import {
+  createPaginatedResponse,
+  createPaginationQuerySchema,
+  getPaginationParams,
+} from "../../lib/pagination.js";
 import { prisma } from "../../lib/prisma.js";
 import { queryBooleanSchema } from "../../lib/query-boolean.js";
 import { serializeEvent } from "../../lib/serializers.js";
@@ -68,7 +74,7 @@ const eventPayloadSchema = z.object({
   date: z.string().min(2).max(120),
   area: z.string().min(1).max(120),
   type: eventTypeSchema,
-  coverUrl: z.string().url().nullable().optional(),
+  coverUrl: z.url().nullable().optional(),
   presentation: z.string().min(10),
   themes: z.array(z.string().min(1).max(120)).default([]),
   committee: eventCommitteeSchema.default([]),
@@ -78,13 +84,65 @@ const eventPayloadSchema = z.object({
   catalog: eventCatalogSchema.default({}),
 });
 
-const eventQuerySchema = z.object({
-  q: z.string().trim().optional(),
-  year: z.coerce.number().int().optional(),
-  type: eventTypeSchema.optional(),
-  area: z.string().trim().optional(),
-  includeArticles: z.enum(["published", "all", "none"]).default("published"),
-});
+function normalizeOptionalSearch(value: unknown) {
+  if (typeof value !== "string") return undefined;
+
+  const trimmed = value.trim();
+
+  return trimmed || undefined;
+}
+
+function normalizeQueryStringArray(value: unknown) {
+  if (value === undefined || value === null) return [];
+
+  const values = Array.isArray(value) ? value : [value];
+
+  return values
+    .flatMap((item) => (typeof item === "string" ? item.split(",") : []))
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function uniqueValues<T extends string>(values: T[]) {
+  return Array.from(new Set(values));
+}
+
+const eventSearchQuerySchema = z.preprocess(
+  normalizeOptionalSearch,
+  z.string().min(1).max(200).optional(),
+);
+
+const eventYearQuerySchema = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.coerce.number().int().min(1900).max(3000).optional(),
+);
+
+const eventTypeFilterSchema = z.preprocess(
+  normalizeQueryStringArray,
+  z.array(eventTypeSchema),
+);
+
+const eventAreaFilterSchema = z.preprocess(
+  normalizeQueryStringArray,
+  z.array(z.string().trim().min(1).max(120)),
+);
+
+const eventQuerySchema = z
+  .object({
+    q: eventSearchQuerySchema,
+    year: eventYearQuerySchema,
+    type: eventTypeFilterSchema.default([]),
+    "type[]": eventTypeFilterSchema.default([]),
+    area: eventAreaFilterSchema.default([]),
+    "area[]": eventAreaFilterSchema.default([]),
+    includeArticles: z.enum(["published", "all", "none"]).default("published"),
+  })
+  .extend(createPaginationQuerySchema({ defaultPageSize: 12 }).shape)
+  .transform(({ "type[]": bracketTypes, "area[]": bracketAreas, ...query }) => ({
+    ...query,
+    type: uniqueValues([...query.type, ...bracketTypes]),
+    area: uniqueValues([...query.area, ...bracketAreas]),
+  }));
 
 const eventRuleFileQuerySchema = z.object({
   download: queryBooleanSchema,
@@ -225,9 +283,65 @@ function getEventInclude(includeArticles: "published" | "all" | "none") {
       orderBy: [
         { publishedAt: "desc" as const },
         { submittedAt: "desc" as const },
+        { id: "asc" as const },
       ],
     },
   };
+}
+
+type EventListQuery = z.infer<typeof eventQuerySchema>;
+
+const eventListOrderBy: Prisma.EventOrderByWithRelationInput[] = [
+  { year: "desc" },
+  { title: "asc" },
+  { id: "asc" },
+];
+
+function buildEventWhere(query: EventListQuery): Prisma.EventWhereInput {
+  const conditions: Prisma.EventWhereInput[] = [];
+
+  if (query.year) {
+    conditions.push({ year: query.year });
+  }
+
+  if (query.type.length > 0) {
+    conditions.push({
+      type: {
+        in: query.type,
+      },
+    });
+  }
+
+  if (query.area.length > 0) {
+    conditions.push({
+      OR: [
+        {
+          area: {
+            in: query.area,
+          },
+        },
+        {
+          themes: {
+            hasSome: query.area,
+          },
+        },
+      ],
+    });
+  }
+
+  if (query.q) {
+    conditions.push({
+      OR: [
+        { title: { contains: query.q, mode: "insensitive" } },
+        { area: { contains: query.q, mode: "insensitive" } },
+        { type: { contains: query.q, mode: "insensitive" } },
+        { presentation: { contains: query.q, mode: "insensitive" } },
+        { themes: { has: query.q } },
+      ],
+    });
+  }
+
+  return conditions.length > 0 ? { AND: conditions } : {};
 }
 
 function getRemovedCoverResource(
@@ -432,37 +546,84 @@ async function removeResourcesBestEffort(
 export async function eventRoutes(app: FastifyInstance) {
   app.get("/", async (req, reply) => {
     const query = eventQuerySchema.parse(req.query ?? {});
+    const pagination = getPaginationParams(query);
 
     if (query.includeArticles === "all") {
       const user = await requirePrivilegedUser(req, reply);
       if (!user) return;
     }
 
+    const where = buildEventWhere(query);
+
+    const [total, events] = await prisma.$transaction([
+      prisma.event.count({ where }),
+      prisma.event.findMany({
+        where,
+        orderBy: eventListOrderBy,
+        include: getEventInclude(query.includeArticles),
+        skip: pagination.skip,
+        take: pagination.take,
+      }),
+    ]);
+
+    return createPaginatedResponse(
+      events.map((event: any) =>
+        serializeEvent(event, {
+          includeArticles: query.includeArticles !== "none",
+        }),
+      ),
+      total,
+      pagination,
+    );
+  });
+
+  app.get(
+    "/dashboard-summary",
+    { preHandler: [app.requireRole("ADMIN", "COORDENADOR")] },
+    async () => {
+      const [eventCount, articleStatusCounts] = await prisma.$transaction([
+        prisma.event.count(),
+        prisma.article.groupBy({
+          by: ["status"],
+          _count: {
+            id: true,
+          },
+        }),
+      ]);
+
+      type ArticleStatusCount = {
+        status: "PUBLISHED" | "DRAFT" | "ARCHIVED";
+        _count: {
+          id: number;
+        };
+      };
+
+      const getArticleCount = (status: ArticleStatusCount["status"]) =>
+        articleStatusCounts.find(
+          (item: ArticleStatusCount) => item.status === status,
+        )?._count.id ?? 0;
+
+      return {
+        eventCount,
+        publishedCount: getArticleCount("PUBLISHED"),
+        draftCount: getArticleCount("DRAFT"),
+        archivedCount: getArticleCount("ARCHIVED"),
+      };
+    },
+  );
+
+  app.get("/options", async () => {
     const events = await prisma.event.findMany({
-      where: {
-        ...(query.year ? { year: query.year } : {}),
-        ...(query.type ? { type: query.type } : {}),
-        ...(query.area
-          ? { OR: [{ area: query.area }, { themes: { has: query.area } }] }
-          : {}),
+      orderBy: eventListOrderBy,
+      select: {
+        id: true,
+        title: true,
+        year: true,
+        themes: true,
       },
-      orderBy: [{ year: "desc" }, { title: "asc" }],
-      include: getEventInclude(query.includeArticles),
     });
 
-    const filtered = query.q
-      ? events.filter((event: any) =>
-          `${event.title} ${event.area} ${event.presentation} ${event.themes.join(" ")}`
-            .toLowerCase()
-            .includes(query.q!.toLowerCase()),
-        )
-      : events;
-
-    return filtered.map((event: any) =>
-      serializeEvent(event, {
-        includeArticles: query.includeArticles !== "none",
-      }),
-    );
+    return events;
   });
 
   app.get("/:id/catalog/files/:fileName", async (req, reply) => {
