@@ -109,7 +109,7 @@ export async function fetchEventOptions(): Promise<EventOption[]> {
 
 export async function fetchEvent(
   idOrSlug: string,
-  includeArticles: "published" | "all" = "published",
+  includeArticles: EventIncludeArticlesMode = "published",
 ) {
   const response = await api.get<Event>(`/events/${idOrSlug}`, {
     params: createQueryParams({ includeArticles }),

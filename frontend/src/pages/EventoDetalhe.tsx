@@ -17,6 +17,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProtectedImage } from "@/components/ui/protected-image";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { QueryState } from "@/components/ui/query-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Accordion,
@@ -27,8 +29,10 @@ import {
 import { StatePanel } from "@/components/ui/state-panel";
 import {
   useEventQuery,
+  usePublishedArticlesQuery,
   useTrackEventViewMutation,
 } from "@/features/acervo/hooks";
+import { usePaginatedQueryState } from "@/hooks/usePaginatedQueryState";
 import { toast } from "@/hooks/use-toast";
 import { getApiResourceUrl } from "@/lib/api";
 import { reserveViewTracking, rollbackViewTracking } from "@/lib/engagement";
@@ -40,6 +44,8 @@ import type {
   EventCommitteeMember,
   EventPreviousEdition,
 } from "@/types/acervo";
+
+const EVENT_PUBLICATIONS_PAGE_SIZE = 12;
 
 const committeeGroups = [
   { key: "Organizadora", title: "Comissão Organizadora" },
@@ -110,13 +116,31 @@ export default function EventoDetalhe() {
     data: event,
     isLoading,
     isError,
-  } = useEventQuery(id, "published", {
+  } = useEventQuery(id, "none", {
     staleTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
   const trackEventViewMutation = useTrackEventViewMutation();
   const [activeTab, setActiveTab] = useState("apresentacao");
+  const eventId = event?.id;
+  const { page, setPage } = usePaginatedQueryState({
+    resetKey: eventId ?? id ?? "",
+  });
+  const {
+    data: articlesResponse,
+    isLoading: isArticlesLoading,
+    isError: isArticlesError,
+  } = usePublishedArticlesQuery(
+    {
+      eventId,
+      page,
+      pageSize: EVENT_PUBLICATIONS_PAGE_SIZE,
+    },
+    { enabled: Boolean(eventId) },
+  );
+  const approved = articlesResponse?.items ?? [];
+  const publicationPageCount = articlesResponse?.pageCount ?? 1;
 
   useEffect(() => {
     if (!event?.id) return;
@@ -126,6 +150,12 @@ export default function EventoDetalhe() {
       onError: () => rollbackViewTracking("event", event.id),
     });
   }, [event?.id, trackEventViewMutation]);
+
+  useEffect(() => {
+    if (!isArticlesLoading && page > publicationPageCount) {
+      setPage(publicationPageCount);
+    }
+  }, [isArticlesLoading, page, publicationPageCount, setPage]);
 
   if (isLoading) {
     return (
@@ -167,9 +197,6 @@ export default function EventoDetalhe() {
     );
   }
 
-  const approved = event.articles.filter(
-    (article) => article.status === "published",
-  );
   const groupedCommittee = groupCommitteeMembers(event.committee);
   const catalogIsbn = event.catalog?.isbn?.trim();
   const catalogText = event.catalog?.text?.trim();
@@ -254,24 +281,42 @@ export default function EventoDetalhe() {
             </TabsContent>
 
             <TabsContent value="publicacoes" className="m-0 space-y-3">
-              <SectionTitle>{approved.length} Publicações</SectionTitle>
+              <SectionTitle>
+                {articlesResponse?.total ?? 0} Publicações
+              </SectionTitle>
 
-              {approved.length === 0 ? (
-                <StatePanel>
-                  Nenhuma publicação aprovada neste evento.
-                </StatePanel>
-              ) : (
-                approved.map((article) => (
-                  <PublicArticleCard
-                    key={article.id}
-                    article={article}
-                    href={`/eventos/${event.slug}/artigos/${article.id}`}
-                    eventTitle={event.title}
-                    actionLabel="Ver artigo"
-                    showDownloads={false}
+              <QueryState
+                isLoading={isArticlesLoading}
+                isError={isArticlesError}
+                isEmpty={approved.length === 0}
+                loadingMessage="Carregando publicações do evento..."
+                errorMessage="Não foi possível carregar as publicações deste evento."
+                emptyMessage="Nenhuma publicação aprovada neste evento."
+              >
+                <>
+                  {approved.map((article) => (
+                    <PublicArticleCard
+                      key={article.id}
+                      article={article}
+                      href={`/eventos/${event.slug}/artigos/${article.id}`}
+                      eventTitle={event.title}
+                      actionLabel="Ver artigo"
+                      showDownloads={false}
+                    />
+                  ))}
+
+                  <ListPagination
+                    className="mt-4"
+                    page={articlesResponse?.page ?? page}
+                    pageCount={publicationPageCount}
+                    total={articlesResponse?.total}
+                    pageSize={
+                      articlesResponse?.pageSize ?? EVENT_PUBLICATIONS_PAGE_SIZE
+                    }
+                    onPageChange={setPage}
                   />
-                ))
-              )}
+                </>
+              </QueryState>
             </TabsContent>
 
             <TabsContent value="sobre" className="m-0">

@@ -1,11 +1,16 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import EventoDetalhe from "@/pages/EventoDetalhe";
-import { useEventQuery, useTrackEventViewMutation } from "@/features/acervo/hooks";
+import {
+  useEventQuery,
+  usePublishedArticlesQuery,
+  useTrackEventViewMutation,
+} from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 
 vi.mock("@/features/acervo/hooks", () => ({
   useEventQuery: vi.fn(),
+  usePublishedArticlesQuery: vi.fn(),
   useTrackEventViewMutation: vi.fn(),
 }));
 
@@ -14,8 +19,19 @@ vi.mock("@/features/auth/auth-context", () => ({
 }));
 
 const mockedUseEventQuery = vi.mocked(useEventQuery);
+const mockedUsePublishedArticlesQuery = vi.mocked(usePublishedArticlesQuery);
 const mockedUseTrackEventViewMutation = vi.mocked(useTrackEventViewMutation);
 const mockedUseAuth = vi.mocked(useAuth);
+
+function paginated<T>(items: T[], total = items.length, page = 1, pageSize = 12) {
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    pageCount: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
 
 function buildEvent(catalog: Record<string, unknown> = {}) {
   return {
@@ -58,7 +74,9 @@ function mockEventQuery(catalog: Record<string, unknown> = {}) {
 function renderEventDetails() {
   render(
     <MemoryRouter initialEntries={["/eventos/expo-una-2025"]}>
-      <EventoDetalhe />
+      <Routes>
+        <Route path="/eventos/:id" element={<EventoDetalhe />} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -83,6 +101,11 @@ describe("EventoDetalhe", () => {
       refresh: vi.fn(),
     });
     mockedUseTrackEventViewMutation.mockReturnValue({ mutate: vi.fn() } as never);
+    mockedUsePublishedArticlesQuery.mockReturnValue({
+      data: paginated([]),
+      isLoading: false,
+      isError: false,
+    } as never);
   });
 
   it("uses the branded administrative navigation style for the active tab", () => {
@@ -105,6 +128,75 @@ describe("EventoDetalhe", () => {
     fireEvent.click(aboutTab);
     fireEvent.click(screen.getByRole("button", { name: "Normas" }));
     expect(screen.getByRole("button", { name: "PowerPoint" })).toBeInTheDocument();
+  });
+
+  it("loads event publications through the paginated articles query", async () => {
+    const article = {
+      id: "article-1",
+      title: "Tecnologia e inovação no ensino contemporâneo",
+      authors: ["Carlos Pereira"],
+      authorProfiles: [],
+      area: "Tecnologia",
+      courses: [],
+      abstract: "Resumo do trabalho publicado.",
+      pages: "1-5",
+      status: "published",
+      eventId: "event-1",
+      eventSlug: "expo-una-2025",
+      eventTitle: "EXPO UNA 2025",
+      eventYear: 2025,
+    };
+
+    mockEventQuery();
+    mockedUsePublishedArticlesQuery.mockImplementation((filters) => ({
+      data: paginated(
+        [article],
+        13,
+        filters?.page ?? 1,
+        filters?.pageSize ?? 12,
+      ),
+      isLoading: false,
+      isError: false,
+    }) as never);
+
+    renderEventDetails();
+
+    expect(mockedUseEventQuery).toHaveBeenCalledWith(
+      "expo-una-2025",
+      "none",
+      expect.objectContaining({
+        refetchOnMount: "always",
+      }),
+    );
+    expect(mockedUsePublishedArticlesQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: "event-1",
+        page: 1,
+        pageSize: 12,
+      }),
+      { enabled: true },
+    );
+
+    const publicationsTab = screen.getByRole("tab", { name: "Publicações" });
+    fireEvent.mouseDown(publicationsTab);
+    fireEvent.click(publicationsTab);
+
+    expect(screen.getByText("13 Publicações")).toBeInTheDocument();
+    expect(screen.getByText(article.title)).toBeInTheDocument();
+    expect(screen.getByText("Mostrando 1-12 de 13")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Próxima/i }));
+
+    await waitFor(() =>
+      expect(mockedUsePublishedArticlesQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          eventId: "event-1",
+          page: 2,
+          pageSize: 12,
+        }),
+        { enabled: true },
+      ),
+    );
   });
 
   it("shows the generated catalog image in the about tab when the event catalog was uploaded from PDF", () => {

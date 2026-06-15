@@ -62,6 +62,10 @@ type EventQueryOptions = {
   refetchOnWindowFocus?: boolean | "always";
 };
 
+type ArticleQueryOptions = {
+  enabled?: boolean;
+};
+
 type PublicEventsFilters = Omit<EventListFilters, "includeArticles">;
 type AdminEventsFilters = Omit<EventListFilters, "includeArticles">;
 type PublishedArticlesFilters = Omit<ArticleListFilters, "status">;
@@ -198,7 +202,7 @@ export function useAdminEventsQuery(
 
 export function useEventQuery(
   idOrSlug?: string,
-  includeArticles: "published" | "all" = "published",
+  includeArticles: EventIncludeArticlesMode = "published",
   options?: EventQueryOptions,
 ) {
   const normalizedId = normalizeLookupValue(idOrSlug);
@@ -213,6 +217,7 @@ export function useEventQuery(
 
 export function usePublishedArticlesQuery(
   filters?: PublishedArticlesFilters,
+  options?: ArticleQueryOptions,
 ): UseQueryResult<ArticleListResponse> {
   const queryFilters = normalizeArticleListFilters({
     ...filters,
@@ -220,6 +225,7 @@ export function usePublishedArticlesQuery(
   });
 
   return useQuery({
+    enabled: options?.enabled ?? true,
     queryKey: acervoKeys.articles("published", queryFilters),
     queryFn: () => fetchArticles(queryFilters),
   });

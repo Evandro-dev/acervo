@@ -31,7 +31,7 @@ export async function eventReadRoutes(app: FastifyInstance) {
     const { idOrSlug } = req.params as { idOrSlug: string };
     const query = z
       .object({
-        includeArticles: z.enum(["published", "all"]).default("published"),
+        includeArticles: z.enum(["published", "all", "none"]).default("published"),
       })
       .parse(req.query ?? {});
 
@@ -51,6 +51,8 @@ export async function eventReadRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: "Evento não encontrado" });
     }
 
-    return serializeEvent(event);
+    return serializeEvent(event, {
+      includeArticles: query.includeArticles !== "none",
+    });
   });
 }
