@@ -1,55 +1,30 @@
-import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from "react";
+﻿import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Filter, X } from "lucide-react";
+import { X } from "lucide-react";
+import { FilterButton } from "@/components/filters/FilterButton";
+import { FilterGroup } from "@/components/filters/FilterGroup";
+import { FilterSheetContent } from "@/components/filters/FilterSheetContent";
+import { toFilterId, toggleFilterValue } from "@/components/filters/filter-utils";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
 import { PublicArticleCard } from "@/components/publications/PublicArticleCard";
 import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { QueryState } from "@/components/ui/query-state";
 import {
   Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { usePublishedArticlesQuery } from "@/features/acervo/hooks";
-import { includesSearch } from "@/lib/search";
-import type { Article } from "@/types/acervo";
-
-function getArticleEventKey(article: Article) {
-  return article.eventId || article.eventSlug || article.eventTitle || "";
-}
-
-function getArticleModality(article: Article) {
-  return article.modality?.trim() || "Sem modalidade";
-}
+import {
+  useArticleOptionsQuery,
+  usePublishedArticlesQuery,
+} from "@/features/acervo/hooks";
+import { usePaginatedQueryState } from "@/hooks/usePaginatedQueryState";
 
 const PUBLICATIONS_PAGE_SIZE = 12;
 
-function getArticleYear(article: Article) {
-  return article.eventYear ? String(article.eventYear) : "";
-}
-
-function articleHasCourse(article: Article, course: string) {
-  return article.courses.some((currentCourse) => currentCourse.toLocaleLowerCase() === course.toLocaleLowerCase());
-}
-
-function toggleValue(values: string[], value: string) {
-  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
-}
-
-function toFilterId(prefix: string, value: string) {
-  return `${prefix}-${encodeURIComponent(value)}`;
-}
-
 export default function Publicacoes() {
-  const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
@@ -61,6 +36,35 @@ export default function Publicacoes() {
   const areaFilter = searchParams.get("area");
   const courseFilter = searchParams.get("course");
   const deferredQuery = useDeferredValue(q);
+  const { data: articleOptions } = useArticleOptionsQuery();
+
+  const activeAreas = useMemo(
+    () => Array.from(new Set([...(areaFilter ? [areaFilter] : []), ...selectedAreas])),
+    [areaFilter, selectedAreas],
+  );
+  const selectedEventYears = useMemo(
+    () =>
+      selectedYears
+        .map((year) => Number(year))
+        .filter((year) => Number.isInteger(year)),
+    [selectedYears],
+  );
+  const activeAreasKey = activeAreas.join("|");
+  const selectedEventsKey = selectedEvents.join("|");
+  const selectedModalitiesKey = selectedModalities.join("|");
+  const selectedYearsKey = selectedYears.join("|");
+  const paginationResetKey = [
+    activeAreasKey,
+    courseFilter ?? "",
+    deferredQuery,
+    onlyWithPdf ? "pdf" : "all",
+    selectedEventsKey,
+    selectedModalitiesKey,
+    selectedYearsKey,
+  ].join("\u0001");
+  const { page, setPage } = usePaginatedQueryState({
+    resetKey: paginationResetKey,
+  });
 
   const {
     data: articlesResponse,
@@ -69,6 +73,13 @@ export default function Publicacoes() {
   } = usePublishedArticlesQuery({
     page,
     pageSize: PUBLICATIONS_PAGE_SIZE,
+    q: deferredQuery || undefined,
+    area: activeAreas.length > 0 ? activeAreas : undefined,
+    course: courseFilter || undefined,
+    eventId: selectedEvents.length > 0 ? selectedEvents : undefined,
+    modality: selectedModalities.length > 0 ? selectedModalities : undefined,
+    eventYear: selectedEventYears.length > 0 ? selectedEventYears : undefined,
+    hasPdf: onlyWithPdf || undefined,
   });
 
   const articles = articlesResponse?.items ?? [];
@@ -77,43 +88,28 @@ export default function Publicacoes() {
 
   const areaOptions = useMemo(
     () =>
-      Array.from(new Set(articles.map((article) => article.area).filter(Boolean))).sort((left, right) =>
+      Array.from(new Set([...(articleOptions?.areas ?? []), ...activeAreas])).sort((left, right) =>
         left.localeCompare(right),
       ),
-    [articles],
+    [activeAreas, articleOptions?.areas],
   );
 
-  const eventOptions = useMemo(() => {
-    const events = new Map<string, string>();
-
-    articles.forEach((article) => {
-      const key = getArticleEventKey(article);
-      if (key && article.eventTitle) {
-        events.set(key, article.eventTitle);
-      }
-    });
-
-    return Array.from(events, ([value, label]) => ({ value, label })).sort((left, right) =>
-      left.label.localeCompare(right.label),
-    );
-  }, [articles]);
+  const eventOptions = articleOptions?.events ?? [];
 
   const modalityOptions = useMemo(
-    () => Array.from(new Set(articles.map(getArticleModality))).sort((left, right) => left.localeCompare(right)),
-    [articles],
+    () =>
+      Array.from(new Set([...(articleOptions?.modalities ?? []), ...selectedModalities])).sort((left, right) =>
+        left.localeCompare(right),
+      ),
+    [articleOptions?.modalities, selectedModalities],
   );
 
   const yearOptions = useMemo(
     () =>
-      Array.from(new Set(articles.map(getArticleYear).filter(Boolean))).sort(
+      Array.from(new Set([...(articleOptions?.years ?? []).map(String), ...selectedYears])).sort(
         (left, right) => Number(right) - Number(left),
       ),
-    [articles],
-  );
-
-  const activeAreas = useMemo(
-    () => Array.from(new Set([...(areaFilter ? [areaFilter] : []), ...selectedAreas])),
-    [areaFilter, selectedAreas],
+    [articleOptions?.years, selectedYears],
   );
 
   const activeFilterCount =
@@ -125,39 +121,10 @@ export default function Publicacoes() {
     (onlyWithPdf ? 1 : 0);
 
   useEffect(() => {
-    setPage(1);
-  }, [
-    activeFilterCount,
-    deferredQuery,
-    selectedAreas,
-    selectedEvents,
-    selectedModalities,
-    selectedYears,
-  ]);
-
-  useEffect(() => {
     if (!isLoading && page > pageCount) {
       setPage(pageCount);
     }
   }, [isLoading, page, pageCount]);
-
-  const filtered = useMemo(() => {
-    return articles.filter((article) => {
-      if (activeAreas.length && !activeAreas.includes(article.area)) return false;
-      if (courseFilter && !articleHasCourse(article, courseFilter)) return false;
-      if (selectedEvents.length && !selectedEvents.includes(getArticleEventKey(article))) return false;
-      if (selectedModalities.length && !selectedModalities.includes(getArticleModality(article))) return false;
-      if (selectedYears.length && !selectedYears.includes(getArticleYear(article))) return false;
-      if (onlyWithPdf && !article.pdfUrl) return false;
-
-      return includesSearch(
-        `${article.title} ${article.authors.join(" ")} ${article.area} ${article.eventTitle ?? ""} ${
-          article.modality ?? ""
-        } ${article.abstract ?? ""}`,
-        deferredQuery,
-      );
-    });
-  }, [activeAreas, articles, courseFilter, deferredQuery, onlyWithPdf, selectedEvents, selectedModalities, selectedYears]);
 
   const clearArea = () => {
     const next = new URLSearchParams(searchParams);
@@ -233,34 +200,19 @@ export default function Publicacoes() {
               className="text-foreground"
               trailingAction={
                 <SheetTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="relative h-9 w-9 shrink-0 rounded-lg bg-brand-soft text-primary-dark hover:bg-brand-soft/80"
-                    aria-label="Abrir filtros de publicações"
-                  >
-                    <Filter className="h-4 w-4" />
-
-                    {activeFilterCount > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-dark px-1 text-[10px] font-bold text-primary-foreground">
-                        {activeFilterCount}
-                      </span>
-                    )}
-                  </Button>
+                  <FilterButton
+                    activeCount={activeFilterCount}
+                    label="Abrir filtros de publicações"
+                  />
                 </SheetTrigger>
               }
             />
 
-            <SheetContent
-              side="bottom"
-              className="h-[92vh] overflow-y-auto rounded-t-[28px] border-0 bg-white px-5 pb-6 pt-4 shadow-2xl md:bottom-auto md:left-1/2 md:right-auto md:top-1/2 md:h-auto md:max-h-[90vh] md:w-[min(92vw,720px)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl"
+            <FilterSheetContent
+              description="Filtre a lista de publicações por área, evento, modalidade, ano e disponibilidade de PDF."
+              onApply={() => setOpen(false)}
+              onClear={clearFilters}
             >
-              <SheetHeader className="mb-6 flex flex-row items-center justify-between space-y-0 text-left">
-                <SheetTitle className="text-2xl font-bold text-[#E30613]">Filtros</SheetTitle>
-                <SheetDescription className="sr-only">
-                  Filtre a lista de publicações por área, evento, modalidade, ano e disponibilidade de PDF.
-                </SheetDescription>
-              </SheetHeader>
 
               <div className="space-y-7">
                 <FilterGroup title="Área">
@@ -290,16 +242,16 @@ export default function Publicacoes() {
                   {eventOptions.length > 0 ? (
                     <div className="grid gap-3">
                       {eventOptions.map((event) => {
-                        const id = toFilterId("publication-event", event.value);
+                        const id = toFilterId("publication-event", event.id);
 
                         return (
-                          <label key={event.value} htmlFor={id} className="flex items-start gap-2 text-sm">
+                          <label key={event.id} htmlFor={id} className="flex items-start gap-2 text-sm">
                             <Checkbox
                               id={id}
-                              checked={selectedEvents.includes(event.value)}
-                              onCheckedChange={() => setSelectedEvents((current) => toggleValue(current, event.value))}
+                              checked={selectedEvents.includes(event.id)}
+                              onCheckedChange={() => setSelectedEvents((current) => toggleFilterValue(current, event.id))}
                             />
-                            <span className="leading-tight">{event.label}</span>
+                            <span className="leading-tight">{event.title}</span>
                           </label>
                         );
                       })}
@@ -320,7 +272,9 @@ export default function Publicacoes() {
                             <Checkbox
                               id={id}
                               checked={selectedModalities.includes(modality)}
-                              onCheckedChange={() => setSelectedModalities((current) => toggleValue(current, modality))}
+                              onCheckedChange={() =>
+                                setSelectedModalities((current) => toggleFilterValue(current, modality))
+                              }
                             />
                             <span>{modality}</span>
                           </label>
@@ -340,7 +294,7 @@ export default function Publicacoes() {
                           <Checkbox
                             id={`publication-year-${year}`}
                             checked={selectedYears.includes(year)}
-                            onCheckedChange={() => setSelectedYears((current) => toggleValue(current, year))}
+                            onCheckedChange={() => setSelectedYears((current) => toggleFilterValue(current, year))}
                           />
                           <span>{year}</span>
                         </label>
@@ -363,23 +317,7 @@ export default function Publicacoes() {
                 </FilterGroup>
               </div>
 
-              <SheetFooter className="mt-8 grid grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  className="h-12 rounded-xl border-zinc-300 text-base font-semibold"
-                  onClick={clearFilters}
-                >
-                  Limpar
-                </Button>
-
-                <Button
-                  className="h-12 rounded-xl bg-linear-to-r from-[#E30613] to-[#B00010] text-base font-semibold text-white hover:opacity-90"
-                  onClick={() => setOpen(false)}
-                >
-                  Aplicar filtros
-                </Button>
-              </SheetFooter>
-            </SheetContent>
+            </FilterSheetContent>
           </Sheet>
         </SiteContainer>
       </section>
@@ -389,7 +327,7 @@ export default function Publicacoes() {
           <QueryState
             isLoading={isLoading}
             isError={isError}
-            isEmpty={filtered.length === 0}
+            isEmpty={articles.length === 0}
             loadingMessage="Carregando publicações..."
             errorMessage="Não foi possível carregar as publicações."
             emptyMessage={
@@ -399,7 +337,7 @@ export default function Publicacoes() {
             }
           >
             <div className="grid auto-rows-fr gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-              {filtered.map((article) => (
+              {articles.map((article) => (
                 <PublicArticleCard
                   key={article.id}
                   article={article}
@@ -424,11 +362,4 @@ export default function Publicacoes() {
   );
 }
 
-function FilterGroup({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section>
-      <div className="mb-4 block text-sm font-semibold text-black">{title}</div>
-      {children}
-    </section>
-  );
-}
+

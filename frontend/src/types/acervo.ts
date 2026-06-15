@@ -29,10 +29,13 @@ export type ArticleListStatus = ArticleStatus | "all";
 
 export type ArticleListFilters = PaginationParams & {
   status?: ArticleListStatus;
-  area?: string;
-  course?: string;
+  area?: FilterValue<string>;
+  course?: FilterValue<string>;
   q?: string;
-  eventId?: string;
+  eventId?: FilterValue<string>;
+  eventYear?: FilterValue<number>;
+  modality?: FilterValue<string>;
+  hasPdf?: boolean;
   author?: string;
 };
 
@@ -84,6 +87,13 @@ export type EventOption = {
   title: string;
   year: number;
   themes: string[];
+};
+
+export type ArticleOptions = {
+  events: EventOption[];
+  areas: string[];
+  modalities: string[];
+  years: number[];
 };
 
 export type Article = {

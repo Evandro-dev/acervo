@@ -30,6 +30,21 @@ Object.defineProperty(globalThis, "ResizeObserver", {
   value: ResizeObserverMock,
 });
 
+class DOMMatrixMock {
+  translateSelf() {
+    return this;
+  }
+
+  scaleSelf() {
+    return this;
+  }
+}
+
+Object.defineProperty(globalThis, "DOMMatrix", {
+  writable: true,
+  value: DOMMatrixMock,
+});
+
 Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
   writable: true,
   value: () => {},

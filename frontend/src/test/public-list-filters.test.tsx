@@ -2,7 +2,11 @@ import { MemoryRouter } from "react-router-dom";
 import { fireEvent, render, screen } from "@testing-library/react";
 import Areas from "@/pages/Areas";
 import Autores from "@/pages/Autores";
-import { useAreasQuery, useAuthorsQuery, useGlobalSearchQuery } from "@/features/acervo/hooks";
+import {
+  useAreasQuery,
+  useAuthorsQuery,
+  useGlobalSearchQuery,
+} from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 
 vi.mock("@/features/acervo/hooks", () => ({
@@ -25,6 +29,7 @@ const mockedUseAuthorsQuery = vi.mocked(useAuthorsQuery);
 
 describe("public list filters", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     mockedUseAuth.mockReturnValue({
       user: null,
       token: null,
@@ -36,15 +41,56 @@ describe("public list filters", () => {
     });
   });
 
-  it("filters authors by publication area", () => {
-    mockedUseAuthorsQuery.mockReturnValue({
+  it("filters authors by publication area through the paginated hook", () => {
+    const authors = [
+      {
+        id: "author-1",
+        slug: "maria",
+        name: "Maria",
+        articleCount: 1,
+        areas: ["Saúde"],
+      },
+      {
+        id: "author-2",
+        slug: "joao",
+        name: "João",
+        articleCount: 1,
+        areas: ["Tecnologia"],
+      },
+    ];
+
+    mockedUseAreasQuery.mockReturnValue({
       data: [
-        { id: "author-1", slug: "maria", name: "Maria", articleCount: 1, areas: ["Saúde"] },
-        { id: "author-2", slug: "joao", name: "João", articleCount: 1, areas: ["Tecnologia"] },
+        { id: "area-1", name: "Saúde", articleCount: 1 },
+        { id: "area-2", name: "Tecnologia", articleCount: 1 },
       ],
       isLoading: false,
       isError: false,
-    } as ReturnType<typeof useAuthorsQuery>);
+    } as ReturnType<typeof useAreasQuery>);
+    mockedUseAuthorsQuery.mockImplementation((filters) => {
+      const selectedAreas =
+        typeof filters === "object" && Array.isArray(filters.area)
+          ? filters.area
+          : [];
+      const items =
+        selectedAreas.length > 0
+          ? authors.filter((author) =>
+              author.areas.some((area) => selectedAreas.includes(area)),
+            )
+          : authors;
+
+      return {
+        data: {
+          items,
+          total: items.length,
+          page: 1,
+          pageSize: 12,
+          pageCount: 1,
+        },
+        isLoading: false,
+        isError: false,
+      } as ReturnType<typeof useAuthorsQuery>;
+    });
 
     render(
       <MemoryRouter>
@@ -52,10 +98,15 @@ describe("public list filters", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Abrir filtros de autores" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Abrir filtros de autores" }),
+    );
     fireEvent.click(screen.getByRole("checkbox", { name: "Saúde" }));
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
 
+    expect(mockedUseAuthorsQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ area: ["Saúde"], page: 1, pageSize: 12 }),
+    );
     expect(screen.getByText("Maria")).toBeInTheDocument();
     expect(screen.queryByText("João")).not.toBeInTheDocument();
   });
@@ -79,8 +130,14 @@ describe("public list filters", () => {
     expect(screen.getByText("Saúde")).toBeInTheDocument();
     expect(screen.queryByText("Sem trabalhos")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Abrir filtros de áreas" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Mostrar áreas sem publicações cadastradas" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Abrir filtros de áreas" }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Mostrar áreas sem publicações cadastradas",
+      }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
 
     expect(screen.getByText("Sem trabalhos")).toBeInTheDocument();

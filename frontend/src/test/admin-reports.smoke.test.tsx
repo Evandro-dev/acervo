@@ -1,16 +1,16 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AdminRelatorios from "@/pages/admin/AdminRelatorios";
-import { useAdminEventsQuery, useAreasQuery, useCoursesQuery } from "@/features/acervo/hooks";
+import { useAreasQuery, useCoursesQuery, useEventOptionsQuery } from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 import { downloadArticleReport } from "@/features/reports/api";
 import { useArticleReportCountQuery } from "@/features/reports/hooks";
 import { triggerBrowserDownload } from "@/lib/article-download";
 
 vi.mock("@/features/acervo/hooks", () => ({
-  useAdminEventsQuery: vi.fn(),
   useAreasQuery: vi.fn(),
   useCoursesQuery: vi.fn(),
+  useEventOptionsQuery: vi.fn(),
 }));
 
 vi.mock("@/components/ui/date-range-picker", () => ({
@@ -44,9 +44,9 @@ vi.mock("@/lib/article-download", () => ({
 }));
 
 const mockedUseAuth = vi.mocked(useAuth);
-const mockedUseAdminEventsQuery = vi.mocked(useAdminEventsQuery);
 const mockedUseAreasQuery = vi.mocked(useAreasQuery);
 const mockedUseCoursesQuery = vi.mocked(useCoursesQuery);
+const mockedUseEventOptionsQuery = vi.mocked(useEventOptionsQuery);
 const mockedDownloadArticleReport = vi.mocked(downloadArticleReport);
 const mockedUseArticleReportCountQuery = vi.mocked(useArticleReportCountQuery);
 const mockedTriggerBrowserDownload = vi.mocked(triggerBrowserDownload);
@@ -69,8 +69,8 @@ describe("AdminRelatorios", () => {
       logout: vi.fn(),
       refresh: vi.fn(),
     });
-    mockedUseAdminEventsQuery.mockReturnValue({
-      data: [{ id: "event-1", title: "Congresso UNA" }],
+    mockedUseEventOptionsQuery.mockReturnValue({
+      data: [{ id: "event-1", title: "Congresso UNA", year: 2026, themes: [] }],
     } as never);
     mockedUseAreasQuery.mockReturnValue({
       data: [{ id: "area-1", name: "Saúde", articleCount: 2 }],

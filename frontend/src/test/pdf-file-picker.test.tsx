@@ -11,15 +11,23 @@ describe("PdfFilePicker", () => {
       />,
     );
 
-    const uploadArea = screen.getByText("Selecionar PDF acadêmico").closest("label");
-    expect(uploadArea).toHaveClass("border-dashed", "hover:bg-muted/50");
+    const uploadArea = screen
+      .getByText("Selecionar PDF acadêmico")
+      .closest("label");
+    expect(uploadArea).toHaveClass(
+      "border-dashed",
+      "hover:border-[#d00012]",
+      "hover:bg-[#fff5f6]",
+    );
     expect(screen.getByText("Envie o arquivo PDF.")).toBeInTheDocument();
   });
 
   it("returns selected files and allows replacing or removing a selected PDF", () => {
     const onFilesChange = vi.fn();
     const onRemove = vi.fn();
-    const selectedFile = new File(["pdf-content"], "edital.pdf", { type: "application/pdf" });
+    const selectedFile = new File(["pdf-content"], "edital.pdf", {
+      type: "application/pdf",
+    });
     const { container } = render(
       <PdfFilePicker
         title="Selecionar PDF"
@@ -32,17 +40,27 @@ describe("PdfFilePicker", () => {
 
     expect(screen.getByText("edital.pdf")).toBeInTheDocument();
     expect(screen.getByText("11 B")).toBeInTheDocument();
-    expect(screen.getByText("Trocar PDF").closest("label")).toHaveClass("hover:bg-accent");
+    expect(screen.getByText("Trocar PDF").closest("label")).toHaveClass(
+      "hover:border-[#d00012]",
+      "hover:bg-[#fff5f6]",
+      "hover:text-[#d00012]",
+    );
     expect(screen.getByText("edital.pdf").parentElement?.previousElementSibling).toHaveClass(
       "bg-brand-soft",
       "text-primary-dark",
     );
 
-    const replacementFile = new File(["new-content"], "edital-atualizado.pdf", { type: "application/pdf" });
-    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [replacementFile] } });
+    const replacementFile = new File(["new-content"], "edital-atualizado.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(container.querySelector('input[type="file"]')!, {
+      target: { files: [replacementFile] },
+    });
     expect(onFilesChange).toHaveBeenCalledWith([replacementFile]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Remover PDF selecionado" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remover PDF selecionado" }),
+    );
     expect(onRemove).toHaveBeenCalledOnce();
   });
 });

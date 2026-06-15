@@ -3,6 +3,7 @@ import type {
   Article,
   ArticleListFilters,
   ArticleListResponse,
+  ArticleOptions,
   ArticleUpdateInput,
   AreaSummary,
   Author,
@@ -19,6 +20,12 @@ import type {
   GlobalSearchResponse,
   ImportArticleInput,
 } from "@/types/acervo";
+import {
+  createQueryParams,
+  normalizeFilterValues,
+  normalizeLookupValue,
+  normalizeNumberFilterValues,
+} from "./query-params";
 
 export type ExtractedCatalogPdfMetadata = {
   text: string;
@@ -38,65 +45,6 @@ export type AdminDashboardSummary = {
   draftCount: number;
   archivedCount: number;
 };
-
-type QueryParamPrimitive = string | number | boolean;
-type QueryParamValue =
-  | QueryParamPrimitive
-  | readonly QueryParamPrimitive[]
-  | null
-  | undefined;
-
-function normalizeLookupValue(value?: string) {
-  const trimmed = value?.trim();
-
-  if (!trimmed || trimmed === "undefined" || trimmed === "null") {
-    return undefined;
-  }
-
-  return trimmed;
-}
-
-function normalizeFilterValues<T extends string>(value?: T | readonly T[]) {
-  const values = Array.isArray(value) ? [...value] : value ? [value] : [];
-
-  const normalized = values
-    .map((item) => normalizeLookupValue(item))
-    .filter((item): item is T => Boolean(item));
-
-  const uniqueValues = Array.from(new Set(normalized)).sort((left, right) =>
-    left.localeCompare(right),
-  );
-
-  return uniqueValues.length > 0 ? uniqueValues : undefined;
-}
-
-function appendQueryParam(
-  searchParams: URLSearchParams,
-  key: string,
-  value: QueryParamValue,
-) {
-  if (value === undefined || value === null || value === "") return;
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      appendQueryParam(searchParams, key, item);
-    }
-
-    return;
-  }
-
-  searchParams.append(key, String(value));
-}
-
-function createQueryParams(params: Record<string, QueryParamValue>) {
-  const searchParams = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(params)) {
-    appendQueryParam(searchParams, key, value);
-  }
-
-  return searchParams;
-}
 
 function normalizeEvent(event: Event): Event {
   return {
@@ -174,15 +122,24 @@ export async function fetchArticles(
   const response = await api.get<ArticleListResponse>("/articles", {
     params: createQueryParams({
       status: params?.status,
-      area: normalizeLookupValue(params?.area),
+      area: normalizeFilterValues(params?.area),
+      course: normalizeFilterValues(params?.course),
       q: normalizeLookupValue(params?.q),
-      eventId: normalizeLookupValue(params?.eventId),
+      eventId: normalizeFilterValues(params?.eventId),
+      eventYear: normalizeNumberFilterValues(params?.eventYear),
+      modality: normalizeFilterValues(params?.modality),
+      hasPdf: params?.hasPdf || undefined,
       author: normalizeLookupValue(params?.author),
-      course: normalizeLookupValue(params?.course),
       page: params?.page,
       pageSize: params?.pageSize,
     }),
   });
+
+  return response.data;
+}
+
+export async function fetchArticleOptions(): Promise<ArticleOptions> {
+  const response = await api.get<ArticleOptions>("/articles/options");
 
   return response.data;
 }

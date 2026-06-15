@@ -7,11 +7,13 @@ import AdminImportar from "@/pages/admin/AdminImportar";
 import AdminPublicacoes from "@/pages/admin/AdminPublicacoes";
 import {
   useAdminArticlesQuery,
+  useAdminDashboardSummaryQuery,
   useAdminEventsQuery,
   useAreasQuery,
   useCoursesQuery,
   useDeleteArticleMutation,
   useExtractArticlePdfMetadataMutation,
+  useEventOptionsQuery,
   useImportArticlesMutation,
   useUpdateArticleMutation,
   useUpdateArticleStatusMutation,
@@ -23,6 +25,8 @@ import { toast } from "@/hooks/use-toast";
 vi.mock("@/features/acervo/hooks", () => ({
   useAdminEventsQuery: vi.fn(),
   useAdminArticlesQuery: vi.fn(),
+  useAdminDashboardSummaryQuery: vi.fn(),
+  useEventOptionsQuery: vi.fn(),
   useAreasQuery: vi.fn(),
   useCoursesQuery: vi.fn(),
   useUpdateArticleStatusMutation: vi.fn(),
@@ -43,6 +47,8 @@ vi.mock("@/hooks/use-toast", () => ({
 
 const mockedUseAdminEventsQuery = vi.mocked(useAdminEventsQuery);
 const mockedUseAdminArticlesQuery = vi.mocked(useAdminArticlesQuery);
+const mockedUseAdminDashboardSummaryQuery = vi.mocked(useAdminDashboardSummaryQuery);
+const mockedUseEventOptionsQuery = vi.mocked(useEventOptionsQuery);
 const mockedUseAreasQuery = vi.mocked(useAreasQuery);
 const mockedUseCoursesQuery = vi.mocked(useCoursesQuery);
 const mockedUseUpdateArticleStatusMutation = vi.mocked(useUpdateArticleStatusMutation);
@@ -130,10 +136,68 @@ const adminArticle = {
   externalId: "EXT-001",
 };
 
+function paginated<T>(items: T[], pageSize = 12) {
+  return {
+    items,
+    total: items.length,
+    page: 1,
+    pageSize,
+    pageCount: 1,
+  };
+}
+
+function eventOptions() {
+  return [
+    {
+      id: adminEvent.id,
+      title: adminEvent.title,
+      year: adminEvent.year,
+      themes: adminEvent.themes,
+    },
+  ];
+}
+
+function mockAdminArticlePages(items: typeof adminArticle[] = []) {
+  mockedUseAdminArticlesQuery.mockImplementation((_enabled, filters) => {
+    const status = filters?.status ?? "all";
+    const filteredItems =
+      status === "all"
+        ? items
+        : items.filter((article) => article.status === status);
+
+    return {
+      data: paginated(filteredItems, filters?.pageSize ?? 12),
+      isLoading: false,
+      isError: false,
+    } as never;
+  });
+}
+
 describe("Admin pages", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedUseAuth.mockReturnValue(adminSession);
+    mockedUseAdminDashboardSummaryQuery.mockReturnValue({
+      data: {
+        eventCount: 0,
+        publishedCount: 0,
+        draftCount: 0,
+        archivedCount: 0,
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseEventOptionsQuery.mockReturnValue({
+      data: eventOptions(),
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseAdminEventsQuery.mockReturnValue({
+      data: paginated([adminEvent]),
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockAdminArticlePages();
     mockedUseAreasQuery.mockReturnValue({ data: [], isLoading: false, isError: false } as never);
     mockedUseCoursesQuery.mockReturnValue({ data: [], isLoading: false, isError: false } as never);
     mockedUseDeleteArticleMutation.mockReturnValue({ mutateAsync: vi.fn() } as never);
@@ -145,19 +209,13 @@ describe("Admin pages", () => {
   });
 
   it("renders dashboard metrics from API data", () => {
-    mockedUseAdminEventsQuery.mockReturnValue({
-      data: [
-        adminEvent,
-        {
-          ...adminEvent,
-          id: "event-2",
-          slug: "evento-2",
-          title: "Simposio de Pesquisa",
-          publishedCount: 2,
-          draftCount: 1,
-          archivedCount: 0,
-        },
-      ],
+    mockedUseAdminDashboardSummaryQuery.mockReturnValue({
+      data: {
+        eventCount: 2,
+        publishedCount: 13,
+        draftCount: 8,
+        archivedCount: 3,
+      },
       isLoading: false,
       isError: false,
     } as never);
@@ -174,23 +232,14 @@ describe("Admin pages", () => {
   it("publishes a draft article from admin curation", async () => {
     const mutateAsync = vi.fn().mockResolvedValue({});
 
-    mockedUseAdminEventsQuery.mockReturnValue({
-      data: [adminEvent],
-      isLoading: false,
-      isError: false,
-    } as never);
-    mockedUseAdminArticlesQuery.mockReturnValue({
-      data: [adminArticle],
-      isLoading: false,
-      isError: false,
-    } as never);
+    mockAdminArticlePages([adminArticle]);
     mockedUseUpdateArticleStatusMutation.mockReturnValue({ mutateAsync } as never);
 
     renderAdminPage(<AdminPublicacoes />);
 
     const publishedTab = screen.getByRole("button", { name: /Publicados/ });
-    expect(publishedTab).toHaveClass("hover:bg-background/70", "hover:text-foreground");
-    expect(publishedTab.parentElement).toHaveClass("gap-2");
+    expect(publishedTab).toHaveClass("hover:bg-background/95", "hover:text-foreground");
+    expect(publishedTab.parentElement).toHaveClass("gap-1");
     expect(publishedTab).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(screen.getByRole("button", { name: "Publicar" }));
@@ -213,16 +262,7 @@ describe("Admin pages", () => {
   it("edits article metadata from admin curation", async () => {
     const updateArticleMutateAsync = vi.fn().mockResolvedValue({});
 
-    mockedUseAdminEventsQuery.mockReturnValue({
-      data: [adminEvent],
-      isLoading: false,
-      isError: false,
-    } as never);
-    mockedUseAdminArticlesQuery.mockReturnValue({
-      data: [adminArticle],
-      isLoading: false,
-      isError: false,
-    } as never);
+    mockAdminArticlePages([adminArticle]);
     mockedUseUpdateArticleMutation.mockReturnValue({
       mutateAsync: updateArticleMutateAsync,
       isPending: false,
@@ -269,16 +309,9 @@ describe("Admin pages", () => {
     const uploadMutateAsync = vi.fn().mockResolvedValue({});
     const updateArticleMutateAsync = vi.fn().mockResolvedValue({});
 
-    mockedUseAdminEventsQuery.mockReturnValue({
-      data: [adminEvent],
-      isLoading: false,
-      isError: false,
-    } as never);
-    mockedUseAdminArticlesQuery.mockReturnValue({
-      data: [{ ...adminArticle, pdfUrl: "https://cdn.example.com/artigo.pdf" }],
-      isLoading: false,
-      isError: false,
-    } as never);
+    mockAdminArticlePages([
+      { ...adminArticle, pdfUrl: "https://cdn.example.com/artigo.pdf" },
+    ]);
     mockedUseExtractArticlePdfMetadataMutation.mockReturnValue({
       mutateAsync: extractMutateAsync,
       isPending: false,
@@ -489,8 +522,11 @@ describe("Admin pages", () => {
 
     const pdfTab = screen.getByRole("tab", { name: /pdf/i });
     expect(screen.getByTestId("import-mode-card")).toContainElement(pdfTab);
-    expect(screen.getByRole("tablist")).toHaveClass("gap-2");
-    expect(pdfTab).toHaveClass("hover:bg-background/70", "hover:text-foreground");
+    expect(screen.getByRole("tablist")).toHaveClass("gap-1");
+    expect(pdfTab).toHaveClass(
+      "data-[state=inactive]:hover:bg-background/95",
+      "data-[state=inactive]:hover:text-foreground",
+    );
     fireEvent.mouseDown(pdfTab);
     fireEvent.click(pdfTab);
 

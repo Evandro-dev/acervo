@@ -1,44 +1,35 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, FileText, Filter, User } from "lucide-react";
+import { ChevronRight, FileText, User } from "lucide-react";
+import { FilterButton } from "@/components/filters/FilterButton";
+import { FilterSheetContent } from "@/components/filters/FilterSheetContent";
+import { toFilterId, toggleFilterValue } from "@/components/filters/filter-utils";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
 import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { QueryState } from "@/components/ui/query-state";
 import {
   Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAreasQuery, useAuthorsQuery } from "@/features/acervo/hooks";
+import { usePaginatedQueryState } from "@/hooks/usePaginatedQueryState";
 
 const AUTHORS_PAGE_SIZE = 12;
 
-function toggleValue(values: string[], value: string) {
-  return values.includes(value)
-    ? values.filter((item) => item !== value)
-    : [...values, value];
-}
-
-function toFilterId(prefix: string, value: string) {
-  return `${prefix}-${encodeURIComponent(value)}`;
-}
-
 export default function Autores() {
-  const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const deferredQuery = useDeferredValue(q);
+  const paginationResetKey = [deferredQuery, selectedAreas.join("|")].join("\u0001");
+  const { page, setPage } = usePaginatedQueryState({
+    resetKey: paginationResetKey,
+  });
 
   const {
     data: authorsResponse,
@@ -69,17 +60,13 @@ export default function Autores() {
   const activeFilterCount = selectedAreas.length;
 
   useEffect(() => {
-    setPage(1);
-  }, [deferredQuery, selectedAreas]);
-
-  useEffect(() => {
     if (!isLoading && page > pageCount) {
       setPage(pageCount);
     }
   }, [isLoading, page, pageCount]);
 
   const toggleArea = (area: string) => {
-    setSelectedAreas((current) => toggleValue(current, area));
+    setSelectedAreas((current) => toggleFilterValue(current, area));
   };
 
   return (
@@ -100,35 +87,19 @@ export default function Autores() {
               className="text-foreground"
               trailingAction={
                 <SheetTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="relative h-9 w-9 shrink-0 rounded-lg bg-brand-soft text-primary-dark hover:bg-brand-soft/80"
-                    aria-label="Abrir filtros de autores"
-                  >
-                    <Filter className="h-4 w-4" />
-                    {activeFilterCount > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-dark px-1 text-[10px] font-bold text-primary-foreground">
-                        {activeFilterCount}
-                      </span>
-                    )}
-                  </Button>
+                  <FilterButton
+                    activeCount={activeFilterCount}
+                    label="Abrir filtros de autores"
+                  />
                 </SheetTrigger>
               }
             />
 
-            <SheetContent
-              side="bottom"
-              className="h-[92vh] overflow-y-auto rounded-t-[28px] border-0 bg-white px-5 pb-6 pt-4 shadow-2xl md:bottom-auto md:left-1/2 md:right-auto md:top-1/2 md:h-auto md:max-h-[90vh] md:w-[min(92vw,720px)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl"
+            <FilterSheetContent
+              description="Filtre autores por área de publicação."
+              onApply={() => setOpen(false)}
+              onClear={() => setSelectedAreas([])}
             >
-              <SheetHeader className="mb-6 flex flex-row items-center justify-between space-y-0 text-left">
-                <SheetTitle className="text-2xl font-bold text-[#E30613]">
-                  Filtros
-                </SheetTitle>
-                <SheetDescription className="sr-only">
-                  Filtre autores por área de publicação.
-                </SheetDescription>
-              </SheetHeader>
 
               <div className="mb-8">
                 <div className="mb-4 block text-sm font-semibold text-black">
@@ -162,22 +133,7 @@ export default function Autores() {
                 )}
               </div>
 
-              <SheetFooter className="mt-8 grid grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  className="h-12 rounded-xl border-zinc-300 text-base font-semibold"
-                  onClick={() => setSelectedAreas([])}
-                >
-                  Limpar
-                </Button>
-                <Button
-                  className="h-12 rounded-xl bg-linear-to-r from-[#E30613] to-[#B00010] text-base font-semibold text-white hover:opacity-90"
-                  onClick={() => setOpen(false)}
-                >
-                  Aplicar filtros
-                </Button>
-              </SheetFooter>
-            </SheetContent>
+            </FilterSheetContent>
           </Sheet>
         </SiteContainer>
       </section>

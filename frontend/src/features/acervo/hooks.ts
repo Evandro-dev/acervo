@@ -12,6 +12,7 @@ import {
   extractCatalogPdfMetadata,
   fetchAdminDashboardSummary,
   fetchArticle,
+  fetchArticleOptions,
   fetchArticles,
   fetchAreas,
   fetchAuthor,
@@ -37,6 +38,7 @@ import {
 import type {
   ArticleListFilters,
   ArticleListResponse,
+  ArticleOptions,
   ArticleUpdateInput,
   AuthorListFilters,
   AuthorListResponse,
@@ -47,6 +49,12 @@ import type {
   EventMutationInput,
   ImportArticleInput,
 } from "@/types/acervo";
+import {
+  compactKey,
+  normalizeFilterValues,
+  normalizeLookupValue,
+  normalizeNumberFilterValues,
+} from "./query-params";
 
 type EventQueryOptions = {
   staleTime?: number;
@@ -58,40 +66,6 @@ type PublicEventsFilters = Omit<EventListFilters, "includeArticles">;
 type AdminEventsFilters = Omit<EventListFilters, "includeArticles">;
 type PublishedArticlesFilters = Omit<ArticleListFilters, "status">;
 type AdminArticlesFilters = ArticleListFilters;
-
-function normalizeLookupValue(value?: string) {
-  const trimmed = value?.trim();
-
-  if (!trimmed || trimmed === "undefined" || trimmed === "null") {
-    return undefined;
-  }
-
-  return trimmed;
-}
-
-function normalizeFilterValues<T extends string>(value?: T | readonly T[]) {
-  const values = Array.isArray(value) ? [...value] : value ? [value] : [];
-
-  const normalized = values
-    .map((item) => normalizeLookupValue(item))
-    .filter((item): item is T => Boolean(item));
-
-  const uniqueValues = Array.from(new Set(normalized)).sort((left, right) =>
-    left.localeCompare(right),
-  );
-
-  return uniqueValues.length > 0 ? uniqueValues : undefined;
-}
-
-function compactKey<T extends Record<string, unknown>>(value: T) {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entry]) => {
-      if (Array.isArray(entry)) return entry.length > 0;
-
-      return entry !== undefined && entry !== null && entry !== "";
-    }),
-  ) as Partial<T>;
-}
 
 function normalizeEventListFilters(
   filters?: EventListFilters,
@@ -113,10 +87,13 @@ function normalizeArticleListFilters(
 ): ArticleListFilters {
   return compactKey({
     status: filters?.status,
-    area: normalizeLookupValue(filters?.area),
-    course: normalizeLookupValue(filters?.course),
+    area: normalizeFilterValues(filters?.area),
+    course: normalizeFilterValues(filters?.course),
     q: normalizeLookupValue(filters?.q),
-    eventId: normalizeLookupValue(filters?.eventId),
+    eventId: normalizeFilterValues(filters?.eventId),
+    eventYear: normalizeNumberFilterValues(filters?.eventYear),
+    modality: normalizeFilterValues(filters?.modality),
+    hasPdf: filters?.hasPdf || undefined,
     author: normalizeLookupValue(filters?.author),
     page: filters?.page,
     pageSize: filters?.pageSize,
@@ -142,6 +119,7 @@ const acervoKeys = {
   eventOptions: () => ["acervo", "events", "options"] as const,
   event: (idOrSlug: string, scope: string) =>
     ["acervo", "event", idOrSlug, scope] as const,
+  articleOptions: () => ["acervo", "articles", "options"] as const,
   articles: (scope: string, filters?: ArticleListFilters) =>
     ["acervo", "articles", scope, filters ?? {}] as const,
   article: (id: string) => ["acervo", "article", id] as const,
@@ -173,6 +151,17 @@ export function useEventOptionsQuery(
     enabled,
     queryKey: acervoKeys.eventOptions(),
     queryFn: fetchEventOptions,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useArticleOptionsQuery(
+  enabled = true,
+): UseQueryResult<ArticleOptions> {
+  return useQuery({
+    enabled,
+    queryKey: acervoKeys.articleOptions(),
+    queryFn: fetchArticleOptions,
     staleTime: 5 * 60 * 1000,
   });
 }

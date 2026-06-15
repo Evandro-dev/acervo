@@ -16,6 +16,7 @@ import { SiteContainer } from "@/components/layout/SiteContainer";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ProtectedImage } from "@/components/ui/protected-image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Accordion,
@@ -332,7 +333,7 @@ export default function EventoDetalhe() {
                       {catalogImageUrl ? (
                         <div className="flex flex-col gap-3">
                           <div className="max-h-180 overflow-auto rounded-md border bg-white p-2">
-                            <img
+                            <ProtectedImage
                               src={getApiResourceUrl(catalogImageUrl)}
                               alt="Ficha catalográfica"
                               className="mx-auto max-w-full object-contain"

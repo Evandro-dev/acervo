@@ -20,11 +20,11 @@ describe("SegmentedControl", () => {
     const uploadOption = screen.getByRole("button", { name: "Enviar PDF" });
     const externalOption = screen.getByRole("button", { name: "Usar link externo" });
 
-    expect(screen.getByRole("group", { name: "Origem do arquivo" })).toHaveClass("gap-2", "bg-muted");
+    expect(screen.getByRole("group", { name: "Origem do arquivo" })).toHaveClass("gap-1", "bg-muted/35");
     expect(uploadOption).toHaveAttribute("aria-pressed", "true");
-    expect(uploadOption).toHaveClass("bg-background", "shadow-card");
+    expect(uploadOption).toHaveClass("bg-background", "shadow-[inset_0_0_0_1px_hsl(var(--border)),0_1px_2px_rgba(15,23,42,0.08)]");
     expect(externalOption).toHaveAttribute("aria-pressed", "false");
-    expect(externalOption).toHaveClass("hover:bg-background/70", "hover:text-foreground");
+    expect(externalOption).toHaveClass("hover:bg-background/95", "hover:text-foreground");
 
     fireEvent.click(externalOption);
     expect(onValueChange).toHaveBeenCalledWith("external");

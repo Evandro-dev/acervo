@@ -1,10 +1,12 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Filter } from "lucide-react";
+import { useDeferredValue, useMemo, useState } from "react";
+import { FilterButton } from "@/components/filters/FilterButton";
+import { FilterGroup } from "@/components/filters/FilterGroup";
+import { FilterSheetContent } from "@/components/filters/FilterSheetContent";
+import { toFilterId, toggleFilterValue } from "@/components/filters/filter-utils";
 import { PublicEventCard } from "@/components/events/PublicEventCard";
 import { AppShell } from "@/components/layout/AppShell";
 import { SiteContainer } from "@/components/layout/SiteContainer";
 import { GlobalSearchBox } from "@/components/search/GlobalSearchBox";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,14 +14,10 @@ import { ListPagination } from "@/components/ui/list-pagination";
 import { QueryState } from "@/components/ui/query-state";
 import {
   Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAreasQuery, usePublicEventsQuery } from "@/features/acervo/hooks";
+import { usePaginatedQueryState } from "@/hooks/usePaginatedQueryState";
 import { eventTypes, type EventType } from "@/types/acervo";
 
 const EVENTS_PAGE_SIZE = 12;
@@ -34,24 +32,7 @@ function normalizeYear(value: string) {
   return year;
 }
 
-function toFilterId(prefix: string, value: string) {
-  return `${prefix}-${encodeURIComponent(value)}`;
-}
-
-function toggleValue<T extends string>(
-  values: T[],
-  value: T,
-  setValues: (next: T[]) => void,
-) {
-  setValues(
-    values.includes(value)
-      ? values.filter((item) => item !== value)
-      : [...values, value],
-  );
-}
-
 export default function Eventos() {
-  const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [eventYear, setEventYear] = useState("");
   const [types, setTypes] = useState<EventType[]>([]);
@@ -72,10 +53,10 @@ export default function Eventos() {
 
   const typesKey = selectedTypes.join("|");
   const areasKey = selectedAreas.join("|");
-
-  useEffect(() => {
-    setPage(1);
-  }, [deferredQuery, eventYear, typesKey, areasKey]);
+  const paginationResetKey = [deferredQuery, eventYear, typesKey, areasKey].join("\u0001");
+  const { page, setPage } = usePaginatedQueryState({
+    resetKey: paginationResetKey,
+  });
 
   const {
     data: eventsResponse,
@@ -124,37 +105,23 @@ export default function Eventos() {
               className="text-foreground"
               trailingAction={
                 <SheetTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="relative h-9 w-9 shrink-0 rounded-lg bg-brand-soft text-primary-dark hover:bg-brand-soft/80"
-                    aria-label="Abrir filtros de eventos"
-                  >
-                    <Filter className="h-4 w-4" />
-
-                    {activeCount > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-dark px-1 text-[10px] font-bold text-primary-foreground">
-                        {activeCount}
-                      </span>
-                    )}
-                  </Button>
+                  <FilterButton
+                    activeCount={activeCount}
+                    label="Abrir filtros de eventos"
+                  />
                 </SheetTrigger>
               }
             />
 
-            <SheetContent
-              side="bottom"
-              className="h-[92vh] overflow-y-auto rounded-t-[28px] border-0 bg-white px-5 pb-6 pt-4 shadow-2xl md:bottom-auto md:left-1/2 md:right-auto md:top-1/2 md:h-auto md:max-h-[90vh] md:w-[min(92vw,720px)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl"
+            <FilterSheetContent
+              description="Filtre a lista de eventos por ano, tipo e área temática."
+              onApply={() => setOpen(false)}
+              onClear={() => {
+                setEventYear("");
+                setTypes([]);
+                setAreas([]);
+              }}
             >
-              <SheetHeader className="mb-6 flex flex-row items-center justify-between space-y-0 text-left">
-                <SheetTitle className="text-2xl font-bold text-[#E30613]">
-                  Filtros
-                </SheetTitle>
-                <SheetDescription className="sr-only">
-                  Filtre a lista de eventos por ano, tipo e área temática.
-                </SheetDescription>
-              </SheetHeader>
-
               <div className="mb-6">
                 <Label
                   htmlFor="event-year-filter"
@@ -175,11 +142,7 @@ export default function Eventos() {
                 />
               </div>
 
-              <div className="mb-7">
-                <div className="mb-4 block text-sm font-semibold text-black">
-                  Tipo de Evento
-                </div>
-
+              <FilterGroup title="Tipo de Evento">
                 <div className="grid grid-cols-2 gap-x-8 gap-y-3 md:grid-cols-3">
                   {eventTypes.map((type) => {
                     const id = toFilterId("event-type", type);
@@ -194,7 +157,7 @@ export default function Eventos() {
                           id={id}
                           checked={types.includes(type)}
                           onCheckedChange={() =>
-                            toggleValue(types, type, setTypes)
+                            setTypes((current) => toggleFilterValue(current, type))
                           }
                         />
                         <span>{type}</span>
@@ -202,12 +165,9 @@ export default function Eventos() {
                     );
                   })}
                 </div>
-              </div>
+              </FilterGroup>
 
-              <div className="mb-8">
-                <div className="mb-4 block text-sm font-semibold text-black">
-                  Área
-                </div>
+              <FilterGroup title="Área">
 
                 {allAreas.length > 0 ? (
                   <div className="grid gap-3">
@@ -224,7 +184,7 @@ export default function Eventos() {
                             id={id}
                             checked={areas.includes(area)}
                             onCheckedChange={() =>
-                              toggleValue(areas, area, setAreas)
+                              setAreas((current) => toggleFilterValue(current, area))
                             }
                           />
                           <span>{area}</span>
@@ -237,29 +197,8 @@ export default function Eventos() {
                     Nenhuma área cadastrada ainda.
                   </p>
                 )}
-              </div>
-
-              <SheetFooter className="mt-8 grid grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  className="h-12 rounded-xl border-zinc-300 text-base font-semibold"
-                  onClick={() => {
-                    setEventYear("");
-                    setTypes([]);
-                    setAreas([]);
-                  }}
-                >
-                  Limpar
-                </Button>
-
-                <Button
-                  className="h-12 rounded-xl bg-linear-to-r from-[#E30613] to-[#B00010] text-base font-semibold text-white hover:opacity-90"
-                  onClick={() => setOpen(false)}
-                >
-                  Aplicar filtros
-                </Button>
-              </SheetFooter>
-            </SheetContent>
+              </FilterGroup>
+            </FilterSheetContent>
           </Sheet>
         </SiteContainer>
       </section>

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import type { Prisma } from "../../generated/prisma/client.js";
 import { z } from "zod";
 import {
   articlePdfExists,
@@ -16,7 +15,6 @@ import { canManageArticle, getOptionalUser, isPrivilegedRole, requirePrivilegedU
 import { readValidatedPdfUpload } from "../../lib/pdf-upload.js";
 import {
   createPaginatedResponse,
-  createPaginationQuerySchema,
   getPaginationParams,
 } from "../../lib/pagination.js";
 import { prisma } from "../../lib/prisma.js";
@@ -26,15 +24,22 @@ import { serializeArticle } from "../../lib/serializers.js";
 import { suggestAreaFromArticleText } from "../areas/area-suggestion.service.js";
 import { ensureArea, sanitizeAreaName } from "../areas/areas.service.js";
 import { ensureAuthors } from "../authors/authors.service.js";
-import { ensureCourses, normalizeCourseLookup } from "../courses/courses.service.js";
+import { ensureCourses } from "../courses/courses.service.js";
 import { suggestCoursesFromArticleText } from "../courses/course-suggestion.service.js";
+import {
+  articleListOrderBy,
+  articleQuerySchema,
+  buildArticleWhere,
+  getArticleInclude,
+  listArticleOptions,
+  normalizeArticleStatusQuery,
+} from "./article-list.service.js";
 import {
   createImportedArticles,
   MAX_ARTICLE_IMPORT_ITEMS,
 } from "./article-import.service.js";
 
 const articleStatusSchema = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
-const articleStatusQuerySchema = z.enum(["published", "draft", "archived", "all"]);
 const articlePdfQuerySchema = z.object({
   download: queryBooleanSchema,
 });
@@ -60,107 +65,6 @@ const articlePayloadSchema = z.object({
   publishedAt: z.coerce.date().optional(),
 });
 
-const articleQuerySchema = z
-  .object({
-    status: articleStatusQuerySchema.default("published"),
-    area: z.string().trim().optional(),
-    course: z.string().trim().optional(),
-    q: z.string().trim().optional(),
-    eventId: z.string().optional(),
-    author: z.string().trim().optional(),
-  })
-  .merge(createPaginationQuerySchema({ defaultPageSize: 12 }));
-
-function normalizeStatusQuery(status: z.infer<typeof articleStatusQuerySchema>) {
-  switch (status) {
-    case "draft":
-      return "DRAFT" as const;
-    case "archived":
-      return "ARCHIVED" as const;
-    case "published":
-      return "PUBLISHED" as const;
-    default:
-      return undefined;
-  }
-}
-
-function getArticleInclude() {
-  return {
-    event: {
-      select: { id: true, slug: true, title: true, year: true },
-    },
-    authors: {
-      include: {
-        author: true,
-      },
-    },
-    courses: {
-      include: {
-        course: true,
-      },
-    },
-  };
-}
-
-type ArticleListQuery = z.infer<typeof articleQuerySchema>;
-
-const articleListOrderBy: Prisma.ArticleOrderByWithRelationInput[] = [
-  { publishedAt: "desc" },
-  { submittedAt: "desc" },
-  { id: "asc" },
-];
-
-function buildArticleWhere(
-  query: ArticleListQuery,
-  status: ReturnType<typeof normalizeStatusQuery>,
-): Prisma.ArticleWhereInput {
-  return {
-    ...(status ? { status } : {}),
-    ...(query.area ? { area: query.area } : {}),
-    ...(query.course
-      ? {
-          courses: {
-            some: {
-              course: {
-                normalizedName: normalizeCourseLookup(query.course),
-              },
-            },
-          },
-        }
-      : {}),
-    ...(query.eventId ? { eventId: query.eventId } : {}),
-    ...(query.author
-      ? {
-          authors: {
-            some: {
-              author: {
-                name: { contains: query.author, mode: "insensitive" },
-              },
-            },
-          },
-        }
-      : {}),
-    ...(query.q
-      ? {
-          OR: [
-            { title: { contains: query.q, mode: "insensitive" } },
-            { abstract: { contains: query.q, mode: "insensitive" } },
-            { externalId: { contains: query.q, mode: "insensitive" } },
-            {
-              authors: {
-                some: {
-                  author: {
-                    name: { contains: query.q, mode: "insensitive" },
-                  },
-                },
-              },
-            },
-          ],
-        }
-      : {}),
-  };
-}
-
 async function resolveArticleArea(tx: any, area: string) {
   const areaRecord = await ensureArea(tx, area);
 
@@ -181,7 +85,7 @@ async function removeArticlePdfBestEffort(req: FastifyRequest, articleId: string
 export async function articleRoutes(app: FastifyInstance) {
   app.get("/", async (req, reply) => {
     const query = articleQuerySchema.parse(req.query ?? {});
-    const status = normalizeStatusQuery(query.status);
+    const status = normalizeArticleStatusQuery(query.status);
     const pagination = getPaginationParams(query);
 
     if (query.status !== "published") {
@@ -208,6 +112,8 @@ export async function articleRoutes(app: FastifyInstance) {
       pagination,
     );
   });
+
+  app.get("/options", async () => listArticleOptions());
 
   app.post(
     "/extract-metadata",

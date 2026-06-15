@@ -8,6 +8,10 @@ import {
 } from "../../lib/pagination.js";
 import { prisma } from "../../lib/prisma.js";
 import {
+  normalizeQueryStringArray,
+  uniqueQueryValues,
+} from "../../lib/query-array.js";
+import {
   serializeArticle,
   serializeAuthorSummary,
 } from "../../lib/serializers.js";
@@ -15,21 +19,6 @@ import {
 const authorPaginationQuerySchema = createPaginationQuerySchema({
   defaultPageSize: 20,
 });
-
-function normalizeQueryStringArray(value: unknown) {
-  if (value === undefined || value === null) return [];
-
-  const values = Array.isArray(value) ? value : [value];
-
-  return values
-    .flatMap((item) => (typeof item === "string" ? item.split(",") : []))
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-}
-
-function uniqueValues<T extends string>(values: T[]) {
-  return Array.from(new Set(values));
-}
 
 const authorAreaFilterSchema = z.preprocess(
   normalizeQueryStringArray,
@@ -45,7 +34,7 @@ const authorQuerySchema = z
   .extend(authorPaginationQuerySchema.shape)
   .transform(({ "area[]": bracketAreas, ...query }) => ({
     ...query,
-    area: uniqueValues([...query.area, ...bracketAreas]),
+    area: uniqueQueryValues([...query.area, ...bracketAreas]),
   }));
 
 type AuthorListQuery = z.infer<typeof authorQuerySchema>;

@@ -34,6 +34,9 @@ test("protects event mutations and rule upload cleanup behind privileged roles",
       ["ADMIN", "COORDENADOR"],
       ["ADMIN", "COORDENADOR"],
       ["ADMIN", "COORDENADOR"],
+      ["ADMIN", "COORDENADOR"],
+      ["ADMIN", "COORDENADOR"],
+      ["ADMIN", "COORDENADOR"],
       ["ADMIN"],
     ]);
   } finally {

@@ -2,25 +2,30 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import AdminEventoForm from "@/pages/admin/AdminEventoForm";
 import {
-  useAdminEventsQuery,
   useAreasQuery,
   useCreateEventMutation,
+  useEventOptionsQuery,
   useEventQuery,
+  useExtractCatalogPdfMetadataMutation,
   useRemoveUploadedEventRuleFileMutation,
   useUpdateEventMutation,
+  useUploadEventCatalogPdfMutation,
   useUploadEventCoverImageMutation,
   useUploadEventRuleFileMutation,
 } from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
+import { renderCatalogPdfPreview } from "@/lib/catalog-pdf-preview";
 
 vi.mock("@/features/acervo/hooks", () => ({
-  useAdminEventsQuery: vi.fn(),
   useAreasQuery: vi.fn(),
   useCreateEventMutation: vi.fn(),
+  useEventOptionsQuery: vi.fn(),
   useEventQuery: vi.fn(),
+  useExtractCatalogPdfMetadataMutation: vi.fn(),
   useRemoveUploadedEventRuleFileMutation: vi.fn(),
   useUpdateEventMutation: vi.fn(),
+  useUploadEventCatalogPdfMutation: vi.fn(),
   useUploadEventCoverImageMutation: vi.fn(),
   useUploadEventRuleFileMutation: vi.fn(),
 }));
@@ -33,16 +38,23 @@ vi.mock("@/hooks/use-toast", () => ({
   toast: vi.fn(),
 }));
 
-const mockedUseAdminEventsQuery = vi.mocked(useAdminEventsQuery);
+vi.mock("@/lib/catalog-pdf-preview", () => ({
+  renderCatalogPdfPreview: vi.fn(),
+}));
+
 const mockedUseAreasQuery = vi.mocked(useAreasQuery);
 const mockedUseCreateEventMutation = vi.mocked(useCreateEventMutation);
+const mockedUseEventOptionsQuery = vi.mocked(useEventOptionsQuery);
 const mockedUseEventQuery = vi.mocked(useEventQuery);
+const mockedUseExtractCatalogPdfMetadataMutation = vi.mocked(useExtractCatalogPdfMetadataMutation);
 const mockedUseRemoveUploadedEventRuleFileMutation = vi.mocked(useRemoveUploadedEventRuleFileMutation);
 const mockedUseUpdateEventMutation = vi.mocked(useUpdateEventMutation);
+const mockedUseUploadEventCatalogPdfMutation = vi.mocked(useUploadEventCatalogPdfMutation);
 const mockedUseUploadEventCoverImageMutation = vi.mocked(useUploadEventCoverImageMutation);
 const mockedUseUploadEventRuleFileMutation = vi.mocked(useUploadEventRuleFileMutation);
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedToast = vi.mocked(toast);
+const mockedRenderCatalogPdfPreview = vi.mocked(renderCatalogPdfPreview);
 
 const adminSession = {
   user: {
@@ -60,6 +72,21 @@ const adminSession = {
   refresh: vi.fn(),
 };
 
+function fillRequiredEventFields(container: HTMLElement, title = "Congresso Completo") {
+  fireEvent.change(screen.getByLabelText("Título"), {
+    target: { value: title },
+  });
+  fireEvent.change(screen.getByPlaceholderText("Digite ou escolha uma área"), {
+    target: { value: "Tecnologia" },
+  });
+  fireEvent.change(screen.getByPlaceholderText("Contextualize o evento, objetivos, público e escopo."), {
+    target: { value: "Apresentação completa do evento com detalhes suficientes para validação." },
+  });
+  fireEvent.change(container.querySelector('input[type="email"]')!, {
+    target: { value: "congresso@ulife.com.br" },
+  });
+}
+
 describe("AdminEventoForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -69,7 +96,7 @@ describe("AdminEventoForm", () => {
       isLoading: false,
       isError: false,
     } as never);
-    mockedUseAdminEventsQuery.mockReturnValue({
+    mockedUseEventOptionsQuery.mockReturnValue({
       data: [],
       isLoading: false,
       isError: false,
@@ -80,6 +107,14 @@ describe("AdminEventoForm", () => {
       isError: false,
     } as never);
     mockedUseRemoveUploadedEventRuleFileMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseExtractCatalogPdfMetadataMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCatalogPdfMutation.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
     } as never);
@@ -154,10 +189,10 @@ describe("AdminEventoForm", () => {
       target: { value: "Normas de submissão" },
     });
 
-    expect(screen.getByRole("group", { name: "Origem do arquivo da norma" })).toHaveClass("gap-2", "bg-muted");
+    expect(screen.getByRole("group", { name: "Origem do arquivo da norma" })).toHaveClass("gap-1", "bg-muted/35");
     expect(screen.getByRole("button", { name: "Enviar arquivo" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Usar link externo" })).toHaveClass(
-      "hover:bg-background/70",
+      "hover:bg-background/95",
       "hover:text-foreground",
     );
 
@@ -359,5 +394,196 @@ describe("AdminEventoForm", () => {
         variant: "destructive",
       }),
     );
+  });
+
+  it("renders a temporary catalog PDF preview and only uploads the catalog files after saving the event", async () => {
+    const pdfFile = new File(["%PDF-1.7\n%%EOF"], "ficha.pdf", {
+      type: "application/pdf",
+    });
+    const imageBlob = new Blob(["png-preview"], { type: "image/png" });
+    const imageFile = new File([imageBlob], "ficha.png", {
+      type: "image/png",
+    });
+    const extractCatalogMutateAsync = vi.fn().mockResolvedValue({
+      text: "Dados Internacionais de Catalogação na Publicação\nISBN 978-65-02-14535-7",
+      isbn: "978-65-02-14535-7",
+      pageCount: 1,
+      warnings: [],
+    });
+    const createMutateAsync = vi.fn().mockResolvedValue({
+      id: "event-1",
+      title: "Congresso Completo",
+    });
+    const uploadCatalogMutateAsync = vi.fn().mockResolvedValue({
+      catalogPdfUrl: "/events/event-1/catalog/files/ficha.pdf",
+      catalogImageUrl: "/events/event-1/catalog/files/ficha.png",
+      text: "Dados Internacionais de Catalogação na Publicação",
+      isbn: "978-65-02-14535-7",
+      pageCount: 1,
+      warnings: [],
+    });
+
+    mockedUseExtractCatalogPdfMetadataMutation.mockReturnValue({
+      mutateAsync: extractCatalogMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseCreateEventMutation.mockReturnValue({
+      mutateAsync: createMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUpdateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCatalogPdfMutation.mockReturnValue({
+      mutateAsync: uploadCatalogMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCoverImageMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventRuleFileMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedRenderCatalogPdfPreview.mockResolvedValue({
+      dataUrl: "data:image/png;base64,preview",
+      imageFile,
+      blob: imageBlob,
+      width: 700,
+      height: 900,
+      pageNumber: 1,
+      pageCount: 1,
+    });
+
+    const { container } = render(
+      <MemoryRouter>
+        <AdminEventoForm />
+      </MemoryRouter>,
+    );
+
+    fillRequiredEventFields(container);
+    fireEvent.click(screen.getByRole("button", { name: "PDF" }));
+    fireEvent.change(screen.getByLabelText("Selecionar PDF da ficha"), {
+      target: { files: [pdfFile] },
+    });
+
+    await waitFor(() =>
+      expect(extractCatalogMutateAsync).toHaveBeenCalledWith({ file: pdfFile }),
+    );
+    await waitFor(() =>
+      expect(mockedRenderCatalogPdfPreview).toHaveBeenCalledWith(pdfFile, {
+        scale: 2,
+      }),
+    );
+    expect(uploadCatalogMutateAsync).not.toHaveBeenCalled();
+    expect(
+      await screen.findByAltText("Prévia da ficha catalográfica"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar evento completo" }));
+
+    await waitFor(() =>
+      expect(createMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          catalog: expect.objectContaining({
+            isbn: "978-65-02-14535-7",
+            text: "",
+          }),
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(uploadCatalogMutateAsync).toHaveBeenCalledWith({
+        id: "event-1",
+        pdfFile,
+        imageFile,
+      }),
+    );
+  });
+
+  it("removes persisted catalog PDF and image when an edited event is saved after catalog removal", async () => {
+    const updateMutateAsync = vi.fn().mockResolvedValue({
+      id: "event-1",
+      title: "Congresso Completo",
+    });
+    const uploadCatalogMutateAsync = vi.fn();
+
+    mockedUseEventQuery.mockReturnValue({
+      data: {
+        id: "event-1",
+        slug: "congresso-completo",
+        title: "Congresso Completo",
+        edition: "1ª Edição",
+        year: 2026,
+        date: "15 de junho de 2026",
+        area: "Tecnologia",
+        type: "Congresso",
+        cover: null,
+        presentation: "Apresentação completa do evento com detalhes suficientes.",
+        themes: [],
+        committee: [],
+        rules: [],
+        previousEditions: [],
+        contact: { email: "congresso@ulife.com.br" },
+        catalog: {
+          isbn: "978-65-02-14535-7",
+          text: "",
+          pdfUrl: "/events/event-1/catalog/files/ficha.pdf",
+          imageUrl: "/events/event-1/catalog/files/ficha.png",
+        },
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseCreateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUpdateEventMutation.mockReturnValue({
+      mutateAsync: updateMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCatalogPdfMutation.mockReturnValue({
+      mutateAsync: uploadCatalogMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCoverImageMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventRuleFileMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/admin/eventos/event-1"]}>
+        <Routes>
+          <Route path="/admin/eventos/:id" element={<AdminEventoForm />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const [removeCatalogButton] = await screen.findAllByRole("button", {
+      name: "Remover ficha catalográfica",
+    });
+    fireEvent.click(removeCatalogButton);
+    fireEvent.click(screen.getByRole("button", { name: "Salvar evento completo" }));
+
+    await waitFor(() =>
+      expect(updateMutateAsync).toHaveBeenCalledWith({
+        id: "event-1",
+        payload: expect.objectContaining({
+          catalog: expect.objectContaining({
+            text: "",
+            pdfUrl: null,
+            imageUrl: null,
+          }),
+        }),
+      }),
+    );
+    expect(uploadCatalogMutateAsync).not.toHaveBeenCalled();
   });
 });

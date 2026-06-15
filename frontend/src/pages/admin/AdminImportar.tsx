@@ -1,24 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertCircle,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   DownloadCloud,
   FileText,
   Info,
   Plus,
   Sparkles,
-  Trash2,
   Upload,
   X,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { ArticleEditorForm } from "@/components/admin/ArticleEditorForm";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { PdfFilePicker } from "@/components/admin/PdfFilePicker";
-import { PdfFileSummary } from "@/components/admin/PdfFileSummary";
+import { PdfImportQueuePanel } from "@/components/admin/PdfImportQueuePanel";
+import { PdfImportReviewCard } from "@/components/admin/PdfImportReviewCard";
 import { AreaCombobox } from "@/components/ui/area-combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,18 +34,32 @@ import {
   useImportArticlesMutation,
   useUploadArticlePdfMutation,
 } from "@/features/acervo/hooks";
+import {
+  ARTICLE_IMPORT_BATCH_SIZE,
+  applyMetadataToPdfDraft,
+  canImportPdfItem,
+  createPdfQueueItem,
+  emptyDraft,
+  getImportSuccessTitle,
+  getJsonImportButtonLabel,
+  getManualImportButtonLabel,
+  getPdfImportButtonLabel,
+  isPdfFile,
+  toImportItem,
+  toPdfImportItem,
+  type Draft,
+  type Modalidade,
+  type PdfDraft,
+  type PdfQueueItem,
+} from "@/features/acervo/article-import-model";
 import { useAuth } from "@/features/auth/auth-context";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/api";
 import { chunkItems } from "@/lib/chunk-items";
-import { addCommaSeparatedValue, splitCommaSeparatedValues } from "@/lib/comma-separated-values";
+import { splitCommaSeparatedValues } from "@/lib/comma-separated-values";
 import {
   ARTICLE_MODALITIES,
-  applyExtractedMetadataToArticleForm,
-  emptyArticleFormValue,
   splitArticleAuthors,
-  type ArticleFormValue,
-  type ArticleModality,
 } from "@/lib/article-form";
 import {
   segmentedControlItemClassName,
@@ -58,135 +67,9 @@ import {
   segmentedTabsTriggerClassName,
 } from "@/lib/segmented-control";
 import { cn } from "@/lib/utils";
-import type { ExtractedArticlePdfMetadata, ImportArticleInput } from "@/types/acervo";
+import type { ImportArticleInput } from "@/types/acervo";
 
 const modalidades = ARTICLE_MODALITIES;
-const ARTICLE_IMPORT_BATCH_SIZE = 25;
-type Modalidade = ArticleModality;
-type PdfQueueStatus = "pending" | "reading" | "ready" | "failed" | "saving" | "saved" | "partial";
-
-type Draft = {
-  title: string;
-  authors: string;
-  area: string;
-  courses: string;
-  abstract: string;
-  modalidade: Modalidade;
-};
-
-type PdfDraft = ArticleFormValue;
-
-type PdfQueueItem = {
-  id: string;
-  file: File;
-  draft: PdfDraft;
-  metadata: ExtractedArticlePdfMetadata | null;
-  status: PdfQueueStatus;
-  error: string | null;
-};
-
-const emptyDraft = (): Draft => ({
-  title: "",
-  authors: "",
-  area: "",
-  courses: "",
-  abstract: "",
-  modalidade: "Resumo Simples",
-});
-
-const emptyPdfDraft = (): PdfDraft => ({
-  ...emptyArticleFormValue(),
-});
-
-const toImportItem = (draft: Draft): ImportArticleInput => ({
-  title: draft.title,
-  authors: splitArticleAuthors(draft.authors),
-  area: draft.area || "Geral",
-  courses: splitCommaSeparatedValues(draft.courses),
-  abstract: draft.abstract,
-  modality: draft.modalidade,
-  importedFrom: "Importação manual",
-  submittedAt: new Date().toISOString().slice(0, 10),
-});
-
-const toPdfImportItem = (draft: PdfDraft): ImportArticleInput => ({
-  title: draft.title,
-  authors: splitArticleAuthors(draft.authors),
-  area: draft.area || "Geral",
-  courses: splitCommaSeparatedValues(draft.courses),
-  abstract: draft.abstract,
-  pages: draft.pages || undefined,
-  modality: draft.modalidade,
-  importedFrom: "Leitura automática de PDF",
-  submittedAt: new Date().toISOString().slice(0, 10),
-});
-
-function isPdfFile(file: File) {
-  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-}
-
-function createPdfQueueItem(file: File): PdfQueueItem {
-  return {
-    id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
-    file,
-    draft: emptyPdfDraft(),
-    metadata: null,
-    status: "pending",
-    error: null,
-  };
-}
-
-function applyMetadataToPdfDraft(draft: PdfDraft, metadata: ExtractedArticlePdfMetadata): PdfDraft {
-  return applyExtractedMetadataToArticleForm(draft, metadata);
-}
-
-function canImportPdfItem(item: PdfQueueItem) {
-  return Boolean(item.draft.title.trim() && item.draft.authors.trim());
-}
-
-function pluralize(count: number, singular: string, plural: string) {
-  return count === 1 ? singular : plural;
-}
-
-function getImportSuccessTitle(count: number, publishImmediately: boolean) {
-  if (publishImmediately) {
-    return `${count} ${pluralize(count, "trabalho publicado", "trabalhos publicados")}`;
-  }
-
-  return `${count} ${pluralize(count, "rascunho salvo", "rascunhos salvos")}`;
-}
-
-function getManualImportButtonLabel(count: number, publishImmediately: boolean, isPending: boolean) {
-  if (isPending) {
-    return "Processando dados...";
-  }
-
-  if (count <= 0) {
-    return publishImmediately ? "Publicar trabalhos" : "Salvar como rascunho";
-  }
-
-  return publishImmediately ? "Publicar trabalhos" : "Salvar como rascunho";
-}
-
-function getJsonImportButtonLabel(publishImmediately: boolean, isPending: boolean) {
-  if (isPending) {
-    return "Processando dados...";
-  }
-
-  return publishImmediately ? "Publicar arquivo" : "Salvar arquivo como rascunho";
-}
-
-function getPdfImportButtonLabel(count: number, publishImmediately: boolean, isPending: boolean) {
-  if (isPending) {
-    return "Processando dados...";
-  }
-
-  if (count <= 0) {
-    return publishImmediately ? "Publicar trabalhos" : "Salvar como rascunho";
-  }
-
-  return publishImmediately ? "Publicar trabalhos" : "Salvar como rascunho";
-}
 
 export default function AdminImportar() {
   const navigate = useNavigate();
@@ -861,366 +744,44 @@ export default function AdminImportar() {
                     onFilesChange={(files) => onPdfFiles(files)}
                   />
                 ) : (
-                  <div className="rounded-lg border border-border bg-muted/20 p-3">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
-                        <div className="flex w-full items-center justify-between gap-2 md:w-auto md:justify-start">
-                          <div className="flex items-center gap-1.5">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              aria-label="Arquivo anterior"
-                              className="size-8 rounded-full"
-                              disabled={isFirstPdfItem}
-                              onClick={goToPreviousPdf}
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </Button>
-
-                            <Badge variant="secondary" className="min-w-16 justify-center px-2 text-[11px]">
-                              {activePdfIndex + 1} de {pdfItems.length}
-                            </Badge>
-
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              aria-label="Próximo arquivo"
-                              className="size-8 rounded-full"
-                              disabled={isLastPdfItem}
-                              onClick={goToNextPdf}
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-
-                          <div className="flex flex-wrap justify-end gap-1 md:hidden">
-                            <Badge variant="outline" className="px-1.5 text-[9px]">
-                              {pendingPdfCount} pendentes
-                            </Badge>
-
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "px-1.5 text-[9px]",
-                                hasStartedPdfProcessing
-                                  ? "border-emerald-200 bg-emerald-500/10 text-emerald-700"
-                                  : "border-dashed border-border bg-muted/40 text-muted-foreground",
-                              )}
-                            >
-                              {readyPdfCount} prontos
-                            </Badge>
-
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "px-1.5 text-[9px]",
-                                hasStartedPdfProcessing
-                                  ? "border-amber-200 bg-amber-500/10 text-amber-700"
-                                  : "border-dashed border-border bg-muted/40 text-muted-foreground",
-                              )}
-                            >
-                              {failedPdfCount} com falha
-                            </Badge>
-                          </div>
-                        </div>
-
-                        <div className="grid w-full grid-cols-3 gap-1 md:w-auto md:grid-cols-none md:flex md:flex-wrap md:items-center md:gap-2">
-                          <label className="inline-flex h-8 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-full bg-brand px-1 text-[9px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-brand/90 md:px-3 md:text-xs">
-                            <Upload className="h-3.5 w-3.5 shrink-0" />
-
-                            <span className="truncate">Adicionar PDFs</span>
-
-                            <input
-                              id="pdf-queue-files"
-                              name="pdf-queue-files"
-                              type="file"
-                              accept="application/pdf,.pdf"
-                              aria-label="Adicionar PDFs"
-                              multiple
-                              className="hidden"
-                              onChange={(event) => {
-                                onPdfFiles(event.target.files);
-                                event.target.value = "";
-                              }}
-                            />
-                          </label>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-8 min-w-0 rounded-full border-border bg-background px-1 text-[9px] font-semibold text-destructive hover:bg-muted/50 hover:text-destructive [&_svg]:stroke-current md:px-3 md:text-xs"
-                            onClick={removeActivePdfItem}
-                          >
-                            <X className="h-3.5 w-3.5 shrink-0" />
-
-                            <span className="truncate">Remover atual</span>
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-8 min-w-0 rounded-full border-border bg-background px-1 text-[9px] font-semibold text-destructive hover:bg-muted/50 hover:text-destructive [&_svg]:stroke-current md:px-3 md:text-xs"
-                            onClick={clearPdfQueue}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 shrink-0" />
-
-                            <span className="truncate">Limpar fila</span>
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="hidden flex-wrap justify-end gap-2 md:flex">
-                        <Badge variant="outline">{pendingPdfCount} pendentes</Badge>
-
-                        <Badge
-                          variant="outline"
-                          className={
-                            hasStartedPdfProcessing
-                              ? "border-emerald-200 bg-emerald-500/10 text-emerald-700"
-                              : "border-dashed border-border bg-muted/40 text-muted-foreground"
-                          }
-                        >
-                          {readyPdfCount} prontos
-                        </Badge>
-
-                        <Badge
-                          variant="outline"
-                          className={
-                            hasStartedPdfProcessing
-                              ? "border-amber-200 bg-amber-500/10 text-amber-700"
-                              : "border-dashed border-border bg-muted/40 text-muted-foreground"
-                          }
-                        >
-                          {failedPdfCount} com falha
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <PdfFileSummary
-                      className="mt-4"
-                      name={activePdfItem?.file.name ?? ""}
-                      size={activePdfItem?.file.size ?? 0}
-                    />
-
-                    <div className="mt-4 flex justify-center">
-                      <Button
-                        type="button"
-                        className="w-full max-w-72 gap-2 bg-brand text-primary-foreground hover:bg-brand/90 md:w-auto"
-                        disabled={isBatchReading}
-                        onClick={readAllPdfMetadata}
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        {isBatchReading
-                          ? "Lendo PDFs da fila..."
-                          : `Ler ${pendingPdfCount + failedPdfCount || pdfItems.length
-                          } ${pendingPdfCount + failedPdfCount === 1 ? "PDF pendente" : "PDFs pendentes"}`}
-                      </Button>
-                    </div>
-                  </div>
+                  <PdfImportQueuePanel
+                    activePdfIndex={activePdfIndex}
+                    activePdfItem={activePdfItem}
+                    failedPdfCount={failedPdfCount}
+                    hasStartedPdfProcessing={hasStartedPdfProcessing}
+                    isBatchReading={isBatchReading}
+                    isFirstPdfItem={isFirstPdfItem}
+                    isLastPdfItem={isLastPdfItem}
+                    onAddFiles={onPdfFiles}
+                    onClearQueue={clearPdfQueue}
+                    onNext={goToNextPdf}
+                    onPrevious={goToPreviousPdf}
+                    onReadAll={readAllPdfMetadata}
+                    onRemoveActive={removeActivePdfItem}
+                    pdfItemCount={pdfItems.length}
+                    pendingPdfCount={pendingPdfCount}
+                    readyPdfCount={readyPdfCount}
+                  />
                 )}
-
-                {activePdfItem?.error ? (
-                  <Card className="border-amber-200 bg-amber-500/10 p-3 shadow-card">
-                    <div className="flex gap-2 text-xs text-amber-700">
-                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                      <div>
-                        <div className="font-semibold">Falha na leitura deste PDF</div>
-                        <div>{activePdfItem.error}</div>
-                      </div>
-                    </div>
-                  </Card>
-                ) : null}
-
-                {showActivePdfReview ? (
-                  <Card ref={reviewCardRef} className="border-border/60 p-3 shadow-card">
-                    <div className="mb-4 flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold">Revisão do arquivo atual</div>
-                        <div className="text-xs text-muted-foreground">
-                          Corrija os campos deste PDF antes de salvar.
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            aria-label="Arquivo anterior na revisão"
-                            className="size-8 rounded-full"
-                            disabled={isFirstPdfItem}
-                            onClick={goToPreviousPdf}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-
-                          <Badge variant="secondary" className="min-w-20 justify-center">
-                            {activePdfIndex + 1} de {pdfItems.length}
-                          </Badge>
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            aria-label="Próximo arquivo na revisão"
-                            className="size-8 rounded-full"
-                            disabled={isLastPdfItem}
-                            onClick={goToNextPdf}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        {activePdfItem.status === "saved" ? (
-                          <Badge variant="outline" className="border-emerald-200 bg-emerald-500/10 text-emerald-700">
-                            <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Importado
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {activePdfItem?.metadata ? (
-                      <div className="mb-4 flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="secondary">{activePdfItem.metadata.pageCount} páginas</Badge>
-                          <Badge variant="outline">{activePdfItem.metadata.authors.length} autores sugeridos</Badge>
-                          <Badge variant="outline">{activePdfItem.metadata.emails.length} e-mails encontrados</Badge>
-                        </div>
-
-                        {activePdfItem.metadata.emails.length > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            <strong className="text-foreground">E-mails:</strong>{" "}
-                            {activePdfItem.metadata.emails.join(", ")}
-                          </div>
-                        )}
-
-                        {activePdfItem.metadata.areaSuggestions.length > 0 && (
-                          <div>
-                            <div className="mb-1 text-xs text-muted-foreground">
-                              <strong className="text-foreground">Área sugerida:</strong>{" "}
-                              {activePdfItem.metadata.suggestedArea ?? "Sem sugestão forte"}
-                              {activePdfItem.metadata.areaSuggestionConfidence
-                                ? ` (${activePdfItem.metadata.areaSuggestionConfidence})`
-                                : ""}
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              {activePdfItem.metadata.areaSuggestions.map((suggestion) => (
-                                <Button
-                                  key={`${activePdfItem.id}-${suggestion.name}`}
-                                  type="button"
-                                  size="sm"
-                                  variant={activePdfItem.draft.area === suggestion.name ? "default" : "outline"}
-                                  className="h-7 px-2 text-[11px]"
-                                  onClick={() => updateActivePdfDraft({ area: suggestion.name })}
-                                >
-                                  {suggestion.name}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {(activePdfItem.metadata.courseSuggestions?.length ?? 0) > 0 && (
-                          <div>
-                            <div className="mb-1 text-xs text-muted-foreground">
-                              <strong className="text-foreground">Cursos sugeridos:</strong>{" "}
-                              confirme os cursos relacionados antes de salvar
-                              {activePdfItem.metadata.courseSuggestionConfidence
-                                ? ` (${activePdfItem.metadata.courseSuggestionConfidence})`
-                                : ""}.
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              {activePdfItem.metadata.courseSuggestions?.map((suggestion) => (
-                                <Button
-                                  key={`${activePdfItem.id}-${suggestion.name}`}
-                                  type="button"
-                                  size="sm"
-                                  variant={
-                                    splitCommaSeparatedValues(activePdfItem.draft.courses).includes(suggestion.name)
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  className="h-7 px-2 text-[11px]"
-                                  onClick={() =>
-                                    updateActivePdfDraft({
-                                      courses: addCommaSeparatedValue(activePdfItem.draft.courses, suggestion.name),
-                                    })
-                                  }
-                                >
-                                  {suggestion.name}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {activePdfItem.metadata.warnings.length > 0 && (
-                          <div className="rounded-md bg-amber-500/10 p-3 text-xs text-amber-700">
-                            {activePdfItem.metadata.warnings.map((warning) => (
-                              <div key={warning}>{warning}</div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
-
-                    <ArticleEditorForm
-                      idPrefix="pdf-review"
-                      value={activePdfItem!.draft}
-                      onChange={updateActivePdfDraft}
-                      areaOptions={areaSuggestions}
-                      courseOptions={courseSuggestions}
-                    />
-
-                    <div className="mt-4 flex items-center justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        aria-label="Arquivo anterior na revisão"
-                        className="size-8 rounded-full"
-                        disabled={isFirstPdfItem}
-                        onClick={goToPreviousPdf}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-
-                      <Badge variant="secondary" className="min-w-20 justify-center">
-                        {activePdfIndex + 1} de {pdfItems.length}
-                      </Badge>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        aria-label="Próximo arquivo na revisão"
-                        className="size-8 rounded-full"
-                        disabled={isLastPdfItem}
-                        onClick={goToNextPdf}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="mt-4 flex justify-center">
-                      <Button
-                        className="gap-2 bg-brand text-primary-foreground hover:bg-brand/90"
-                        disabled={importablePdfItems.length === 0 || !selectedEventId || isImporting || isBatchReading}
-                        onClick={importPdfBatch}
-                      >
-                        <DownloadCloud className="h-4 w-4" />
-                        {getPdfImportButtonLabel(importablePdfItems.length, publishNow, isImporting)}
-                      </Button>
-                    </div>
-                  </Card>
-                ) : null}
+                <PdfImportReviewCard
+                  activePdfIndex={activePdfIndex}
+                  activePdfItem={activePdfItem}
+                  areaSuggestions={areaSuggestions}
+                  courseSuggestions={courseSuggestions}
+                  disabled={isImporting || isBatchReading}
+                  importButtonLabel={getPdfImportButtonLabel(importablePdfItems.length, publishNow, isImporting)}
+                  importablePdfCount={importablePdfItems.length}
+                  isFirstPdfItem={isFirstPdfItem}
+                  isLastPdfItem={isLastPdfItem}
+                  onDraftChange={updateActivePdfDraft}
+                  onImport={importPdfBatch}
+                  onNext={goToNextPdf}
+                  onPrevious={goToPreviousPdf}
+                  pdfItemCount={pdfItems.length}
+                  reviewCardRef={reviewCardRef}
+                  selectedEventId={selectedEventId}
+                  showReview={showActivePdfReview}
+                />
               </TabsContent>
             </Tabs>
           </Card>

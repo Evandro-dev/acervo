@@ -1,7 +1,11 @@
 import { MemoryRouter } from "react-router-dom";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import Eventos from "@/pages/Eventos";
-import { useAreasQuery, useGlobalSearchQuery, usePublicEventsQuery } from "@/features/acervo/hooks";
+import {
+  useAreasQuery,
+  useGlobalSearchQuery,
+  usePublicEventsQuery,
+} from "@/features/acervo/hooks";
 import { useAuth } from "@/features/auth/auth-context";
 
 vi.mock("@/features/acervo/hooks", () => ({
@@ -51,6 +55,7 @@ function createEvent(overrides: Record<string, unknown>) {
 
 describe("Eventos", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     mockedUseAuth.mockReturnValue({
       user: null,
       token: null,
@@ -63,6 +68,23 @@ describe("Eventos", () => {
   });
 
   it("filters events by registered/event area instead of event themes", () => {
+    const events = [
+      createEvent({
+        id: "event-1",
+        slug: "saude",
+        title: "Evento de Saúde",
+        area: "Saúde",
+        themes: ["Cuidado"],
+      }),
+      createEvent({
+        id: "event-2",
+        slug: "tecnologia",
+        title: "Evento de Tecnologia",
+        area: "Tecnologia",
+        themes: ["Saúde"],
+      }),
+    ];
+
     mockedUseAreasQuery.mockReturnValue({
       data: [
         { id: "area-1", name: "Saúde", articleCount: 1 },
@@ -71,21 +93,26 @@ describe("Eventos", () => {
       isLoading: false,
       isError: false,
     } as ReturnType<typeof useAreasQuery>);
-    mockedUsePublicEventsQuery.mockReturnValue({
-      data: [
-        createEvent({ id: "event-1", slug: "saude", title: "Evento de Saúde", area: "Saúde", themes: ["Cuidado"] }),
-        createEvent({
-          id: "event-2",
-          slug: "tecnologia",
-          title: "Evento de Tecnologia",
-          area: "Tecnologia",
-          themes: ["Saúde"],
-        }),
-      ],
-      isLoading: false,
-      isError: false,
-      error: null,
-    } as ReturnType<typeof usePublicEventsQuery>);
+    mockedUsePublicEventsQuery.mockImplementation((filters) => {
+      const selectedAreas = Array.isArray(filters?.area) ? filters.area : [];
+      const items =
+        selectedAreas.length > 0
+          ? events.filter((event) => selectedAreas.includes(event.area))
+          : events;
+
+      return {
+        data: {
+          items,
+          total: items.length,
+          page: 1,
+          pageSize: 12,
+          pageCount: 1,
+        },
+        isLoading: false,
+        isError: false,
+        error: null,
+      } as ReturnType<typeof usePublicEventsQuery>;
+    });
 
     render(
       <MemoryRouter>
@@ -93,13 +120,20 @@ describe("Eventos", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Abrir filtros de eventos" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Abrir filtros de eventos" }),
+    );
     fireEvent.click(screen.getByRole("checkbox", { name: "Saúde" }));
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
 
+    expect(mockedUsePublicEventsQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ area: ["Saúde"], page: 1, pageSize: 12 }),
+    );
     expect(screen.getByText("Evento de Saúde")).toBeInTheDocument();
     expect(screen.queryByText("Evento de Tecnologia")).not.toBeInTheDocument();
-    const healthEventCard = screen.getByText("Evento de Saúde").closest(".shadow-card") as HTMLElement;
+    const healthEventCard = screen
+      .getByText("Evento de Saúde")
+      .closest(".shadow-card") as HTMLElement;
     expect(within(healthEventCard).getByText("Saúde")).toBeInTheDocument();
   });
 });
