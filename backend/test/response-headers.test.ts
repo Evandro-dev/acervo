@@ -33,7 +33,9 @@ test("uses no-store for authenticated or sensitive API responses", async () => {
     headers: { Authorization: "Bearer token" },
   });
 
+  assert.equal(authResponse.headers["x-content-type-options"], "nosniff");
   assert.equal(authResponse.headers["cache-control"], "no-store");
+  assert.equal(authorizedPublicResponse.headers["x-content-type-options"], "nosniff");
   assert.equal(authorizedPublicResponse.headers["cache-control"], "no-store");
 });
 

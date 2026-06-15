@@ -11,4 +11,18 @@ describe("Vercel SPA configuration", () => {
       destination: "/index.html",
     });
   });
+
+  it("adds nosniff to every frontend response", () => {
+    const config = JSON.parse(readFileSync(resolve("vercel.json"), "utf8"));
+
+    expect(config.headers).toContainEqual({
+      source: "/(.*)",
+      headers: [
+        {
+          key: "X-Content-Type-Options",
+          value: "nosniff",
+        },
+      ],
+    });
+  });
 });
