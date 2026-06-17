@@ -374,19 +374,19 @@ export default function EventoDetalhe() {
                     Ficha Catalográfica
                   </AccordionTrigger>
                   <AccordionContent>
-                    <Card className="border-border/60 p-4 shadow-card">
+                    <div>
                       {catalogImageUrl ? (
-                        <div className="flex flex-col gap-3">
-                          <div className="max-h-180 overflow-auto rounded-md border bg-white p-2">
+                        <div className="w-fit max-w-full">
+                          <div className="max-h-128 w-fit max-w-full overflow-hidden rounded-md border border-border/60 bg-white p-2">
                             <ProtectedImage
                               src={getApiResourceUrl(catalogImageUrl)}
                               alt="Ficha catalográfica"
-                              className="mx-auto max-w-full object-contain"
+                              className="block h-auto max-h-124 max-w-full object-contain"
                             />
                           </div>
                         </div>
                       ) : catalogPdfUrl ? (
-                        <div className="flex flex-col gap-3">
+                        <div className="flex w-fit max-w-full flex-col gap-3 rounded-md border border-border/60 bg-background p-4">
                           <StatePanel>
                             A ficha catalográfica está vinculada como PDF.
                           </StatePanel>
@@ -403,7 +403,7 @@ export default function EventoDetalhe() {
                           </div>
                         </div>
                       ) : catalogText ? (
-                        <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
+                        <div className="w-fit max-w-full whitespace-pre-wrap rounded-md border border-border/60 bg-background p-4 text-sm leading-relaxed text-foreground/80">
                           {catalogText}
                         </div>
                       ) : (
@@ -411,7 +411,7 @@ export default function EventoDetalhe() {
                           Ficha catalográfica não cadastrada.
                         </StatePanel>
                       )}
-                    </Card>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="temas">
