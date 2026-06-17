@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { DeveloperCredits } from "@/components/common/DeveloperCredits";
 import { RouteFallback } from "@/components/ui/route-fallback";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -68,6 +69,8 @@ const App = () => (
             </Routes>
           </Suspense>
         </BrowserRouter>
+
+        <DeveloperCredits />
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
