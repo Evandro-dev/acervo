@@ -51,6 +51,46 @@ export function toEventData(input: EventPayload & { slug: string }) {
   };
 }
 
+type StoredEventCatalog = {
+  isbn: string | null;
+  doi: string | null;
+  catalogText: string | null;
+  catalogPdfUrl: string | null;
+  catalogImageUrl: string | null;
+};
+
+type IncomingEventCatalog = Partial<EventPayload["catalog"]> | undefined;
+
+function hasCatalogField(
+  catalog: IncomingEventCatalog,
+  field: keyof EventPayload["catalog"],
+) {
+  return Boolean(catalog) && Object.prototype.hasOwnProperty.call(catalog, field);
+}
+
+export function mergeEventCatalog(
+  current: StoredEventCatalog,
+  incoming: IncomingEventCatalog,
+) {
+  return {
+    isbn: hasCatalogField(incoming, "isbn")
+      ? incoming?.isbn ?? null
+      : current.isbn ?? undefined,
+    doi: hasCatalogField(incoming, "doi")
+      ? incoming?.doi ?? null
+      : current.doi ?? undefined,
+    text: hasCatalogField(incoming, "text")
+      ? incoming?.text ?? null
+      : current.catalogText ?? undefined,
+    pdfUrl: hasCatalogField(incoming, "pdfUrl")
+      ? incoming?.pdfUrl ?? null
+      : current.catalogPdfUrl ?? undefined,
+    imageUrl: hasCatalogField(incoming, "imageUrl")
+      ? incoming?.imageUrl ?? null
+      : current.catalogImageUrl ?? undefined,
+  };
+}
+
 export function getRemovedCoverResource(
   currentCoverUrl: string | null,
   nextCoverUrl?: string | null,

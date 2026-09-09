@@ -65,3 +65,57 @@ describe("event type normalization", () => {
     expect(prepared.payload.type).toBe("Seminário");
   });
 });
+
+describe("catalog removal", () => {
+  it("sends explicit nulls when a manual catalog is empty", () => {
+    const prepared = validateAndPrepare(
+      buildForm({
+        catalogIsbn: "",
+        catalogDoi: "",
+        catalogText: "",
+      }),
+      { catalogInputMode: "manual" },
+    );
+
+    expect(prepared.payload.catalog).toMatchObject({
+      isbn: null,
+      doi: null,
+      text: null,
+    });
+  });
+
+  it("does not recreate an ISBN that was explicitly cleared", () => {
+    const prepared = validateAndPrepare(
+      buildForm({
+        catalogIsbn: "",
+        catalogText: "Ficha mantida para consulta\nISBN 978-65-02-14535-7",
+      }),
+      { catalogInputMode: "manual" },
+    );
+
+    expect(prepared.payload.catalog).toMatchObject({
+      isbn: null,
+      text: "Ficha mantida para consulta\nISBN 978-65-02-14535-7",
+    });
+  });
+
+  it("keeps a new manual catalog while scheduling the old PDF files for removal", () => {
+    const prepared = validateAndPrepare(
+      buildForm({
+        catalogIsbn: "978-65-02-14535-7",
+        catalogText: "Nova ficha manual\nISBN 978-65-02-14535-7",
+        catalogPdfUrl: "",
+        catalogImageUrl: "",
+        removeCatalogFilesOnSave: true,
+      }),
+      { catalogInputMode: "manual" },
+    );
+
+    expect(prepared.payload.catalog).toMatchObject({
+      isbn: "978-65-02-14535-7",
+      text: "Nova ficha manual\nISBN 978-65-02-14535-7",
+      pdfUrl: null,
+      imageUrl: null,
+    });
+  });
+});

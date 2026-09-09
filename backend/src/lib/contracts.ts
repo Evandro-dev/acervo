@@ -73,10 +73,28 @@ export const eventPreviousEditionsSchema = z.array(
   eventPreviousEditionSchema,
 );
 
+const optionalCatalogIdentifierSchema = (maxLength: number) =>
+  z
+    .string()
+    .trim()
+    .max(maxLength)
+    .nullable()
+    .transform((value) => value || null)
+    .optional();
+
+const optionalCatalogTextSchema = z
+  .string()
+  .max(20000)
+  .nullable()
+  .transform((value) =>
+    typeof value !== "string" || value.trim() ? value : null,
+  )
+  .optional();
+
 export const eventCatalogSchema = z.object({
-  isbn: z.string().trim().max(80).optional(),
-  doi: z.string().trim().max(160).optional(),
-  text: z.string().max(20000).optional(),
+  isbn: optionalCatalogIdentifierSchema(80),
+  doi: optionalCatalogIdentifierSchema(160),
+  text: optionalCatalogTextSchema,
   pdfUrl: z.url().nullable().optional(),
   imageUrl: z.url().nullable().optional(),
 });

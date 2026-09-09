@@ -305,10 +305,14 @@ export function validateAndPrepare(
   const catalogText = form.catalogText.replace(/\r\n/g, "\n");
   const catalogPdfUrl = form.catalogPdfUrl.trim();
   const catalogImageUrl = form.catalogImageUrl.trim();
-  const catalogIsbn =
-    form.catalogIsbn.trim() || extractIsbnFromCatalogText(catalogText);
+  const catalogIsbn = form.catalogIsbn.trim();
+  const catalogDoi = form.catalogDoi.trim();
   const shouldSaveCatalogText =
-    options?.catalogInputMode !== "pdf" && !form.removeCatalogFilesOnSave;
+    options?.catalogInputMode !== "pdf";
+  const hasManualCatalogText = Boolean(catalogText.trim());
+  const shouldClearManualCatalog =
+    options?.catalogInputMode !== "pdf" &&
+    !hasManualCatalogText;
 
   if (title.length < 2) {
     throw new Error("Identificação > Título: informe pelo menos 2 caracteres.");
@@ -507,9 +511,12 @@ export function validateAndPrepare(
       phone: contactPhone || undefined,
     },
     catalog: {
-      isbn: catalogIsbn || undefined,
-      doi: form.catalogDoi.trim() || undefined,
-      text: shouldSaveCatalogText ? catalogText || undefined : "",
+      // `null` means that this complete form intentionally removes the value.
+      // It must not be merged with an older value by the API.
+      isbn: catalogIsbn || null,
+      doi: shouldClearManualCatalog ? null : catalogDoi || null,
+      text:
+        shouldSaveCatalogText && hasManualCatalogText ? catalogText : null,
       pdfUrl:
         catalogPdfUrl || (form.removeCatalogFilesOnSave ? null : undefined),
       imageUrl:

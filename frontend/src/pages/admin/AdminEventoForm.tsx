@@ -132,6 +132,16 @@ export default function AdminEventoForm() {
     removeUploadedEventRuleFileMutation.isPending;
   const isSaveDisabled = isSubmitting || isReadingCatalogPdf;
   const shouldShowCatalogTextField = catalogInputMode === "manual";
+  const hasPdfCatalogSource = Boolean(
+    catalogPdfFile ||
+      catalogImageFile ||
+      form.catalogImagePreviewDataUrl ||
+      form.catalogPdfUrl ||
+      form.catalogImageUrl,
+  );
+  const hasManualCatalogSource = Boolean(form.catalogText.trim());
+  const isManualCatalogModeLocked = hasPdfCatalogSource;
+  const isPdfCatalogModeLocked = hasManualCatalogSource;
   const selectedEventType = normalizeEventType(form.type) ?? "";
   const defaultOpenSections = [
     "identificacao",
@@ -206,7 +216,7 @@ export default function AdminEventoForm() {
       setForm((current) => ({
         ...current,
         catalogText: "",
-        catalogIsbn: catalogIsbn || current.catalogIsbn,
+        catalogIsbn: catalogIsbn || "",
         catalogImagePreviewDataUrl: preview.dataUrl,
         removeCatalogFilesOnSave: false,
       }));
@@ -268,7 +278,7 @@ export default function AdminEventoForm() {
     });
   };
 
-  const removeCatalogPdfFromForm = () => {
+  const removeCatalogFromForm = () => {
     setCatalogPdfFile(null);
     setCatalogImageFile(null);
     setHasCatalogPdfResult(false);
@@ -276,6 +286,7 @@ export default function AdminEventoForm() {
       ...current,
       catalogText: "",
       catalogIsbn: "",
+      catalogDoi: "",
       catalogPdfUrl: "",
       catalogImageUrl: "",
       catalogImagePreviewDataUrl: "",
@@ -650,6 +661,7 @@ export default function AdminEventoForm() {
               options={[
                 {
                   value: "manual",
+                  disabled: isManualCatalogModeLocked,
                   label: (
                     <>
                       <FileText className="h-4 w-4" /> Manual
@@ -658,6 +670,7 @@ export default function AdminEventoForm() {
                 },
                 {
                   value: "pdf",
+                  disabled: isPdfCatalogModeLocked,
                   label: (
                     <>
                       <Upload className="h-4 w-4" /> PDF
@@ -666,6 +679,18 @@ export default function AdminEventoForm() {
                 },
               ]}
             />
+
+            {isManualCatalogModeLocked ? (
+              <p className="text-xs text-muted-foreground">
+                Remova a ficha em PDF para liberar o preenchimento manual.
+              </p>
+            ) : null}
+
+            {isPdfCatalogModeLocked ? (
+              <p className="text-xs text-muted-foreground">
+                Apague o conteúdo da ficha manual para liberar o envio por PDF.
+              </p>
+            ) : null}
 
             {catalogInputMode === "pdf" ? (
               <div className="flex flex-col gap-3">
@@ -686,7 +711,7 @@ export default function AdminEventoForm() {
                   }
                   isReading={isReadingCatalogPdf}
                   onFilesChange={handleCatalogPdfFilesChange}
-                  onRemove={removeCatalogPdfFromForm}
+                  onRemove={removeCatalogFromForm}
                   onCancelTemporarySelection={clearSelectedCatalogPdf}
                 />
               </div>
@@ -710,6 +735,7 @@ export default function AdminEventoForm() {
                         ...current,
                         catalogText,
                         catalogIsbn: extractIsbnFromCatalogText(catalogText),
+                        catalogDoi: catalogText.trim() ? current.catalogDoi : "",
                       }));
                     }}
                     placeholder={`Cole aqui a ficha catalográfica completa.

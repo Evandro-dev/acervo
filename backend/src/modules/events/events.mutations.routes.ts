@@ -41,6 +41,7 @@ import {
 import {
   getRemovedCoverResource,
   getRemovedOptionalResource,
+  mergeEventCatalog,
   readCatalogUploadParts,
   removeResourcesBestEffort,
   resolveUniqueEventSlug,
@@ -213,6 +214,11 @@ export async function eventMutationRoutes(app: FastifyInstance) {
           data: {
             catalogPdfUrl,
             catalogImageUrl,
+            // The catalog upload can be called independently of the form.
+            // Its parsed result is therefore authoritative: a replacement PDF
+            // without an ISBN must clear a previously stored ISBN.
+            isbn: result.isbn ?? null,
+            catalogText: null,
           },
         });
 
@@ -332,15 +338,8 @@ export async function eventMutationRoutes(app: FastifyInstance) {
         ? await resolveUniqueEventSlug(payload.slug, current.id)
         : current.slug;
 
-      const incomingCatalog = payload.catalog ?? {};
-      const hasIncomingCatalogPdfUrl = Object.prototype.hasOwnProperty.call(
-        incomingCatalog,
-        "pdfUrl",
-      );
-      const hasIncomingCatalogImageUrl = Object.prototype.hasOwnProperty.call(
-        incomingCatalog,
-        "imageUrl",
-      );
+      const incomingCatalog = payload.catalog;
+      const mergedCatalog = mergeEventCatalog(current, incomingCatalog);
 
       const merged = eventPayloadSchema.parse({
         slug,
@@ -364,17 +363,7 @@ export async function eventMutationRoutes(app: FastifyInstance) {
           email: payload.contact?.email ?? current.contactEmail,
           phone: payload.contact?.phone ?? current.contactPhone ?? undefined,
         },
-        catalog: {
-          isbn: payload.catalog?.isbn ?? current.isbn ?? undefined,
-          doi: payload.catalog?.doi ?? current.doi ?? undefined,
-          text: payload.catalog?.text ?? current.catalogText ?? undefined,
-          pdfUrl: hasIncomingCatalogPdfUrl
-            ? incomingCatalog.pdfUrl
-            : current.catalogPdfUrl ?? undefined,
-          imageUrl: hasIncomingCatalogImageUrl
-            ? incomingCatalog.imageUrl
-            : current.catalogImageUrl ?? undefined,
-        },
+        catalog: mergedCatalog,
       });
 
       const removedRuleResources = getRemovedEventRuleResources(

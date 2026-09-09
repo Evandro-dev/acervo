@@ -706,7 +706,7 @@ describe("AdminEventoForm", () => {
         expect.objectContaining({
           catalog: expect.objectContaining({
             isbn: "978-65-02-14535-7",
-            text: "",
+            text: null,
           }),
         }),
       ),
@@ -783,10 +783,14 @@ describe("AdminEventoForm", () => {
       </MemoryRouter>,
     );
 
+    const manualMode = await screen.findByRole("button", { name: "Manual" });
+    expect(manualMode).toBeDisabled();
+
     const [removeCatalogButton] = await screen.findAllByRole("button", {
       name: "Remover ficha catalográfica",
     });
     fireEvent.click(removeCatalogButton);
+    expect(manualMode).not.toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Salvar evento completo" }));
 
     await waitFor(() =>
@@ -794,7 +798,9 @@ describe("AdminEventoForm", () => {
         id: "event-1",
         payload: expect.objectContaining({
           catalog: expect.objectContaining({
-            text: "",
+            isbn: null,
+            doi: null,
+            text: null,
             pdfUrl: null,
             imageUrl: null,
           }),
@@ -802,5 +808,90 @@ describe("AdminEventoForm", () => {
       }),
     );
     expect(uploadCatalogMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("clears a manual catalog when its text is emptied and the event is saved", async () => {
+    const updateMutateAsync = vi.fn().mockResolvedValue({
+      id: "event-1",
+      title: "Congresso Completo",
+    });
+
+    mockedUseEventQuery.mockReturnValue({
+      data: {
+        id: "event-1",
+        slug: "congresso-completo",
+        title: "Congresso Completo",
+        edition: "1a Edicao",
+        year: 2026,
+        date: "15 de junho de 2026",
+        area: "Tecnologia",
+        type: "Congresso",
+        cover: null,
+        presentation: "Apresentacao completa do evento com detalhes suficientes.",
+        themes: [],
+        committee: [],
+        rules: [],
+        previousEditions: [],
+        contact: { email: "congresso@ulife.com.br" },
+        catalog: {
+          isbn: "978-65-02-14535-7",
+          doi: "10.1234/exemplo",
+          text: "Ficha catalografica manual\nISBN 978-65-02-14535-7",
+        },
+      },
+      isLoading: false,
+      isError: false,
+    } as never);
+    mockedUseCreateEventMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUpdateEventMutation.mockReturnValue({
+      mutateAsync: updateMutateAsync,
+      isPending: false,
+    } as never);
+    mockedUseUploadEventCoverImageMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+    mockedUseUploadEventRuleFileMutation.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never);
+
+    render(
+      <MemoryRouter initialEntries={["/admin/eventos/event-1"]}>
+        <Routes>
+          <Route path="/admin/eventos/:id" element={<AdminEventoForm />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const pdfMode = await screen.findByRole("button", { name: "PDF" });
+    await waitFor(() => expect(pdfMode).toBeDisabled());
+
+    fireEvent.change(
+      await screen.findByLabelText(/Ficha catalogr/i, { selector: "textarea" }),
+      { target: { value: "" } },
+    );
+    expect(pdfMode).not.toBeDisabled();
+    expect(updateMutateAsync).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar evento completo" }));
+
+    await waitFor(() =>
+      expect(updateMutateAsync).toHaveBeenCalledWith({
+        id: "event-1",
+        payload: expect.objectContaining({
+          catalog: expect.objectContaining({
+            isbn: null,
+            doi: null,
+            text: null,
+            pdfUrl: undefined,
+            imageUrl: undefined,
+          }),
+        }),
+      }),
+    );
   });
 });

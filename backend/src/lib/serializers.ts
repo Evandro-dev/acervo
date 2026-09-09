@@ -100,6 +100,14 @@ type UserShape = {
 
 const articleStatusLabel = (status: ArticleStatus) => status.toLowerCase();
 
+function serializeCatalogIdentifier(value: string | null) {
+  const normalized = value?.trim();
+
+  // Older API responses used this visual placeholder as data. Do not expose it
+  // as an identifier, so the next complete event save can normalize it to null.
+  return normalized && normalized !== "—" ? normalized : undefined;
+}
+
 const safeParse = <T>(schema: z.ZodType<T>, value: unknown, fallback: T): T => {
   const parsed = schema.safeParse(value);
   return parsed.success ? parsed.data : fallback;
@@ -190,8 +198,8 @@ export function serializeEvent(event: EventShape, options?: { includeArticles?: 
     themes: event.themes,
     committee: safeParse(eventCommitteeSchema, event.committee ?? [], []),
     catalog: {
-      isbn: event.isbn ?? "—",
-      doi: event.doi ?? "—",
+      isbn: serializeCatalogIdentifier(event.isbn),
+      doi: serializeCatalogIdentifier(event.doi),
       text: event.catalogText ?? "",
       pdfUrl: event.catalogPdfUrl ?? undefined,
       imageUrl: event.catalogImageUrl ?? undefined,
